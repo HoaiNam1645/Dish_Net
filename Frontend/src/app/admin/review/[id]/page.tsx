@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { Suspense, use, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -14,6 +14,14 @@ const rejectReasons = [
 ];
 
 export default function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    return (
+        <Suspense fallback={null}>
+            <ReviewDetailInner params={params} />
+        </Suspense>
+    );
+}
+
+function ReviewDetailInner({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const searchParams = useSearchParams();
     const statusParam = searchParams.get('status') || 'Chờ duyệt';

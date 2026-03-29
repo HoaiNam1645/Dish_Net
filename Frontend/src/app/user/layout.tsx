@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 
@@ -13,7 +14,9 @@ export default function UserLayout({
 }>) {
     return (
         <>
-            <Header />
+            <Suspense fallback={null}>
+                <Header />
+            </Suspense>
             <main className="flex-1 flex flex-col bg-bg-light">{children}</main>
             <Footer />
         </>
