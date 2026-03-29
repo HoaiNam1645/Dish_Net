@@ -14,6 +14,30 @@ const feedDishImage =
     'https://www.figma.com/api/mcp/asset/4ecfd72d-e0e1-4ecb-85ac-4aa8517b408e';
 const menuItemImage =
     'https://www.figma.com/api/mcp/asset/39c76dc1-fc29-4753-9fa2-8e2b099120b5';
+const galleryA = [
+    'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1526318896980-cf78c088247c?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1000&q=80',
+];
+const galleryB = [
+    'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1506368249639-73a05d6f6488?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&w=1000&q=80',
+    'https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=1000&q=80',
+];
 
 const homePageMockData: HomePageData = {
     hero: {
@@ -54,6 +78,7 @@ const homePageMockData: HomePageData = {
                 "Mình ăn ở quán khá nhiều lần nhưng hôm nay mới thử đặt ship trên website. Từ lúc quán confirm đơn đến lúc nhận đồ chỉ khoảng 20'.",
             coverImage: storeImage,
             reviewerAvatar: avatarSmall,
+            galleryImages: galleryA,
         },
         {
             id: 'spotlight-2',
@@ -64,6 +89,7 @@ const homePageMockData: HomePageData = {
                 'Nước dùng đậm vị, topping đầy đặn và giao diện đặt món rất rõ ràng. Đây là quán mình quay lại nhiều nhất trong tháng này.',
             coverImage: storeImage,
             reviewerAvatar: avatarSmall,
+            galleryImages: galleryB,
         },
     ],
     feedPosts: [

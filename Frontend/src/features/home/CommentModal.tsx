@@ -108,14 +108,16 @@ export default function CommentModal({
     isOpen,
     onClose,
     storeName = 'Nét Huế - Hàng Bông',
+    startComposerOpen = false,
 }: {
     isOpen: boolean;
     onClose: () => void;
     storeName?: string;
+    startComposerOpen?: boolean;
 }) {
     const [activeTab, setActiveTab] = useState<CommentTab>('all');
     const [draftComment, setDraftComment] = useState('');
-    const [isComposerOpen, setIsComposerOpen] = useState(false);
+    const [isComposerOpen, setIsComposerOpen] = useState(startComposerOpen);
     const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});

@@ -24,6 +24,7 @@ export interface SpotlightCard {
     excerpt: string;
     coverImage: string;
     reviewerAvatar: string;
+    galleryImages?: string[];
 }
 
 export interface FeedPost {

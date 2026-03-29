@@ -1,7 +1,10 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+
+import { readMockSession } from '@/components/Auth/mockSession';
 
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
@@ -31,7 +34,15 @@ function RankingRow({ item }: { item: RankingItem }) {
     );
 }
 
-function SidebarStoreCard({ card }: { card: SpotlightCard }) {
+function SidebarStoreCard({
+    card,
+    onOpenGallery,
+    onOpenComment,
+}: {
+    card: SpotlightCard;
+    onOpenGallery: () => void;
+    onOpenComment: () => void;
+}) {
     return (
         <article className="overflow-hidden rounded-[18px] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
             <img src={card.coverImage} alt={card.title} className="h-40 w-full object-cover" />
@@ -52,12 +63,115 @@ function SidebarStoreCard({ card }: { card: SpotlightCard }) {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <img src={homeUiAssets.reactionsLeft} alt="Phản hồi trái" className="h-7 w-20 object-contain" />
-                    <img src={homeUiAssets.reactionsRight} alt="Phản hồi phải" className="h-7 w-16 object-contain" />
+                <div className="flex items-center justify-between gap-3">
+                    <button
+                        type="button"
+                        onClick={onOpenGallery}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#f6faf4] px-4 py-2 text-sm font-semibold text-[#285e19] transition hover:bg-[#ebf5e8]"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 7a2 2 0 0 1 2-2h3l1.5 2H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" />
+                            <circle cx="12" cy="13" r="3" />
+                        </svg>
+                        Ảnh
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onOpenComment}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#fff3ea] px-4 py-2 text-sm font-semibold text-[#d56a1f] transition hover:bg-[#ffe8d8]"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Bình luận
+                    </button>
                 </div>
             </div>
         </article>
+    );
+}
+
+function GalleryModal({
+    isOpen,
+    onClose,
+    card,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    card: SpotlightCard | null;
+}) {
+    if (!isOpen || !card) return null;
+
+    const galleryImages = card.galleryImages?.length ? card.galleryImages : [card.coverImage];
+    const galleryTabs = [
+        { label: 'Tất cả 582', active: true },
+        { label: 'Video' },
+        { label: 'Chuyên nghiệp' },
+        { label: 'Món ăn 335' },
+        { label: 'Không gian 39' },
+        { label: 'Tổng hợp 31' },
+        { label: 'Thực đơn 177' },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/55 px-4 py-6" onClick={onClose}>
+            <div
+                className="relative flex h-[min(86vh,920px)] w-full max-w-[1500px] flex-col overflow-hidden rounded-[24px] bg-white px-10 pb-8 pt-10 shadow-[0_28px_90px_rgba(0,0,0,0.28)]"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute right-6 top-5 text-[48px] leading-none text-black transition hover:opacity-60"
+                    aria-label="Đóng thư viện ảnh"
+                >
+                    ×
+                </button>
+
+                <div className="flex items-start justify-between gap-6">
+                    <div>
+                        <h2 className="text-[34px] font-bold text-[#1f1f1f]">{card.title}</h2>
+                        <p className="mt-3 text-[16px] text-[#666b66]">{card.address}</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="rounded-full border border-[#3ca53b] bg-[#e6f3e1] px-12 py-5 text-[24px] font-bold text-[#2a6b1d]"
+                    >
+                        Đặt món
+                    </button>
+                </div>
+
+                <div className="mt-8 flex flex-wrap items-center gap-0 overflow-hidden rounded-[4px] bg-[#ededeb]">
+                    {galleryTabs.map((tab) => (
+                        <button
+                            key={tab.label}
+                            type="button"
+                            className={`border-b-2 px-6 py-4 text-[18px] transition ${
+                                tab.active
+                                    ? 'border-[#ff4d4f] bg-white text-[#ff3c30]'
+                                    : 'border-transparent text-[#414141] hover:bg-white/70'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-2">
+                    <div className="grid grid-cols-5 gap-4">
+                        {galleryImages.map((image, index) => (
+                            <img
+                                key={`${card.id}-gallery-${index}`}
+                                src={image}
+                                alt={`${card.title} ${index + 1}`}
+                                className="h-[260px] w-full rounded-[6px] object-cover"
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -166,8 +280,17 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
     const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+    const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
+    const [commentComposerOpen, setCommentComposerOpen] = useState(false);
+    const [activeCommentStore, setActiveCommentStore] = useState('Nét Huế - Hàng Bông');
+    const [activeGalleryCard, setActiveGalleryCard] = useState<SpotlightCard | null>(null);
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        setIsAuthenticated(readMockSession().isAuthenticated);
+    }, []);
 
     const rankingItems = data.rankings[rankingMode];
     const rankingLabels = rankingColumnLabels[rankingMode];
@@ -214,9 +337,12 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                         <aside className="rounded-[24px] bg-white p-5 shadow-[0_12px_36px_rgba(0,0,0,0.08)]">
                             <div className="flex items-center justify-between gap-4">
                                 <h2 className="text-2xl font-bold text-[#285e19]">Bảng Xếp Hạng</h2>
-                                <button className="text-sm font-medium text-[#285e19] transition hover:underline">
+                                <Link
+                                    href={`/ranking?tab=${rankingMode}`}
+                                    className="text-sm font-medium text-[#285e19] transition hover:underline"
+                                >
                                     Xem thêm →
-                                </button>
+                                </Link>
                             </div>
 
                             <div className="mt-5 grid grid-cols-2 overflow-hidden rounded-full border border-[#dcebdc] bg-[#f7faf6] p-1">
@@ -285,7 +411,19 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
 
                         <div className="space-y-6">
                             {data.spotlightCards.map((card) => (
-                                <SidebarStoreCard key={card.id} card={card} />
+                                <SidebarStoreCard
+                                    key={card.id}
+                                    card={card}
+                                    onOpenGallery={() => {
+                                        setActiveGalleryCard(card);
+                                        setIsGalleryModalOpen(true);
+                                    }}
+                                    onOpenComment={() => {
+                                        setActiveCommentStore(card.title);
+                                        setCommentComposerOpen(true);
+                                        setIsCommentModalOpen(true);
+                                    }}
+                                />
                             ))}
                         </div>
                     </section>
@@ -371,12 +509,14 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                     })}
                             </div>
 
-                            <div className="pointer-events-none absolute bottom-10 right-10 flex h-[88px] w-[88px] items-center justify-center rounded-full border border-[#dadada] bg-white shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
-                                <div className="text-[42px]">🛍️</div>
-                                <div className="absolute bottom-[6px] right-[6px] flex h-10 w-10 items-center justify-center rounded-full bg-[#ff5a2c] text-[32px] leading-none text-white">
-                                    +
+                            {!isAuthenticated ? (
+                                <div className="pointer-events-none absolute bottom-10 right-10 flex h-[88px] w-[88px] items-center justify-center rounded-full border border-[#dadada] bg-white shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
+                                    <div className="text-[42px]">🛍️</div>
+                                    <div className="absolute bottom-[6px] right-[6px] flex h-10 w-10 items-center justify-center rounded-full bg-[#ff5a2c] text-[32px] leading-none text-white">
+                                        +
+                                    </div>
                                 </div>
-                            </div>
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -443,7 +583,23 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                 </div>
             )}
 
-            <CommentModal isOpen={isCommentModalOpen} onClose={() => setIsCommentModalOpen(false)} />
+            <GalleryModal
+                isOpen={isGalleryModalOpen}
+                onClose={() => setIsGalleryModalOpen(false)}
+                card={activeGalleryCard}
+            />
+
+            <CommentModal
+                key={`${activeCommentStore}-${commentComposerOpen ? 'compose' : 'view'}-${isCommentModalOpen ? 'open' : 'closed'}`}
+                isOpen={isCommentModalOpen}
+                onClose={() => {
+                    setIsCommentModalOpen(false);
+                    setCommentComposerOpen(false);
+                    setActiveCommentStore('Nét Huế - Hàng Bông');
+                }}
+                storeName={activeCommentStore}
+                startComposerOpen={commentComposerOpen}
+            />
         </>
     );
 }

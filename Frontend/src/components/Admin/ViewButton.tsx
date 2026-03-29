@@ -3,6 +3,7 @@ import React from 'react';
 
 interface ViewButtonBaseProps {
     label?: string;
+    variant?: 'green' | 'blue';
 }
 
 interface ViewButtonWithHref extends ViewButtonBaseProps {
@@ -17,9 +18,14 @@ interface ViewButtonWithOnClick extends ViewButtonBaseProps {
 
 type ViewButtonProps = ViewButtonWithHref | ViewButtonWithOnClick;
 
-const btnClass = 'px-4 py-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-colors inline-block cursor-pointer';
+const variantClasses: Record<string, string> = {
+    green: 'bg-green-500 hover:bg-green-600 text-white',
+    blue: 'bg-blue-500 hover:bg-blue-600 text-white',
+};
 
-export default function ViewButton({ href, onClick, label = 'Xem' }: ViewButtonProps) {
+export default function ViewButton({ href, onClick, label = 'Xem', variant = 'green' }: ViewButtonProps) {
+    const btnClass = `px-4 py-1.5 rounded-md ${variantClasses[variant] ?? variantClasses.green} text-xs font-semibold transition-colors inline-block cursor-pointer`;
+
     if (href) {
         return (
             <Link href={href} className={btnClass}>
