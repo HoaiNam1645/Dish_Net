@@ -90,9 +90,9 @@ export default function SearchResultsClient({
 
     return (
         <div className="bg-[#fafaf9]">
-            <section className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-8">
-                <aside className="rounded-[20px] bg-white pb-8 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-                    <div className="border-b border-[#e5ebdf] px-8 py-6">
+            <section className="grid w-full gap-10 px-4 pb-8 pt-0 sm:px-6 sm:pt-0 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-0 lg:pt-0">
+                <aside className="bg-white pb-8 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+                    <div className="px-8 py-6">
                         <h1 className="text-[32px] font-bold text-[#2c312b]">Kết quả tìm kiếm</h1>
                     </div>
 
@@ -195,7 +195,7 @@ export default function SearchResultsClient({
                     </div>
                 </aside>
 
-                <div className="space-y-10">
+                <div className="space-y-10 lg:ml-[calc((100vw-1440px)/2+2rem)] lg:max-w-[1040px] lg:pr-8">
                     {showReviewSection && (
                         <article className="rounded-[8px] bg-white p-8 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
                             <div className="flex items-start justify-between gap-4">

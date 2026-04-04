@@ -27,28 +27,28 @@ function RankBadge({ rank, trend }: { rank: number; trend?: RankingRowItem['tren
 
     if (isTopThree) {
         const palette = [
-            'from-[#ffd95a] to-[#f7a51a]',
-            'from-[#edf3f8] to-[#cfd7de]',
-            'from-[#f6b074] to-[#de8242]',
+            'bg-[#f7b500] text-white shadow-[0_8px_18px_rgba(247,181,0,0.22)]',
+            'bg-[#cbd5df] text-[#334155] shadow-[0_8px_18px_rgba(148,163,184,0.18)]',
+            'bg-[#d68b4d] text-white shadow-[0_8px_18px_rgba(214,139,77,0.2)]',
         ][rank - 1];
 
         return (
-            <div className="flex items-center gap-3">
-                <div className="relative flex h-11 w-11 items-center justify-center">
-                    <span className={`absolute inset-[3px] rounded-full bg-gradient-to-b ${palette}`} />
-                    <span className="absolute bottom-[1px] left-[5px] h-3 w-3 rounded-b-[3px] bg-[#4f84d8]" />
-                    <span className="absolute bottom-[1px] right-[5px] h-3 w-3 rounded-b-[3px] bg-[#62b2ff]" />
-                    <span className="absolute inset-0 rounded-full border border-white/70 shadow-[0_4px_8px_rgba(0,0,0,0.1)]" />
-                    <span className="relative z-10 text-[21px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{rank}</span>
+            <div className="flex items-center gap-2">
+                <div className={`relative flex h-9 w-9 items-center justify-center rounded-[12px] ${palette}`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="absolute top-[4px] opacity-80">
+                        <path d="M12 3l2.2 4.46 4.92.72-3.56 3.47.84 4.9L12 14.8l-4.4 2.75.84-4.9-3.56-3.47 4.92-.72L12 3Z" fill="currentColor" />
+                    </svg>
+                    <span className="relative z-10 mt-3 text-[14px] font-bold leading-none">{rank}</span>
                 </div>
                 {trend === 'up' ? <TrendArrow direction="up" /> : null}
+                {trend === 'down' ? <TrendArrow direction="down" /> : null}
             </div>
         );
     }
 
     return (
-        <div className="flex items-start gap-3">
-            <span className="min-w-[28px] text-center font-serif text-[34px] leading-[1] text-[#66744d]">{rank}</span>
+        <div className="flex items-center gap-2">
+            <span className="min-w-[22px] text-center text-[26px] font-bold leading-none text-[#66744d]">{rank}</span>
             {trend === 'up' ? <TrendArrow direction="up" /> : null}
             {trend === 'down' ? <TrendArrow direction="down" /> : null}
         </div>
@@ -99,10 +99,10 @@ export default function RankingPageClient() {
     };
 
     const tableGridClass = currentTab === 'reviewers'
-        ? 'grid-cols-[92px_minmax(250px,1.3fr)_minmax(170px,0.88fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_110px]'
+        ? 'grid-cols-[74px_minmax(250px,1.3fr)_minmax(170px,0.88fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_110px]'
         : currentTab === 'foods'
-            ? 'grid-cols-[92px_minmax(220px,0.9fr)_minmax(280px,1.2fr)_minmax(180px,0.85fr)_minmax(150px,0.7fr)_110px]'
-            : 'grid-cols-[92px_minmax(280px,1.45fr)_minmax(190px,0.95fr)_minmax(180px,0.85fr)_minmax(180px,0.9fr)_110px]';
+            ? 'grid-cols-[74px_minmax(220px,0.9fr)_minmax(280px,1.2fr)_minmax(180px,0.85fr)_minmax(150px,0.7fr)_110px]'
+            : 'grid-cols-[74px_minmax(280px,1.45fr)_minmax(190px,0.95fr)_minmax(180px,0.85fr)_minmax(180px,0.9fr)_110px]';
 
     return (
         <div className="bg-[#f5f4f0] py-4 lg:py-5">
@@ -112,19 +112,19 @@ export default function RankingPageClient() {
 
                     <div className="mt-5 overflow-hidden rounded-[26px] bg-white shadow-[0_14px_32px_rgba(0,0,0,0.05)]">
                         <div className="flex flex-col gap-4 border-b border-[#efebe5] px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-5">
-                            <div className="grid w-full max-w-[840px] grid-cols-3 rounded-[22px] bg-white">
+                            <div className="grid w-full max-w-[640px] grid-cols-3 rounded-[18px] bg-[#f7f5f1] p-1">
                                 {tabOrder.map((tab, index) => {
                                     const isActive = currentTab === tab;
 
                                     return (
-                                        <div key={tab} className="relative flex items-center justify-center px-3">
+                                        <div key={tab} className="relative flex items-center justify-center px-1">
                                             {index > 0 ? (
-                                                <span className="absolute left-0 top-1/2 h-[58px] w-px -translate-y-1/2 bg-[#d8d8d3]" />
+                                                <span className="absolute left-0 top-1/2 h-[32px] w-px -translate-y-1/2 bg-[#d8d8d3]" />
                                             ) : null}
                                             <button
                                                 type="button"
                                                 onClick={() => setTab(tab)}
-                                                className={`relative min-h-[68px] w-full rounded-[20px] px-4 py-4 text-center text-[21px] font-bold transition ${
+                                                className={`relative min-h-[52px] w-full rounded-[14px] px-3 py-3 text-center text-[17px] font-bold transition ${
                                                     isActive
                                                         ? 'bg-[#2d6f1e] text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.12)]'
                                                         : 'text-[#a5b49c] hover:text-[#2d6f1e]'

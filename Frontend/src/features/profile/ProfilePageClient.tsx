@@ -13,8 +13,8 @@ type ProfileTab = 'posts' | 'videos' | 'reposts';
    ═══════════════════════════════════════════ */
 function PostCard({ post }: { post: UserProfile['posts'][number] }) {
     return (
-        <article className="border-t border-[#d6d6d6] px-8 py-6">
-            <div className="grid grid-cols-[52px_minmax(0,1fr)] gap-5">
+        <article className="border-t border-[#d6d6d6] px-5 py-4 lg:px-6">
+            <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-3">
                 <div className="flex flex-col items-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eceff4] text-[22px]">👤</div>
                     <div className="mt-4 h-full min-h-[370px] w-px bg-[#e4e4e4]" />
@@ -26,28 +26,28 @@ function PostCard({ post }: { post: UserProfile['posts'][number] }) {
                         <span className="text-[13px] text-[#7a7a7a]">{post.date}</span>
                     </div>
 
-                    <div className="mt-6 space-y-3 text-[15px] leading-9 text-[#3d3d3d]">
+                    <div className="mt-3 space-y-2 text-[13px] leading-7 text-[#3d3d3d]">
                         {post.content.split('\n\n').map((paragraph, index) => (
                             <p key={index}>{paragraph}</p>
                         ))}
                     </div>
 
-                    <div className="mt-4 grid max-w-[720px] grid-cols-2 gap-3">
+                    <div className="mt-3 grid max-w-[560px] grid-cols-2 gap-3">
                         {post.images.map((image, index) => (
-                            <img key={`${post.id}-${index}`} src={image} alt="" className="h-[220px] w-full rounded-[14px] object-cover" />
+                            <img key={`${post.id}-${index}`} src={image} alt="" className="h-[170px] w-full rounded-[12px] object-cover" />
                         ))}
                     </div>
 
-                    <div className="mt-5 flex flex-wrap items-center gap-8 text-[15px] text-[#505050]">
+                    <div className="mt-3 flex flex-wrap items-center gap-5 text-[13px] text-[#505050]">
                         <span>♡ {post.likes}</span>
                         <span>◔ {post.comments}</span>
                         <span>↺ {post.shares}</span>
                         <span>➤ {post.sends}</span>
                         <div className="ml-auto flex items-center gap-3">
-                            <button type="button" className="rounded-full border border-[#B7AFAF] px-6 py-2 text-[14px] font-bold text-green-primary transition hover:bg-gray-50">
+                            <button type="button" className="rounded-full border border-[#B7AFAF] px-5 py-1.5 text-[13px] font-bold text-green-primary transition hover:bg-gray-50">
                                 Xem menu
                             </button>
-                            <button type="button" className="rounded-full border border-[#258F22] bg-[#DCEBDC] px-6 py-2 text-[14px] font-bold text-green-primary transition hover:bg-[#c8dfca]">
+                            <button type="button" className="rounded-full border border-[#258F22] bg-[#DCEBDC] px-5 py-1.5 text-[13px] font-bold text-green-primary transition hover:bg-[#c8dfca]">
                                 Đặt món
                             </button>
                         </div>
@@ -64,7 +64,7 @@ function PostCard({ post }: { post: UserProfile['posts'][number] }) {
 function VideoCard({ item }: { item: UserProfile['videos'][number] }) {
     return (
         <article className="group relative overflow-hidden rounded-[18px]">
-            <img src={item.image} alt="" className="h-[280px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+            <img src={item.image} alt="" className="h-[210px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             {item.pinned ? (
                 <span className="absolute left-3 top-3 rounded-[10px] bg-[#ff3356] px-3 py-1 text-[13px] font-bold text-white">Đã ghim</span>
@@ -199,26 +199,26 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
     const visibleVideos = useMemo(() => profile.videos, [profile.videos]);
 
     return (
-        <div className="bg-[#f1f2f1] py-8">
-            <section className="mx-auto w-full max-w-[1280px] overflow-hidden rounded-[28px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
-                <div className="px-10 pb-5 pt-8">
+        <div className="bg-[#f1f2f1] py-6 lg:py-8">
+            <section className="mx-auto w-full max-w-[960px] overflow-hidden rounded-[22px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
+                <div className="px-5 pb-4 pt-5 lg:px-6 lg:pt-6">
                     {/* ── Profile Header ── */}
-                    <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
+                    <div className="grid gap-5 lg:grid-cols-[190px_minmax(0,1fr)]">
                         {/* Avatar */}
                         <div className="flex justify-center lg:justify-start">
-                            <div className="relative flex h-[230px] w-[230px] items-center justify-center rounded-full bg-[#f6f1ca] p-5">
-                                <img src={profile.avatar} alt={profile.name} className="h-[160px] w-[160px] rounded-full object-cover" />
+                            <div className="relative flex h-[176px] w-[176px] items-center justify-center rounded-full bg-[#f6f1ca] p-4">
+                                <img src={profile.avatar} alt={profile.name} className="h-[120px] w-[120px] rounded-full object-cover" />
                                 {/* Small avatar icons around */}
                                 {[0, 1, 2, 3, 4].map((i) => (
                                     <div
                                         key={i}
-                                        className="absolute flex h-[55px] w-[55px] items-center justify-center rounded-[16px] border-2 border-white bg-[#f0e8c9] shadow-sm"
+                                        className="absolute flex h-[40px] w-[40px] items-center justify-center rounded-[12px] border-2 border-white bg-[#f0e8c9] shadow-sm"
                                         style={{
                                             top: ['-8px', '20%', '75%', '85%', '-5%'][i],
                                             left: ['92%', '100%', '100%', '5%', '5%'][i],
                                         }}
                                     >
-                                        <img src={profile.avatar} alt="" className="h-10 w-10 rounded-[12px] object-cover" />
+                                        <img src={profile.avatar} alt="" className="h-7 w-7 rounded-[9px] object-cover" />
                                     </div>
                                 ))}
                             </div>
@@ -228,24 +228,24 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
                         <div>
                             <div className="flex flex-wrap items-start justify-between gap-6">
                                 <div>
-                                    <h1 className="text-[36px] font-bold text-black">{profile.name}</h1>
-                                    <p className="mt-1 text-[20px] text-[#4a4a4a]">{profile.handle}</p>
+                                    <h1 className="text-[26px] font-bold text-black">{profile.name}</h1>
+                                    <p className="mt-1 text-[15px] text-[#4a4a4a]">{profile.handle}</p>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3">
                                     {profile.isTopReviewer && (
-                                        <span className="rounded-full bg-[#FAEACD] px-5 py-2.5 text-[14px] font-bold text-[#1a1a1a]">
+                                        <span className="rounded-full bg-[#FAEACD] px-4 py-2 text-[13px] font-bold text-[#1a1a1a]">
                                             ⭐ TOP 10 REVIEWER
                                         </span>
                                     )}
-                                    <span className="rounded-full bg-[#FAD3CD] px-5 py-2.5 text-[14px] font-bold text-[#1a1a1a]">
+                                    <span className="rounded-full bg-[#FAD3CD] px-4 py-2 text-[13px] font-bold text-[#1a1a1a]">
                                         ĐỘ UY TÍN <span className="ml-1 text-[#F50B0B]">{profile.trustScore}</span>
                                     </span>
                                 </div>
                             </div>
 
                             {/* Stats */}
-                            <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-[20px] text-[#242424]">
+                            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[15px] text-[#242424]">
                                 <span className="font-light">{profile.postsCount} bài viết</span>
                                 <span className="font-light">{profile.followers} người theo dõi</span>
                                 <span className="font-bold">Đang theo dõi {profile.following} người dùng</span>
@@ -255,7 +255,7 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
                             <div className="mt-6">
                                 <Link
                                     href="/user/profile/edit"
-                                    className="inline-block rounded-[15px] bg-black px-8 py-3.5 text-[18px] font-bold text-white transition hover:bg-[#333]"
+                                    className="inline-block rounded-[12px] bg-black px-5 py-2.5 text-[14px] font-bold text-white transition hover:bg-[#333]"
                                     id="btn-edit-profile"
                                 >
                                     Chỉnh sửa trang cá nhân
@@ -265,8 +265,8 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
                     </div>
 
                     {/* ── Tabs ── */}
-                    <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-b border-[#bcbcbc]">
-                        <div className="flex flex-wrap items-center gap-8">
+                    <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-b border-[#bcbcbc]">
+                        <div className="flex flex-wrap items-center gap-5">
                             {([
                                 { key: 'posts' as const, label: '▦ Bài viết', icon: '📝' },
                                 { key: 'videos' as const, label: '◉ Video', icon: '🎬' },
@@ -276,7 +276,7 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
                                     key={tab.key}
                                     type="button"
                                     onClick={() => setActiveTab(tab.key)}
-                                    className={`border-b-2 px-2 pb-4 text-[18px] font-bold transition ${
+                                    className={`border-b-2 px-2 pb-3 text-[15px] font-bold transition ${
                                         activeTab === tab.key ? 'border-black text-black' : 'border-transparent text-[#6d6d6d]'
                                     }`}
                                     id={`tab-${tab.key}`}
@@ -287,10 +287,10 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
                         </div>
 
                         <div className="mb-3 flex items-center gap-2">
-                            <button type="button" className="rounded-[10px] border border-[#e0e0e0] bg-white px-4 py-2 text-[15px] font-semibold">
+                            <button type="button" className="rounded-[10px] border border-[#e0e0e0] bg-white px-3.5 py-2 text-[13px] font-semibold">
                                 Mới nhất
                             </button>
-                            <button type="button" className="rounded-[10px] bg-[#f1f1f1] px-4 py-2 text-[15px] font-semibold text-[#9a9a9a]">
+                            <button type="button" className="rounded-[10px] bg-[#f1f1f1] px-3.5 py-2 text-[13px] font-semibold text-[#9a9a9a]">
                                 Cũ nhất
                             </button>
                         </div>
@@ -311,8 +311,8 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
 
                 {/* ── Videos ── */}
                 {activeTab === 'videos' ? (
-                    <div className="px-8 pb-8 pt-6">
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="px-5 pb-5 pt-4 lg:px-6">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             {visibleVideos.map((video) => (
                                 <VideoCard key={video.id} item={video} />
                             ))}
@@ -322,7 +322,7 @@ export default function ProfilePageClient({ profile }: { profile: UserProfile })
 
                 {/* ── Reposts ── */}
                 {activeTab === 'reposts' ? (
-                    <div className="px-8 py-16 text-center text-[18px] text-[#787878]">
+                    <div className="px-5 py-12 text-center text-[15px] text-[#787878]">
                         Chưa có bài đăng lại nào được hiển thị.
                     </div>
                 ) : null}

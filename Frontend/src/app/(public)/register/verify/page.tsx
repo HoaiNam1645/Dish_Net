@@ -1,13 +1,20 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { FormEvent, type KeyboardEvent, useEffect, useState } from 'react';
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null;
+
+    return <p className="mt-2 text-[13px] font-medium text-[#ff4d4f]">{message}</p>;
+}
 
 export default function RegisterVerifyPage() {
     const router = useRouter();
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [countdown, setCountdown] = useState(60);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     useEffect(() => {
         if (countdown > 0 && !showSuccessModal) {
@@ -22,88 +29,99 @@ export default function RegisterVerifyPage() {
         return `${m}:${s}`;
     };
 
+    const otpError = otp.join('').length === 6 ? '' : 'Vui lòng nhập đầy đủ mã xác nhận.';
+
     const handleOtpChange = (index: number, value: string) => {
         if (!/^\d*$/.test(value)) return;
-        const newOtp = [...otp];
-        newOtp[index] = value.slice(-1);
-        setOtp(newOtp);
+
+        const nextOtp = [...otp];
+        nextOtp[index] = value.slice(-1);
+        setOtp(nextOtp);
+
         if (value && index < 5) {
             const next = document.getElementById(`reg-otp-${index + 1}`);
             next?.focus();
         }
     };
 
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    const handleOtpKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Backspace' && !otp[index] && index > 0) {
             const prev = document.getElementById(`reg-otp-${index - 1}`);
             prev?.focus();
         }
     };
 
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (event: FormEvent) => {
+        event.preventDefault();
+        setSubmitted(true);
+
+        if (otpError) return;
+
         setShowSuccessModal(true);
     };
 
     return (
         <>
-            <div className="flex-1 w-full flex items-center justify-center px-4 py-8 sm:py-12">
-                <div className="bg-white rounded-[15px] shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-10 sm:p-14 w-full max-w-[700px] animate-[fadeInUp_0.5s_ease]">
-                    <h1 className="text-3xl font-bold text-center mb-10 text-black">
-                        Đăng ký
-                    </h1>
+            <div className="flex w-full flex-1 items-center justify-center px-4 py-5 sm:py-8">
+                <div className="w-full max-w-[430px] rounded-[18px] bg-white px-5 py-7 shadow-[0_10px_32px_rgba(0,0,0,0.08)] sm:px-7">
+                    <h1 className="mb-3 text-center text-[22px] font-bold text-[#111827]">Đăng Ký</h1>
 
-                    <form onSubmit={handleSubmit} className="flex flex-col items-center">
-                        <p className="text-lg text-gray-500 mb-2 font-medium">Mã xác nhận</p>
+                    <form onSubmit={handleSubmit} className="flex flex-col items-center" noValidate>
+                        <p className="mb-4 text-[14px] font-medium text-[#8a8f98]">Mã xác nhận</p>
 
-                        <div className="flex gap-3 mb-4">
-                            {otp.map((digit, i) => (
+                        <div className="flex gap-2">
+                            {otp.map((digit, index) => (
                                 <input
-                                    key={i}
-                                    id={`reg-otp-${i}`}
+                                    key={index}
+                                    id={`reg-otp-${index}`}
                                     type="text"
                                     inputMode="numeric"
                                     maxLength={1}
                                     value={digit}
-                                    onChange={(e) => handleOtpChange(i, e.target.value)}
-                                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                    className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl bg-white focus:border-green-button focus:shadow-[0_0_0_3px_rgba(97,175,94,0.1)] focus:outline-none transition-all duration-200"
+                                    onChange={(event) => handleOtpChange(index, event.target.value)}
+                                    onKeyDown={(event) => handleOtpKeyDown(index, event)}
+                                    className={`h-12 w-10 rounded-[8px] border text-center text-lg font-bold outline-none transition sm:w-11 ${
+                                        submitted && otpError
+                                            ? 'border-[#ff6b6b] bg-[#fff8f8] text-[#ff4d4f]'
+                                            : 'border-[#dfe3e8] focus:border-[#61AF5E] focus:shadow-[0_0_0_3px_rgba(97,175,94,0.12)]'
+                                    }`}
                                 />
                             ))}
                         </div>
 
-                        <p className="text-sm text-gray-400 mb-8">
+                        <div className="w-full">
+                            <FieldError message={submitted ? otpError : ''} />
+                        </div>
+
+                        <p className="mb-6 mt-2 text-center text-[13px] text-[#9aa1a9]">
                             Mã xác nhận chỉ có hiệu lực trong vòng 01 tiếng.{' '}
-                            <span className="font-bold text-green-primary">{formatTime(countdown)}</span>
+                            <span className="font-bold text-[#285E19]">{formatTime(countdown)}</span>
                         </p>
 
                         <button
                             type="submit"
-                            className="w-full py-4 bg-green-button text-white text-xl font-bold rounded-lg tracking-wider transition-all duration-200 hover:bg-green-hover hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(97,175,94,0.3)] active:translate-y-0 active:shadow-none cursor-pointer"
+                            className="h-[46px] w-full rounded-[6px] bg-[#61AF5E] text-[15px] font-bold uppercase tracking-[0.04em] text-white transition hover:bg-[#4e9a4b]"
                         >
-                            GỬI
+                            Gửi
                         </button>
                     </form>
                 </div>
             </div>
 
-            {/* Success Modal */}
             {showSuccessModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-[fadeIn_0.2s_ease]">
-                    <div className="bg-white rounded-xl p-10 sm:p-12 max-w-md w-full mx-4 text-center shadow-2xl animate-[fadeInUp_0.3s_ease]">
-                        <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-green-button/10 flex items-center justify-center">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="mx-4 w-full max-w-md rounded-xl bg-white p-10 text-center shadow-2xl">
+                        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-button/10">
                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#61AF5E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M20 6 9 17l-5-5" />
                             </svg>
                         </div>
-                        <h2 className="text-xl font-bold text-green-primary mb-6">
-                            BẠN ĐÃ TẠO TÀI KHOẢN THÀNH CÔNG
-                        </h2>
+                        <h2 className="mb-6 text-xl font-bold text-green-primary">BẠN ĐÃ TẠO TÀI KHOẢN THÀNH CÔNG</h2>
                         <button
                             onClick={() => router.push('/login')}
-                            className="w-full py-3 bg-green-button text-white text-lg font-bold rounded-lg tracking-wider transition-all duration-200 hover:bg-green-hover cursor-pointer"
+                            className="w-full rounded-lg bg-green-button py-3 text-lg font-bold tracking-wider text-white transition hover:bg-green-hover"
                         >
-                            ĐĂNG NHẬP
+                            Đăng Nhập
                         </button>
                     </div>
                 </div>

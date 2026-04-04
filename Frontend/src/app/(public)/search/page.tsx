@@ -1,4 +1,4 @@
-import SearchResultsClient from '@/features/search/SearchResultsClient';
+﻿import SearchResultsClient from '@/features/search/SearchResultsClient';
 
 export default async function SearchPage({
     searchParams,

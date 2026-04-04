@@ -1,4 +1,4 @@
-export type MockCartItem = {
+﻿export type MockCartItem = {
     id: string;
     name: string;
     note?: string;
@@ -77,6 +77,30 @@ function cloneCart(cart: MockCart): MockCart {
     return JSON.parse(JSON.stringify(cart)) as MockCart;
 }
 
+function normalizeCart(cart: MockCart): MockCart {
+    const fallback = getDefaultMockCart();
+
+    return {
+        groups: cart.groups.map((group) => {
+            const fallbackGroup = fallback.groups.find((item) => item.id === group.id);
+
+            return {
+                ...group,
+                name: fallbackGroup?.name ?? group.name,
+                items: group.items.map((item) => {
+                    const fallbackItem = fallbackGroup?.items.find((candidate) => candidate.id === item.id);
+
+                    return {
+                        ...item,
+                        name: fallbackItem?.name ?? item.name,
+                        image: fallbackItem?.image ?? item.image,
+                    };
+                }),
+            };
+        }),
+    };
+}
+
 function emitCartUpdated() {
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event(cartUpdatedEvent));
@@ -106,7 +130,7 @@ export function readMockCart(): MockCart {
     }
 
     try {
-        return JSON.parse(savedCart) as MockCart;
+        return normalizeCart(JSON.parse(savedCart) as MockCart);
     } catch {
         window.localStorage.removeItem(mockCartStorageKey);
         return getDefaultMockCart();

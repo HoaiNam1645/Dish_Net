@@ -1,4 +1,4 @@
-export type OrderTabKey = 'placed' | 'purchased' | 'cancelled' | 'returned' | 'review';
+﻿export type OrderTabKey = 'placed' | 'purchased' | 'cancelled' | 'returned' | 'review';
 export type OrderStageKey = 'ordered' | 'preparing' | 'delivering' | 'delivered';
 
 export type UserOrder = {
@@ -46,10 +46,15 @@ export const stageLabels: Array<{ key: OrderStageKey; label: string }> = [
     { key: 'delivered', label: 'Đã giao đơn hàng' },
 ];
 
+const commonAddress = '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam';
+const commonCustomer = 'Quỳnh Vy';
+const commonPhone = '(+84) 012*****02';
+const commonStore = 'Nét Huế - Hàng Bông';
+
 const placedOrders: UserOrder[] = [
     {
         id: 'order-1',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=240&q=80',
@@ -59,14 +64,16 @@ const placedOrders: UserOrder[] = [
         statusLabel: 'Đang trên đường giao',
         orderNumber: '120453210259431',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         activeStage: 'delivering',
+        orderedAt: '24 tháng 2 2026, 07:10 CH',
+        paidAt: '24 tháng 2 2026, 07:11 CH',
     },
     {
         id: 'order-2',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=240&q=80',
@@ -76,17 +83,19 @@ const placedOrders: UserOrder[] = [
         statusLabel: 'Chờ xác nhận',
         orderNumber: '120453210259432',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         activeStage: 'ordered',
+        orderedAt: '24 tháng 2 2026, 07:10 CH',
+        paidAt: '24 tháng 2 2026, 07:11 CH',
     },
 ];
 
 const purchasedOrders: UserOrder[] = [
     {
         id: 'purchased-1',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=240&q=80',
@@ -94,11 +103,11 @@ const purchasedOrders: UserOrder[] = [
         totalPrice: '56.000đ',
         timeLabel: '07:55 CH',
         statusLabel: 'Đã giao đơn hàng',
-        orderNumber: '120453210259431',
+        orderNumber: '120453210259433',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         activeStage: 'delivered',
         orderedAt: '24 tháng 2 2026, 07:10 CH',
         paidAt: '24 tháng 2 2026, 07:11 CH',
@@ -110,24 +119,24 @@ const purchasedOrders: UserOrder[] = [
     },
     {
         id: 'purchased-2',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=240&q=80',
         unitPrice: '56.000đ',
         totalPrice: '56.000đ',
-        timeLabel: '07:55 CH',
+        timeLabel: '08:10 CH',
         statusLabel: 'Đã giao đơn hàng',
-        orderNumber: '120453210259433',
+        orderNumber: '120453210259434',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         activeStage: 'delivered',
         orderedAt: '24 tháng 2 2026, 07:10 CH',
         paidAt: '24 tháng 2 2026, 07:11 CH',
-        deliveredAt: '24 tháng 2 2026, 07:40 CH',
-        quickRating: 0,
+        deliveredAt: '24 tháng 2 2026, 07:50 CH',
+        quickRating: 5,
         canRefund: false,
         canReview: false,
         received: true,
@@ -137,7 +146,7 @@ const purchasedOrders: UserOrder[] = [
 const cancelledOrders: UserOrder[] = [
     {
         id: 'cancelled-1',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=240&q=80',
@@ -145,11 +154,11 @@ const cancelledOrders: UserOrder[] = [
         totalPrice: '56.000đ',
         timeLabel: '07:35 CH',
         statusLabel: 'Đã hủy',
-        orderNumber: '120453210259431',
+        orderNumber: '120453210259435',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         cancelledAt: '24 - 02 - 2026 07:35 CH',
         cancelledBy: 'Người mua',
         cancelledReason: 'Đặt nhầm',
@@ -160,7 +169,7 @@ const cancelledOrders: UserOrder[] = [
 const returnedOrders: UserOrder[] = [
     {
         id: 'returned-1',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=240&q=80',
@@ -168,11 +177,11 @@ const returnedOrders: UserOrder[] = [
         totalPrice: '56.000đ',
         timeLabel: '07:35 CH',
         statusLabel: 'Đã hoàn tiền',
-        orderNumber: '120453210259434',
+        orderNumber: '120453210259436',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         refundStatus: 'Đã xử lý hoàn tiền',
         refundReason: 'Món không giống mô tả',
         cancelledBy: 'Người mua',
@@ -180,7 +189,7 @@ const returnedOrders: UserOrder[] = [
     },
     {
         id: 'returned-2',
-        storeName: 'Nét Huế - Hàng Bông',
+        storeName: commonStore,
         itemName: 'Bún bò Huế số 1',
         quantity: 1,
         image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=240&q=80',
@@ -188,11 +197,11 @@ const returnedOrders: UserOrder[] = [
         totalPrice: '56.000đ',
         timeLabel: '08:10 CH',
         statusLabel: 'Chưa hoàn tiền',
-        orderNumber: '120453210259435',
+        orderNumber: '120453210259437',
         paymentMethod: 'VN-PAY',
-        customerName: 'Quỳnh Vy',
-        customerPhone: '(+84) 012*****02',
-        customerAddress: '10 Nguyễn Như Hạnh, Phường Hòa Khánh, Đà Nẵng, Việt Nam',
+        customerName: commonCustomer,
+        customerPhone: commonPhone,
+        customerAddress: commonAddress,
         refundStatus: 'Chưa hoàn tiền',
         refundReason: 'Món bị thiếu / giao sai',
         cancelledBy: 'Người mua',
@@ -223,5 +232,5 @@ export const refundReasonOptions = [
     'Thức ăn bị hỏng / có mùi lạ',
     'Quán tự hủy nhưng vẫn trừ tiền',
     'Không liên hệ được nhưng tự hủy đơn',
-    'Shipper làm đổ món/ hư món',
+    'Shipper làm đổ món / hư món',
 ];

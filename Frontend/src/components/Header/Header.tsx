@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -10,15 +10,15 @@ import { notificationItems } from '@/features/notifications/data';
 
 function NotificationIcon({ type }: { type: (typeof notificationItems)[number]['type'] }) {
     const config = {
-        like: { bg: 'bg-[#1f7ae0]', icon: '👍' },
-        support: { bg: 'bg-[#1f7ae0]', icon: '👥' },
-        follow: { bg: 'bg-[#1f7ae0]', icon: '👥' },
-        comment: { bg: 'bg-[#35c85a]', icon: '💬' },
+        like: { bg: 'bg-[#1f7ae0]', label: 'TG' },
+        support: { bg: 'bg-[#1f7ae0]', label: 'HT' },
+        follow: { bg: 'bg-[#1f7ae0]', label: 'TD' },
+        comment: { bg: 'bg-[#35c85a]', label: 'BL' },
     }[type];
 
     return (
-        <span className={`absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[12px] ${config.bg}`}>
-            {config.icon}
+        <span className={`absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white ${config.bg}`}>
+            {config.label}
         </span>
     );
 }
@@ -31,7 +31,7 @@ export default function Header() {
     const isHome = pathname === '/';
     const isRanking = pathname.startsWith('/ranking');
     const isExplore = pathname.startsWith('/explore');
-    const isStorePage = pathname.startsWith('/store');
+    const isStorePage = pathname.startsWith('/store') || pathname.startsWith('/explore/store');
     const [searchValue, setSearchValue] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -206,12 +206,21 @@ export default function Header() {
                     </>
                 )}
 
-                {session.isAuthenticated && session.accountType === 'store' && !isStorePage ? (
+                {session.isAuthenticated && !isStorePage ? (
                     <Link
                         href="/store"
                         className="ml-2 whitespace-nowrap rounded-full border border-[#ef4444]/15 bg-[#fff1ee] px-5 py-2.5 text-base font-bold text-[#d92d20] transition hover:-translate-y-0.5 hover:bg-[#ffe7e1]"
                     >
                         Vào cửa hàng
+                    </Link>
+                ) : null}
+
+                {session.isAuthenticated && isStorePage ? (
+                    <Link
+                        href="/"
+                        className="ml-2 whitespace-nowrap rounded-full border border-[#2f6f25]/15 bg-[#eef8ea] px-5 py-2.5 text-base font-bold text-[#2f6f25] transition hover:-translate-y-0.5 hover:bg-[#e4f2df]"
+                    >
+                        Về DishNet
                     </Link>
                 ) : null}
 
@@ -238,41 +247,41 @@ export default function Header() {
                             </button>
 
                             {isNotificationsOpen ? (
-                                <div className="absolute right-0 top-[calc(100%+14px)] z-50 w-[570px] overflow-hidden rounded-[24px] border border-[#dfe5db] bg-white shadow-[0_24px_44px_rgba(0,0,0,0.14)]">
-                                    <div className="flex items-center justify-between px-8 pb-2 pt-6">
-                                        <div className="text-[28px] font-bold text-black">Thông báo</div>
+                                <div className="fixed right-5 top-[76px] z-50 w-[460px] overflow-hidden rounded-[22px] border border-[#dfe5db] bg-white shadow-[0_22px_40px_rgba(0,0,0,0.14)]">
+                                    <div className="flex items-center justify-between px-6 pb-2 pt-5">
+                                        <div className="text-[24px] font-bold text-black">Thông báo</div>
                                         <Link
                                             href="/notifications"
                                             onClick={() => setIsNotificationsOpen(false)}
-                                            className="text-[18px] font-semibold text-[#1d71e8] transition hover:underline"
+                                            className="text-[16px] font-semibold text-[#1d71e8] transition hover:underline"
                                         >
                                             Xem tất cả
                                         </Link>
                                     </div>
 
-                                    <div className="px-8 pb-4 pt-1">
-                                        <button type="button" className="rounded-full bg-[#eaf3ff] px-5 py-2 text-[17px] font-bold text-[#1d71e8]">
+                                    <div className="px-6 pb-3 pt-1">
+                                        <button type="button" className="rounded-full bg-[#eaf3ff] px-4 py-2 text-[15px] font-bold text-[#1d71e8]">
                                             Tất cả
                                         </button>
                                     </div>
 
-                                    <div className="px-8 text-[22px] font-bold text-[#232323]">Trước đó</div>
+                                    <div className="px-6 text-[19px] font-bold text-[#232323]">Trước đó</div>
 
-                                    <div className="max-h-[420px] space-y-1 overflow-y-auto px-4 py-4">
+                                    <div className="max-h-[380px] space-y-1 overflow-y-auto px-3 py-3">
                                         {notificationItems.slice(0, 3).map((item) => (
                                             <article
                                                 key={item.id}
-                                                className="flex items-center gap-4 rounded-[18px] px-4 py-4 transition hover:bg-[#f8faf7]"
+                                                className="flex items-center gap-3 rounded-[16px] px-3 py-3 transition hover:bg-[#f8faf7]"
                                             >
                                                 <div className="relative shrink-0">
-                                                    <img src={item.avatar} alt="" className="h-20 w-20 rounded-full object-cover" />
+                                                    <img src={item.avatar} alt="" className="h-16 w-16 rounded-full object-cover" />
                                                     <NotificationIcon type={item.type} />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-[18px] leading-8 text-[#191919]">{item.message}</p>
-                                                    <p className="mt-1 text-[16px] font-semibold text-[#1d71e8]">{item.time}</p>
+                                                    <p className="text-[16px] leading-7 text-[#191919]">{item.message}</p>
+                                                    <p className="mt-1 text-[14px] font-semibold text-[#1d71e8]">{item.time}</p>
                                                 </div>
-                                                <span className="mr-2 h-5 w-5 rounded-full bg-[#1d71e8]" />
+                                                <span className="mr-1 h-4 w-4 rounded-full bg-[#1d71e8]" />
                                             </article>
                                         ))}
                                     </div>
@@ -347,7 +356,7 @@ export default function Header() {
                                                 <Link href="/messages/reviewer-1" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
                                                     Tin nhắn
                                                 </Link>
-                                                <Link href="/user/orders" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
+                                                <Link href="/user/orders?menu=placed" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
                                                     Đơn hàng
                                                 </Link>
                                                 <Link href="/user/settings" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
@@ -386,3 +395,4 @@ export default function Header() {
         </header>
     );
 }
+

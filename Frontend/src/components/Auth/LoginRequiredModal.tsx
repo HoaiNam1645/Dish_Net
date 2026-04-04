@@ -37,26 +37,26 @@ export default function LoginRequiredModal({
     return (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/45 px-4" onClick={onClose}>
             <div
-                className="relative w-full max-w-[860px] rounded-[20px] bg-white px-8 pb-12 pt-14 shadow-[0_28px_80px_rgba(0,0,0,0.2)]"
+                className="relative w-full max-w-[460px] rounded-[18px] bg-white px-6 pb-6 pt-7 shadow-[0_24px_60px_rgba(0,0,0,0.18)] sm:max-w-[520px] sm:px-8 sm:pb-8 sm:pt-9"
                 onClick={(event) => event.stopPropagation()}
             >
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute right-6 top-4 text-[52px] leading-none text-black transition hover:opacity-65"
+                    className="absolute right-4 top-3 text-[34px] leading-none text-black transition hover:opacity-65 sm:right-5 sm:top-4 sm:text-[38px]"
                     aria-label="Đóng đăng nhập bắt buộc"
                 >
                     ×
                 </button>
 
-                <h2 className="text-center text-[48px] font-bold leading-tight text-[#172554]">
+                <h2 className="mx-auto max-w-[320px] text-center text-[28px] font-bold leading-tight text-[#172554] sm:max-w-[360px] sm:text-[34px]">
                     {title}
                 </h2>
 
-                <div className="mt-12 flex justify-center">
+                <div className="mt-7 flex justify-center sm:mt-8">
                     <Link
                         href="/login"
-                        className="inline-flex min-w-[280px] items-center justify-center rounded-full border border-[#cfd5df] px-10 py-4 text-[22px] font-bold text-[#1f2937] transition hover:bg-[#f8fafc]"
+                        className="inline-flex min-w-[170px] items-center justify-center rounded-full border border-[#cfd5df] px-7 py-3 text-[16px] font-bold text-[#1f2937] transition hover:bg-[#f8fafc] sm:min-w-[190px] sm:px-8 sm:text-[17px]"
                     >
                         Đăng nhập
                     </Link>
