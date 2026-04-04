@@ -1,4 +1,6 @@
-﻿import UserOrdersPageClient from '@/features/orders/UserOrdersPageClient';
+import { Suspense } from 'react';
+
+import UserOrdersPageClient from '@/features/orders/UserOrdersPageClient';
 
 export const metadata = {
     title: 'DishNet - Đơn hàng',
@@ -6,5 +8,9 @@ export const metadata = {
 };
 
 export default function UserOrdersPage() {
-    return <UserOrdersPageClient />;
+    return (
+        <Suspense fallback={null}>
+            <UserOrdersPageClient />
+        </Suspense>
+    );
 }
