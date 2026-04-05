@@ -1,5 +1,6 @@
 ﻿'use client';
 
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -31,12 +32,12 @@ export default function Header() {
     const isHome = pathname === '/';
     const isRanking = pathname.startsWith('/ranking');
     const isExplore = pathname.startsWith('/explore');
-    const isStorePage = pathname.startsWith('/store') || pathname.startsWith('/explore/store');
+    const isStorePage = pathname.startsWith('/store');
     const [searchValue, setSearchValue] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [session, setSession] = useState<MockSession>(defaultMockSession);
+    const [session, setSession] = useState<MockSession>(() => (typeof window === 'undefined' ? defaultMockSession : readMockSession()));
     const [recentSearches, setRecentSearches] = useState([
         'Bún bò',
         'Mỳ Quảng',
@@ -48,10 +49,6 @@ export default function Header() {
     const searchRef = useRef<HTMLDivElement>(null);
     const profileRef = useRef<HTMLDivElement>(null);
     const notificationRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        setSession(readMockSession());
-    }, []);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -253,14 +250,14 @@ export default function Header() {
                                         <Link
                                             href="/notifications"
                                             onClick={() => setIsNotificationsOpen(false)}
-                                            className="text-[16px] font-semibold text-[#1d71e8] transition hover:underline"
+                                            className="text-[16px] font-semibold text-[#2f6f25] transition hover:underline"
                                         >
                                             Xem tất cả
                                         </Link>
                                     </div>
 
                                     <div className="px-6 pb-3 pt-1">
-                                        <button type="button" className="rounded-full bg-[#eaf3ff] px-4 py-2 text-[15px] font-bold text-[#1d71e8]">
+                                        <button type="button" className="rounded-full bg-[#eef8ea] px-4 py-2 text-[15px] font-bold text-[#2f6f25]">
                                             Tất cả
                                         </button>
                                     </div>
@@ -279,9 +276,9 @@ export default function Header() {
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-[16px] leading-7 text-[#191919]">{item.message}</p>
-                                                    <p className="mt-1 text-[14px] font-semibold text-[#1d71e8]">{item.time}</p>
+                                                    <p className="mt-1 text-[14px] font-semibold text-[#2f6f25]">{item.time}</p>
                                                 </div>
-                                                <span className="mr-1 h-4 w-4 rounded-full bg-[#1d71e8]" />
+                                                <span className="mr-1 h-4 w-4 rounded-full bg-[#2f8f22]" />
                                             </article>
                                         ))}
                                     </div>
@@ -335,17 +332,14 @@ export default function Header() {
                                     <div className="py-2">
                                         {session.accountType === 'store' ? (
                                             <>
-                                                <Link href="/store" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
+                                                <Link href="/store-profile" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
                                                     Trang cửa hàng
                                                 </Link>
                                                 <Link href="/messages/reviewer-1" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
                                                     Tin nhắn cửa hàng
                                                 </Link>
-                                                <Link href="/" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
-                                                    Bài đăng của quán
-                                                </Link>
                                                 <Link href="/user/support" className="block px-5 py-3 text-[17px] text-[#333333] transition hover:bg-[#f6faf4]">
-                                                    Hỗ trợ cửa hàng
+                                                    Trợ giúp và hỗ trợ
                                                 </Link>
                                             </>
                                         ) : (

@@ -69,7 +69,7 @@ function EditItemModal({ item, onClose, onSave }: { item: MenuItem; onClose: () 
     const [desc, setDesc] = useState(item.description);
     const [price, setPrice] = useState(item.price);
     const [category, setCategory] = useState(item.category);
-    const [toppings, setToppings] = useState(item.toppings);
+    const [toppings] = useState(item.toppings);
     const [statusOpen, setStatusOpen] = useState(false);
     const [catOpen, setCatOpen] = useState(false);
 

@@ -1,19 +1,13 @@
 import type { HomePageData } from './types';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
-const heroBanner =
-    'https://www.figma.com/api/mcp/asset/1f15bd31-f3dc-40fd-9e27-b6c9c6ed0603';
-const dishCollage =
-    'https://www.figma.com/api/mcp/asset/6c83e42d-044d-4b75-bf76-8d92b9b33ad2';
-const storeImage =
-    'https://www.figma.com/api/mcp/asset/b4659418-7eb8-4a4b-97be-06fcfbac9479';
-const avatarSmall =
-    'https://www.figma.com/api/mcp/asset/092b3565-0fd5-402f-b11f-bbaf9d1a3914';
-const reviewerAvatar =
-    'https://www.figma.com/api/mcp/asset/82d47201-0b50-4cc3-84a0-de11c7816a7f';
-const feedDishImage =
-    'https://www.figma.com/api/mcp/asset/4ecfd72d-e0e1-4ecb-85ac-4aa8517b408e';
-const menuItemImage =
-    'https://www.figma.com/api/mcp/asset/39c76dc1-fc29-4753-9fa2-8e2b099120b5';
+const heroBanner = figmaFallbackAssets.heroBanner;
+const dishCollage = figmaFallbackAssets.dishCollage;
+const storeImage = figmaFallbackAssets.storeImage;
+const avatarSmall = figmaFallbackAssets.avatarSmall;
+const reviewerAvatar = figmaFallbackAssets.reviewerAvatarA;
+const feedDishImage = figmaFallbackAssets.feedDishImage;
+const menuItemImage = figmaFallbackAssets.menuItemImage;
 const galleryA = [
     'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1000&q=80',
     'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=80',
@@ -39,7 +33,7 @@ const galleryB = [
     'https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=1000&q=80',
 ];
 
-const homePageMockData: HomePageData = {
+export const homePageMockData: HomePageData = {
     hero: {
         eyebrow: 'Gợi ý cho khách vãng lai',
         title: 'Deal Hôm Nay',

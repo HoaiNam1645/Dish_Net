@@ -203,7 +203,15 @@ export default function RankingPageClient() {
                                         {currentTab === 'foods' ? (
                                             <div className="flex min-w-0 items-center gap-5">
                                                 <LogoBadge value={row.secondaryLogo} />
-                                                <div className="truncate text-[16px] font-semibold text-[#111111]">{row.secondaryName}</div>
+                                                <div className="truncate text-[16px] font-semibold text-[#111111]">
+                                                    {row.secondaryHref ? (
+                                                        <Link href={row.secondaryHref} className="transition hover:text-[#2d6f1e]">
+                                                            {row.secondaryName}
+                                                        </Link>
+                                                    ) : (
+                                                        row.secondaryName
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : null}
 

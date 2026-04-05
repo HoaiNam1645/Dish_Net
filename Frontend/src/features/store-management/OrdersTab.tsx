@@ -181,7 +181,7 @@ const INITIAL_ORDERS: StoreOrder[] = [
 function ConfirmOrderModal({ order, onClose, onConfirm, onReject }: {
     order: StoreOrder; onClose: () => void; onConfirm: () => void; onReject: () => void;
 }) {
-    const [prepTime, setPrepTime] = useState('15 phút');
+    const [prepTime] = useState('15 phút');
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={onClose}>
             <div className="relative w-full max-w-[500px] rounded-[16px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" onClick={(e) => e.stopPropagation()}>
@@ -253,7 +253,7 @@ function RejectReasonModal({ onClose, onReject }: { onClose: () => void; onRejec
                 <div className="px-6 pb-6 pt-4">
                     <div className="rounded-[10px] border border-[#e8e8e8]">
                         {REJECT_REASONS.map((r) => (
-                            <label key={r} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]">
+                              <label key={r} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]" onClick={() => setReason(r)}>
                                 <span className="text-[14px] text-black">{r}</span>
                                 <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${reason === r ? 'border-[#333]' : 'border-[#ccc]'}`}>
                                     {reason === r && <span className="h-2.5 w-2.5 rounded-full bg-[#333]" />}
@@ -286,7 +286,7 @@ function ExtendTimeModal({ onClose, onExtend }: { onClose: () => void; onExtend:
                 <div className="px-6 pb-6 pt-4">
                     <div className="rounded-[10px] border border-[#e8e8e8]">
                         {EXTEND_TIMES.map((t) => (
-                            <label key={t} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]">
+                              <label key={t} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]" onClick={() => setTime(t)}>
                                 <span className="text-[14px] text-black">{t}</span>
                                 <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${time === t ? 'border-[#333]' : 'border-[#ccc]'}`}>
                                     {time === t && <span className="h-2.5 w-2.5 rounded-full bg-[#333]" />}
@@ -319,7 +319,7 @@ function RejectRefundModal({ onClose, onReject }: { onClose: () => void; onRejec
                 <div className="px-6 pb-6 pt-4">
                     <div className="rounded-[10px] border border-[#e8e8e8]">
                         {REFUND_REJECT_REASONS.map((r) => (
-                            <label key={r} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]">
+                              <label key={r} className="flex cursor-pointer items-center justify-between border-b border-[#f0f0f0] px-4 py-3.5 last:border-b-0 hover:bg-[#f8f8f8]" onClick={() => setReason(r)}>
                                 <span className="text-[14px] text-black">{r}</span>
                                 <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${reason === r ? 'border-[#333]' : 'border-[#ccc]'}`}>
                                     {reason === r && <span className="h-2.5 w-2.5 rounded-full bg-[#333]" />}
@@ -590,9 +590,6 @@ export default function OrdersTab({ onViewOrderDetail }: { onViewOrderDetail?: (
     };
     const handleDeliver = (id: string) => {
         setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'delivering' as OrderTabKey } : o)));
-    };
-    const handleCustomerReceived = (id: string) => {
-        setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'delivered' as OrderTabKey } : o)));
     };
     const handleApproveRefund = (id: string) => {
         setOrders((prev) => prev.map((o) => (o.id === id && o.returnInfo ? { ...o, returnInfo: { ...o.returnInfo, refund: 'approved' } } : o)));

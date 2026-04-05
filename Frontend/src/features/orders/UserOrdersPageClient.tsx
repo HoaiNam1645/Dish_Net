@@ -2,10 +2,21 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { cancelReasonOptions, orderTabs, refundReasonOptions, stageLabels, type OrderTabKey, type UserOrder, userOrdersByTab } from '@/features/orders/data';
+import {
+    cancelReasonOptions,
+    getDefaultUserOrdersByTab,
+    orderTabs,
+    readStoredUserOrdersByTab,
+    refundReasonOptions,
+    stageLabels,
+    type OrderTabKey,
+    type UserOrder,
+    type UserOrdersByTab,
+    writeStoredUserOrdersByTab,
+} from '@/features/orders/data';
 
 const validOrderTabs: OrderTabKey[] = ['placed', 'purchased', 'cancelled', 'returned', 'review'];
 
@@ -182,7 +193,7 @@ export default function UserOrdersPageClient() {
     const searchParams = useSearchParams();
     const activeTab = resolveTab(searchParams.get('menu'));
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-    const [ordersByTab, setOrdersByTab] = useState<Record<OrderTabKey, UserOrder[]>>(() => structuredClone(userOrdersByTab));
+    const [ordersByTab, setOrdersByTab] = useState<UserOrdersByTab>(() => readStoredUserOrdersByTab());
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
     const [refundOrderId, setRefundOrderId] = useState<string | null>(null);
     const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
@@ -202,23 +213,53 @@ export default function UserOrdersPageClient() {
 
     const handleCancel = (reason: string) => {
         if (!cancellingOrder) return;
-        setOrdersByTab((current) => ({ ...current, placed: current.placed.filter((order) => order.id !== cancellingOrder.id), cancelled: [{ ...cancellingOrder, statusLabel: 'Đã hủy', cancelledReason: reason, cancelledBy: 'Người mua', cancelledAt: '27 - 03 - 2026 07:35 CH', refundStatus: 'Đã xử lý hoàn tiền' }, ...current.cancelled] }));
+        setOrdersByTab((current) => {
+            const nextOrders = {
+                ...current,
+                placed: current.placed.filter((order) => order.id !== cancellingOrder.id),
+                cancelled: [{ ...cancellingOrder, statusLabel: 'Đã hủy', cancelledReason: reason, cancelledBy: 'Người mua', cancelledAt: '27 - 03 - 2026 07:35 CH', refundStatus: 'Đã xử lý hoàn tiền' }, ...current.cancelled],
+            };
+            writeStoredUserOrdersByTab(nextOrders);
+            return nextOrders;
+        });
         setCancellingOrderId(null);
         navigateToTab('cancelled');
     };
 
     const handleRefund = (reason: string) => {
         if (!refundOrder) return;
-        setOrdersByTab((current) => ({ ...current, purchased: current.purchased.filter((order) => order.id !== refundOrder.id), returned: [{ ...refundOrder, statusLabel: 'Chưa hoàn tiền', refundStatus: 'Chưa hoàn tiền', refundReason: reason, cancelledBy: 'Người mua', cancelledAt: '27 - 03 - 2026 07:35 CH', canRefund: false }, ...current.returned] }));
+        setOrdersByTab((current) => {
+            const nextOrders = {
+                ...current,
+                purchased: current.purchased.filter((order) => order.id !== refundOrder.id),
+                returned: [{ ...refundOrder, statusLabel: 'Chưa hoàn tiền', refundStatus: 'Chưa hoàn tiền', refundReason: reason, cancelledBy: 'Người mua', cancelledAt: '27 - 03 - 2026 07:35 CH', canRefund: false }, ...current.returned],
+            };
+            writeStoredUserOrdersByTab(nextOrders);
+            return nextOrders;
+        });
         setRefundOrderId(null);
         navigateToTab('returned');
     };
 
     const handleReview = (rating: number) => {
         if (!reviewOrder) return;
-        setOrdersByTab((current) => ({ ...current, purchased: current.purchased.map((order) => order.id === reviewOrder.id ? { ...order, canReview: false, received: true, quickRating: rating } : order) }));
+        setOrdersByTab((current) => {
+            const nextOrders = {
+                ...current,
+                purchased: current.purchased.map((order) => order.id === reviewOrder.id ? { ...order, canReview: false, received: true, quickRating: rating } : order),
+            };
+            writeStoredUserOrdersByTab(nextOrders);
+            return nextOrders;
+        });
         setReviewOrderId(null);
     };
+
+    useEffect(() => {
+        const fallbackOrders = getDefaultUserOrdersByTab();
+        if (ordersByTab.placed.length === 0 && ordersByTab.purchased.length === 0 && ordersByTab.cancelled.length === 0 && ordersByTab.returned.length === 0) {
+            writeStoredUserOrdersByTab(fallbackOrders);
+        }
+    }, [ordersByTab]);
 
     const content = selectedOrder ? <DetailCard order={selectedOrder} onBack={() => setSelectedOrderId(null)} onCancel={() => setCancellingOrderId(selectedOrder.id)} onRefund={() => setRefundOrderId(selectedOrder.id)} onReview={() => setReviewOrderId(selectedOrder.id)} /> : activeOrders.length === 0 ? <div className="flex min-h-[520px] items-center justify-center rounded-[20px] bg-white px-7 text-center shadow-[0_8px_22px_rgba(0,0,0,0.03)]"><div><div className="mx-auto flex h-[96px] w-[96px] items-center justify-center rounded-[24px] bg-[#eef7ff] text-[28px] font-bold text-[#1d71e8]">ĐH</div><h2 className="mt-8 text-[22px] font-bold text-black">Bạn chưa có đơn hàng nào</h2><p className="mx-auto mt-4 max-w-[520px] text-[16px] leading-[1.55] text-[#5f6f60]">Các đơn đang chuẩn bị, đang giao hoặc lịch sử đơn sẽ hiển thị tại đây để bạn theo dõi dễ hơn.</p></div></div> : <div className="space-y-5">{activeOrders.map((order) => <ListCard key={order.id} order={order} activeTab={activeTab} onDetail={() => setSelectedOrderId(order.id)} onCancel={() => setCancellingOrderId(order.id)} onRefund={() => setRefundOrderId(order.id)} onReview={() => setReviewOrderId(order.id)} />)}</div>;
 

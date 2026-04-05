@@ -71,79 +71,79 @@ function StoreCard({
 
         return (
             <Link href={`/explore/store/${store.id}`} className="block">
-            <article className="overflow-hidden rounded-[14px] border border-[#dbe2ea] bg-white">
-                <div className="relative overflow-hidden border-b border-[#e8edf2]">
-                    <img src={store.image} alt={store.title} className="h-[236px] w-full object-cover" />
-                    <div className="pointer-events-none absolute left-0 top-5 rounded-r-full bg-[#2dc35c] px-4 py-1.5 text-[12px] font-bold tracking-[0.05em] text-white">
-                        PROMO
-                    </div>
-                    <button className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[21px] text-[#91a0be] shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
-                        ♡
-                    </button>
-                </div>
-
-                <div className="px-5 pb-4 pt-5">
-                    <h3 className="line-clamp-2 text-[20px] font-bold leading-[1.2] text-[#20315f]">
-                        {store.title}
-                    </h3>
-                    <p className="mt-3 truncate text-[15px] text-[#76829b]">{store.address}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-1 text-[15px] text-[#69758d]">
-                        <span>📍 {store.distance ?? '1.4 km'}</span>
-                        <span className="text-[#f0a500]">★</span>
-                        <span>{ratingText}</span>
+                <article className="overflow-hidden rounded-[14px] border border-[#dbe2ea] bg-white">
+                    <div className="relative overflow-hidden border-b border-[#e8edf2]">
+                        <img src={store.image} alt={store.title} className="h-[236px] w-full object-cover" />
+                        <div className="pointer-events-none absolute left-0 top-5 rounded-r-full bg-[#2dc35c] px-4 py-1.5 text-[12px] font-bold tracking-[0.05em] text-white">
+                            PROMO
+                        </div>
+                        <button className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[21px] text-[#91a0be] shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
+                            ♡
+                        </button>
                     </div>
 
-                    <div className="mt-9 border-t border-[#edf1f5] pt-5">
-                        <div className="flex items-center justify-between gap-4">
-                            <p className="truncate text-[15px] text-[#42516d]">
-                                {store.featuredItem ?? 'Món nổi bật'}
-                            </p>
-                            <p className="shrink-0 text-[16px] font-bold text-[#31486d]">
-                                {store.price ?? '50.000đ'}
-                            </p>
+                    <div className="px-5 pb-4 pt-5">
+                        <h3 className="line-clamp-2 text-[20px] font-bold leading-[1.2] text-[#20315f]">
+                            {store.title}
+                        </h3>
+                        <p className="mt-3 truncate text-[15px] text-[#76829b]">{store.address}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-1 text-[15px] text-[#69758d]">
+                            <span>📍 {store.distance ?? '1.4 km'}</span>
+                            <span className="text-[#f0a500]">★</span>
+                            <span>{ratingText}</span>
+                        </div>
+
+                        <div className="mt-9 border-t border-[#edf1f5] pt-5">
+                            <div className="flex items-center justify-between gap-4">
+                                <p className="truncate text-[15px] text-[#42516d]">
+                                    {store.featuredItem ?? 'Món nổi bật'}
+                                </p>
+                                <p className="shrink-0 text-[16px] font-bold text-[#31486d]">
+                                    {store.price ?? '50.000đ'}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </article>
+                </article>
             </Link>
         );
     }
 
     return (
         <Link href={`/explore/store/${store.id}`} className="block">
-        <article className="group rounded-[18px] bg-white">
-            <div className="relative overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(8,15,52,0.06)]">
-                <img src={store.image} alt={store.title} className="h-[196px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                <div className="pointer-events-none absolute left-0 top-3 rounded-r-full bg-[#36c15c] px-3 py-1 text-[13px] font-bold tracking-[0.05em] text-white">
-                    PROMO
-                </div>
-                <button className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[20px] text-[#91a0be] shadow-[0_4px_10px_rgba(0,0,0,0.1)] transition hover:text-[#f05023]">
-                    ♡
-                </button>
-                {emphasizeStatus ? (
-                    <div className={`absolute bottom-0 left-0 bg-white/96 px-4 py-2 text-[13px] font-semibold ${statusColor}`}>
-                        {store.status}
+            <article className="group rounded-[18px] bg-white">
+                <div className="relative overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(8,15,52,0.06)]">
+                    <img src={store.image} alt={store.title} className="h-[196px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                    <div className="pointer-events-none absolute left-0 top-3 rounded-r-full bg-[#36c15c] px-3 py-1 text-[13px] font-bold tracking-[0.05em] text-white">
+                        PROMO
                     </div>
-                ) : null}
-            </div>
-
-            <div className="px-1 pb-1 pt-4">
-                {!emphasizeStatus && (
-                    <p className={`text-[13px] font-semibold ${statusColor}`}>
-                        {store.status}
-                    </p>
-                )}
-                <h3 className="mt-1 line-clamp-2 text-[20px] font-bold leading-[1.15] text-[#20315f]">
-                    {store.title}
-                </h3>
-                <p className="mt-2 line-clamp-2 text-[15px] leading-6 text-[#7b86a6]">{store.address}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[15px] text-[#6a738c]">
-                    {store.distance && <span className="inline-flex items-center gap-1">📍 {store.distance}</span>}
-                    {store.rating && <span className="inline-flex items-center gap-1 text-[#f0a500]">★ {store.rating}</span>}
-                    {!store.distance && !store.rating && store.meta && <span className="inline-flex items-center gap-1 text-[#f0a500]">★ {store.meta}</span>}
+                    <button className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[20px] text-[#91a0be] shadow-[0_4px_10px_rgba(0,0,0,0.1)] transition hover:text-[#f05023]">
+                        ♡
+                    </button>
+                    {emphasizeStatus ? (
+                        <div className={`absolute bottom-0 left-0 bg-white/96 px-4 py-2 text-[13px] font-semibold ${statusColor}`}>
+                            {store.status}
+                        </div>
+                    ) : null}
                 </div>
-            </div>
-        </article>
+
+                <div className="px-1 pb-1 pt-4">
+                    {!emphasizeStatus && (
+                        <p className={`text-[13px] font-semibold ${statusColor}`}>
+                            {store.status}
+                        </p>
+                    )}
+                    <h3 className="mt-1 line-clamp-2 text-[20px] font-bold leading-[1.15] text-[#20315f]">
+                        {store.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-[15px] leading-6 text-[#7b86a6]">{store.address}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[15px] text-[#6a738c]">
+                        {store.distance && <span className="inline-flex items-center gap-1">📍 {store.distance}</span>}
+                        {store.rating && <span className="inline-flex items-center gap-1 text-[#f0a500]">★ {store.rating}</span>}
+                        {!store.distance && !store.rating && store.meta && <span className="inline-flex items-center gap-1 text-[#f0a500]">★ {store.meta}</span>}
+                    </div>
+                </div>
+            </article>
         </Link>
     );
 }
@@ -254,6 +254,8 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
         'mỳ cay',
         'phở',
     ];
+    const searchSectionTitleClass = 'text-[12px] font-bold uppercase tracking-[0.12em] text-[#73819b] sm:text-[13px]';
+    const searchChipClass = 'rounded-[999px] border border-[#d9e2f0] bg-white px-3.5 py-1.5 text-[13px] font-medium text-[#44506b] transition hover:border-[#c5d5ee] hover:bg-[#f7faff] sm:px-4 sm:text-[14px]';
     const activeCategory = activeCategoryId
         ? data.categories.find((category) => category.id === activeCategoryId) ?? null
         : null;
@@ -269,6 +271,7 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
             `${item.title} ${item.address}`.toLowerCase().includes(normalizedSearchKeyword),
         )
         : [];
+    const hasSearchResults = searchResults.length > 0;
 
     const commitFoodSearch = (value: string) => {
         const trimmedValue = value.trim();
@@ -387,21 +390,29 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                             <div className="h-px bg-[#cfd5df]" />
                         </div>
 
-                        <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-                            {searchResults.map((item, index) => (
-                                <StoreCard
-                                    key={`${item.id}-${index}`}
-                                    store={item}
-                                    variant="search"
-                                />
-                            ))}
-                        </div>
+                        {hasSearchResults ? (
+                            <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
+                                {searchResults.map((item, index) => (
+                                    <StoreCard
+                                        key={`${item.id}-${index}`}
+                                        store={item}
+                                        variant="search"
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="rounded-[18px] border border-[#d7dfeb] bg-[#f8fbff] px-8 py-10 text-center text-[22px] font-semibold text-[#61708d]">
+                                Không có kết quả cho món này
+                            </div>
+                        )}
 
-                        <div className="flex justify-center">
-                            <button className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]">
-                                Xem thêm
-                            </button>
-                        </div>
+                        {hasSearchResults ? (
+                            <div className="flex justify-center">
+                                <button className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]">
+                                    Xem thêm
+                                </button>
+                            </div>
+                        ) : null}
                     </section>
                 ) : activeCategory ? (
                     <section className="space-y-8">
@@ -470,18 +481,34 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
             </section>
 
             {isFoodSearchOpen && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 py-8">
-                    <div className="relative w-full max-w-[1020px] rounded-[22px] bg-white px-9 pb-10 pt-12 shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
-                        <button
+                <div className="fixed inset-0 z-[70] bg-[rgba(15,23,42,0.5)] px-4 py-4 backdrop-blur-[3px] sm:px-6 sm:py-6">
+                    <div className="mx-auto flex min-h-full max-w-[720px] items-center justify-center">
+                        <div className="relative w-full rounded-[20px] border border-[#e6ebf3] bg-white p-4 shadow-[0_32px_80px_rgba(15,23,42,0.22)] sm:p-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">
+                                        Tìm kiếm nhanh
+                                    </p>
+                                    <h2 className="mt-1.5 text-[20px] font-bold leading-[1.2] text-[#1d2c4f] sm:text-[22px]">
+                                        BẠN MUỐN TÌM KIẾM MÓN GÌ?
+                                    </h2>
+                                    <p className="mt-1.5 text-[13px] text-[#7d8aa5] sm:text-[14px]">
+                                        Chọn nhanh món đang hot hoặc nhập từ khóa để tìm quán phù hợp.
+                                    </p>
+                                </div>
+
+                                <button
                             type="button"
                             onClick={() => setIsFoodSearchOpen(false)}
-                            className="absolute right-6 top-5 text-[50px] leading-none text-black transition hover:opacity-65"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#e1e7f0] bg-white text-[22px] leading-none text-[#31405f] transition hover:bg-[#f5f8fc]"
                             aria-label="Đóng tìm kiếm"
                         >
                             ×
                         </button>
+                            </div>
 
-                        <div className="flex h-[64px] items-center gap-4 rounded-[14px] bg-[#f2f5fa] px-5">
+                        <div className="mt-4 rounded-[14px] border border-[#e7edf5] bg-[#f8fbff] p-2.5 sm:p-3">
+                            <div className="flex h-[48px] items-center gap-3 rounded-[12px] bg-white px-4 shadow-[inset_0_0_0_1px_rgba(223,230,240,0.85)] sm:h-[50px]">
                             <span className="text-[28px] text-[#61708d]">⌕</span>
                             <input
                                 ref={searchInputRef}
@@ -494,24 +521,27 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                                     }
                                 }}
                                 placeholder="Tìm món ăn hoặc nhà hàng"
-                                className="w-full bg-transparent text-[18px] text-[#20315f] placeholder:text-[#9ba7bc]"
+                                className="w-full bg-transparent text-[14px] font-medium text-[#223252] outline-none placeholder:font-normal placeholder:text-[#9aa6bb] sm:text-[15px]"
                             />
                         </div>
 
-                        <div className="mt-8 flex items-center justify-between gap-4">
-                            <h3 className="text-[18px] font-bold uppercase tracking-[0.03em] text-[#71819f]">
+                        </div>
+
+                        <div className="mt-4 rounded-[14px] border border-[#edf2f7] bg-white p-3.5 sm:p-4">
+                            <div className="flex items-center justify-between gap-4">
+                            <h3 className={searchSectionTitleClass}>
                                 Tìm kiếm gần đây
                             </h3>
                             <button
                                 type="button"
                                 onClick={() => setRecentFoodSearches([])}
-                                className="text-[18px] font-semibold text-[#2f71ff] transition hover:underline"
+                                className="text-[14px] font-semibold text-[#2f71ff] transition hover:opacity-75"
                             >
                                 Xóa hết
                             </button>
                         </div>
 
-                        <div className="mt-5 flex flex-wrap gap-4 border-b border-[#eef2f6] pb-8">
+                        <div className="mt-3 flex flex-wrap gap-2.5">
                             {recentFoodSearches.length > 0 ? recentFoodSearches.map((item) => (
                                 <button
                                     key={item}
@@ -520,7 +550,7 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                                         setSearchKeyword(item);
                                         commitFoodSearch(item);
                                     }}
-                                    className="rounded-full border border-[#dce3ef] px-5 py-3 text-[18px] text-[#44506b] transition hover:bg-[#f7faff]"
+                                    className={searchChipClass}
                                 >
                                     {item}
                                 </button>
@@ -528,12 +558,16 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                                 <p className="text-[17px] text-[#9aa4b8]">Chưa có tìm kiếm gần đây.</p>
                             )}
                         </div>
+                        </div>
 
-                        <div className="mt-8">
-                            <h3 className="text-[18px] font-bold uppercase tracking-[0.03em] text-[#71819f]">
+                        <div className="mt-3 rounded-[14px] border border-[#edf2f7] bg-[#fbfcfe] p-3.5 sm:p-4">
+                            <h3 className={searchSectionTitleClass}>
                                 Món gì đang hot
                             </h3>
-                            <div className="mt-5 flex flex-wrap gap-4">
+                            <p className="mt-1 text-[12px] text-[#97a3b8] sm:text-[13px]">
+                                Gợi ý phổ biến để thao tác nhanh hơn.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2.5">
                                 {hotKeywords.map((item) => (
                                     <button
                                         key={item}
@@ -542,12 +576,13 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                                             setSearchKeyword(item);
                                             commitFoodSearch(item);
                                         }}
-                                        className="rounded-full border border-[#dce3ef] px-5 py-3 text-[18px] text-[#44506b] transition hover:bg-[#f7faff]"
+                                        className={searchChipClass}
                                     >
                                         {item}
                                     </button>
                                 ))}
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

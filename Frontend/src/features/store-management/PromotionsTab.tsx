@@ -26,6 +26,10 @@ interface Promo {
     image: string;
 }
 
+function getNextPromoId(promos: Promo[]) {
+    return String(promos.reduce((maxId, promo) => Math.max(maxId, Number(promo.id) || 0), 0) + 1);
+}
+
 const STATUS_LABEL: Record<PromoStatus, string> = {
     active: 'Đang diễn ra',
     upcoming: 'Sắp diễn ra',
@@ -79,8 +83,9 @@ const INITIAL_PROMOS: Promo[] = [
 /* ═══════════════════════════════════════════
    ADD / EDIT MODAL
    ═══════════════════════════════════════════ */
-function PromoModal({ promo, onClose, onSave }: {
+function PromoModal({ promo, nextPromoId, onClose, onSave }: {
     promo: Promo | null;
+    nextPromoId: string;
     onClose: () => void;
     onSave: (data: Promo) => void;
 }) {
@@ -97,7 +102,7 @@ function PromoModal({ promo, onClose, onSave }: {
 
     const handleSave = () => {
         const newPromo: Promo = {
-            id: promo?.id || String(Date.now()),
+            id: promo?.id || nextPromoId,
             name, code, status, type, discountValue,
             maxDiscount: type === 'percent' ? `${discountValue}k` : '',
             minOrder, usedCount: promo?.usedCount || 0,
@@ -145,7 +150,7 @@ function PromoModal({ promo, onClose, onSave }: {
                         <label className="text-[13px] font-bold text-black">Trạng thái</label>
                         <div className="mt-2 flex items-center gap-5">
                             {statuses.map((s) => (
-                                <label key={s.key} className="flex cursor-pointer items-center gap-2">
+                                <label key={s.key} className="flex cursor-pointer items-center gap-2" onClick={() => setStatus(s.key)}>
                                     <span className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 ${status === s.key ? 'border-[#2e7d32]' : 'border-[#ccc]'}`}>
                                         {status === s.key && <span className="h-2.5 w-2.5 rounded-full bg-[#2e7d32]" />}
                                     </span>
@@ -161,7 +166,7 @@ function PromoModal({ promo, onClose, onSave }: {
                         <div className="mt-2 space-y-2">
                             {types.map((t) => (
                                 <div key={t.key} className="flex items-center gap-3">
-                                    <label className="flex cursor-pointer items-center gap-2">
+                                    <label className="flex cursor-pointer items-center gap-2" onClick={() => setType(t.key)}>
                                         <span className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 ${type === t.key ? 'border-[#2e7d32]' : 'border-[#ccc]'}`}>
                                             {type === t.key && <span className="h-2.5 w-2.5 rounded-full bg-[#2e7d32]" />}
                                         </span>
@@ -325,6 +330,7 @@ export default function PromotionsTab() {
             return true;
         });
     }, [promos, searchText, statusFilter, typeFilter]);
+    const nextPromoId = useMemo(() => getNextPromoId(promos), [promos]);
 
     const handleSave = (data: Promo) => {
         if (editPromo) {
@@ -351,7 +357,7 @@ export default function PromotionsTab() {
     const handleDuplicate = (id: string) => {
         const original = promos.find((p) => p.id === id);
         if (original) {
-            const dup: Promo = { ...original, id: String(Date.now()), usedCount: 0, status: 'upcoming', startDate: '', endDate: '' };
+            const dup: Promo = { ...original, id: nextPromoId, usedCount: 0, status: 'upcoming', startDate: '', endDate: '' };
             setPromos((prev) => [...prev, dup]);
         }
     };
@@ -457,8 +463,8 @@ export default function PromotionsTab() {
             )}
 
             {/* Modals */}
-            {showAddModal && <PromoModal promo={null} onClose={() => setShowAddModal(false)} onSave={handleSave} />}
-            {editPromo && <PromoModal promo={editPromo} onClose={() => setEditPromo(null)} onSave={handleSave} />}
+            {showAddModal && <PromoModal promo={null} nextPromoId={nextPromoId} onClose={() => setShowAddModal(false)} onSave={handleSave} />}
+            {editPromo && <PromoModal promo={editPromo} nextPromoId={nextPromoId} onClose={() => setEditPromo(null)} onSave={handleSave} />}
         </div>
     );
 }

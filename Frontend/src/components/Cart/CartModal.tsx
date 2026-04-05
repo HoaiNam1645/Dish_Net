@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import {
     clearCartSelection,
     formatCurrency,
+    getMockCartUpdatedEventName,
     getCartSubtotal,
     getSelectedItemCount,
     readMockCart,
@@ -49,16 +50,22 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     const [cart, setCart] = useState<MockCart>(() => readMockCart());
 
     useEffect(() => {
-        if (!isOpen) return;
+        const handleCartUpdated = () => {
+            setCart(readMockCart());
+        };
 
-        const nextCart = readMockCart();
-        setCart(nextCart);
+        window.addEventListener(getMockCartUpdatedEventName(), handleCartUpdated);
+
+        if (!isOpen) {
+            return () => window.removeEventListener(getMockCartUpdatedEventName(), handleCartUpdated);
+        }
 
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
         return () => {
             document.body.style.overflow = previousOverflow;
+            window.removeEventListener(getMockCartUpdatedEventName(), handleCartUpdated);
         };
     }, [isOpen]);
 

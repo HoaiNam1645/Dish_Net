@@ -127,32 +127,34 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
     const openLoginRequired = () => setIsLoginRequiredOpen(true);
 
     useEffect(() => {
-        const sectionIds = ['top', 'menu', 'reviews', 'community', 'comments'];
-        const observers = sectionIds
+        const sectionIds = ['top', 'menu', 'reviews', 'community', 'comments'] as const;
+        const sections = sectionIds
             .map((id) => document.getElementById(id))
             .filter((element): element is HTMLElement => Boolean(element));
 
-        if (observers.length === 0) return;
+        if (sections.length === 0) return;
 
-        const intersectionObserver = new IntersectionObserver(
-            (entries) => {
-                const visibleEntries = entries
-                    .filter((entry) => entry.isIntersecting)
-                    .sort((left, right) => right.intersectionRatio - left.intersectionRatio);
+        const updateActiveSection = () => {
+            const anchorY = window.scrollY + 180;
+            let nextActiveSection: (typeof sectionIds)[number] = sectionIds[0];
 
-                if (visibleEntries[0]?.target.id) {
-                    setActiveSection(visibleEntries[0].target.id);
+            sections.forEach((section) => {
+                if (section.offsetTop <= anchorY) {
+                    nextActiveSection = section.id as (typeof sectionIds)[number];
                 }
-            },
-            {
-                rootMargin: '-18% 0px -60% 0px',
-                threshold: [0.2, 0.4, 0.7],
-            },
-        );
+            });
 
-        observers.forEach((element) => intersectionObserver.observe(element));
+            setActiveSection((current) => (current === nextActiveSection ? current : nextActiveSection));
+        };
 
-        return () => intersectionObserver.disconnect();
+        updateActiveSection();
+        window.addEventListener('scroll', updateActiveSection, { passive: true });
+        window.addEventListener('resize', updateActiveSection);
+
+        return () => {
+            window.removeEventListener('scroll', updateActiveSection);
+            window.removeEventListener('resize', updateActiveSection);
+        };
     }, []);
 
     useEffect(() => {
@@ -239,7 +241,11 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                 key={item.id}
                                 href={`#${item.id}`}
                                 onClick={() => setActiveSection(item.id)}
-                                className={`flex items-center justify-between border-b px-5 py-5 text-[22px] transition ${activeSection === item.id ? 'border-[#d6e7d1] text-[#2e7d18]' : 'border-[#e4e8df] text-[#9aac93]'}`}
+                                className={`flex items-center justify-between border-b px-5 py-5 text-[22px] transition ${
+                                    activeSection === item.id
+                                        ? 'border-[#cfe6c7] bg-[#f3fbef] font-bold text-[#1f8f24]'
+                                        : 'border-[#e4e8df] font-medium text-[#9aac93] hover:bg-[#f8faf6] hover:text-[#70856a]'
+                                }`}
                             >
                                 <span>{item.label}</span>
                                 <span>›</span>

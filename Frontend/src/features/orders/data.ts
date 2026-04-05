@@ -1,5 +1,6 @@
 ﻿export type OrderTabKey = 'placed' | 'purchased' | 'cancelled' | 'returned' | 'review';
 export type OrderStageKey = 'ordered' | 'preparing' | 'delivering' | 'delivered';
+export type UserOrdersByTab = Record<OrderTabKey, UserOrder[]>;
 
 export type UserOrder = {
     id: string;
@@ -209,13 +210,62 @@ const returnedOrders: UserOrder[] = [
     },
 ];
 
-export const userOrdersByTab: Record<OrderTabKey, UserOrder[]> = {
+export const userOrdersByTab: UserOrdersByTab = {
     placed: placedOrders,
     purchased: purchasedOrders,
     cancelled: cancelledOrders,
     returned: returnedOrders,
     review: [],
 };
+
+const userOrdersStorageKey = 'dishnet_user_orders';
+
+function cloneOrders(orders: UserOrdersByTab) {
+    return JSON.parse(JSON.stringify(orders)) as UserOrdersByTab;
+}
+
+export function getDefaultUserOrdersByTab() {
+    return cloneOrders(userOrdersByTab);
+}
+
+export function readStoredUserOrdersByTab() {
+    if (typeof window === 'undefined') {
+        return getDefaultUserOrdersByTab();
+    }
+
+    const savedOrders = window.localStorage.getItem(userOrdersStorageKey);
+    if (!savedOrders) {
+        return getDefaultUserOrdersByTab();
+    }
+
+    try {
+        const parsedOrders = JSON.parse(savedOrders) as Partial<UserOrdersByTab>;
+        const fallback = getDefaultUserOrdersByTab();
+
+        return {
+            placed: Array.isArray(parsedOrders.placed) ? parsedOrders.placed : fallback.placed,
+            purchased: Array.isArray(parsedOrders.purchased) ? parsedOrders.purchased : fallback.purchased,
+            cancelled: Array.isArray(parsedOrders.cancelled) ? parsedOrders.cancelled : fallback.cancelled,
+            returned: Array.isArray(parsedOrders.returned) ? parsedOrders.returned : fallback.returned,
+            review: Array.isArray(parsedOrders.review) ? parsedOrders.review : fallback.review,
+        };
+    } catch {
+        window.localStorage.removeItem(userOrdersStorageKey);
+        return getDefaultUserOrdersByTab();
+    }
+}
+
+export function writeStoredUserOrdersByTab(ordersByTab: UserOrdersByTab) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(userOrdersStorageKey, JSON.stringify(ordersByTab));
+}
+
+export function prependPlacedOrders(orders: UserOrder[]) {
+    const nextOrders = readStoredUserOrdersByTab();
+    nextOrders.placed = [...orders, ...nextOrders.placed];
+    writeStoredUserOrdersByTab(nextOrders);
+    return nextOrders;
+}
 
 export const cancelReasonOptions = [
     'Thay đổi ý định / không muốn mua nữa',

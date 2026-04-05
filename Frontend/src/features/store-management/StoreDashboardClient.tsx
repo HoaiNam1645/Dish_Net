@@ -152,15 +152,6 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     'Đang giao hàng': 'text-[#1976d2]',
 };
 
-const STATUS_BG: Record<OrderStatus, string> = {
-    'Đã giao': 'bg-[#2e7d32] text-white',
-    'Đã hủy': 'bg-[#d32f2f] text-white',
-    'Trả hàng': 'bg-[#f0a050] text-white',
-    'Đang giao hàng': 'bg-[#1976d2] text-white',
-};
-
-
-
 /* ═══════════════════════════════════════════
    OVERVIEW TAB
    ═══════════════════════════════════════════ */

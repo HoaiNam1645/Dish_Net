@@ -4,15 +4,16 @@
 import { useMemo, useState } from 'react';
 
 import CommentModal from '@/features/home/CommentModal';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
-const storeCover = 'https://www.figma.com/api/mcp/asset/d8082f6f-18e5-42f7-9570-3d2978e30d5b';
-const ratingBadge = 'https://www.figma.com/api/mcp/asset/3bf4c95a-c6a8-4998-a113-c609cea641f4';
-const reviewerAvatar = 'https://www.figma.com/api/mcp/asset/f9e85eb9-0939-4852-8c73-ae80617a75e2';
-const reviewGallery = 'https://www.figma.com/api/mcp/asset/e9365bde-066c-4259-be76-1b89e457352b';
-const likeIcon = 'https://www.figma.com/api/mcp/asset/6cc16216-317d-4b01-b995-d6a1e853d69c';
-const commentIcon = 'https://www.figma.com/api/mcp/asset/5d48b9f0-58a8-492b-bf5f-94f26ce515e8';
-const topReviewerIcon = 'https://www.figma.com/api/mcp/asset/3b54d349-061b-45a9-9eaf-b348f4d60bc6';
-const menuDish = 'https://www.figma.com/api/mcp/asset/315e728a-5ae2-4396-bfe3-1b5afcd7dd6b';
+const storeCover = figmaFallbackAssets.storeImage;
+const ratingBadge = figmaFallbackAssets.ratingBadge;
+const reviewerAvatar = figmaFallbackAssets.reviewerAvatarA;
+const reviewGallery = figmaFallbackAssets.feedDishImage;
+const likeIcon = figmaFallbackAssets.likeIcon;
+const commentIcon = figmaFallbackAssets.commentIcon;
+const topReviewerIcon = figmaFallbackAssets.topReviewerIcon;
+const menuDish = figmaFallbackAssets.menuItemImage;
 
 const storeCards = Array.from({ length: 2 }, (_, index) => ({
     id: `store-${index}`,

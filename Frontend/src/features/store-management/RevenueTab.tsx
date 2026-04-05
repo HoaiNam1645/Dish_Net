@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState } from 'react';
 
@@ -127,12 +126,10 @@ function RevenueLineChart() {
    DONUT CHART (CSS)
    ═══════════════════════════════════════════ */
 function DonutChart() {
-    let accum = 0;
-    const segments = DONUT_ITEMS.map((item) => {
-        const start = accum;
-        accum += item.percent;
-        return { ...item, start, end: accum };
-    });
+    const segments = DONUT_ITEMS.reduce<Array<(typeof DONUT_ITEMS)[number] & { start: number; end: number }>>((allSegments, item) => {
+        const previousEnd = allSegments[allSegments.length - 1]?.end ?? 0;
+        return [...allSegments, { ...item, start: previousEnd, end: previousEnd + item.percent }];
+    }, []);
 
     const conicGradient = segments.map((s) => `${s.color} ${s.start}% ${s.end}%`).join(', ');
 

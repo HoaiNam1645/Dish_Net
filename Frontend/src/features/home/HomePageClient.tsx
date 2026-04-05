@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { readMockSession } from '@/components/Auth/mockSession';
 
@@ -286,11 +286,7 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [activeGalleryCard, setActiveGalleryCard] = useState<SpotlightCard | null>(null);
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    useEffect(() => {
-        setIsAuthenticated(readMockSession().isAuthenticated);
-    }, []);
+    const [isAuthenticated] = useState(() => (typeof window === 'undefined' ? false : readMockSession().isAuthenticated));
 
     const rankingItems = data.rankings[rankingMode];
     const rankingLabels = rankingColumnLabels[rankingMode];

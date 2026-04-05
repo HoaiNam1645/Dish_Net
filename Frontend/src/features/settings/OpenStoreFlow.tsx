@@ -128,7 +128,6 @@ const CONTRACT_CLAUSES = [
    ═══════════════════════════════════════════════════════════════ */
 export default function OpenStoreFlow({
     profile,
-    onBack,
 }: {
     profile: UserProfile;
     onBack: () => void;

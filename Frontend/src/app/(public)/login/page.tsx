@@ -142,7 +142,7 @@ export default function LoginPage() {
     const loginAs = (accountType: MockAccountType) => {
         writeMockSession(mockAccounts[accountType]);
         setShowAccountSwitcher(false);
-        router.push(accountType === 'store' ? '/explore/store/nearby-1' : '/');
+        router.push(accountType === 'store' ? '/store' : '/');
     };
 
     return (

@@ -151,27 +151,27 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
 
         if (sections.length === 0) return;
 
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visibleEntries = entries
-                    .filter((entry) => entry.isIntersecting)
-                    .sort((left, right) => right.intersectionRatio - left.intersectionRatio);
+        const updateActiveSection = () => {
+            const anchorY = window.scrollY + 180;
+            let nextSection: 'reviews' | 'comments' = 'reviews';
 
-                const nextSection = visibleEntries[0]?.target.id as 'reviews' | 'comments' | undefined;
-
-                if (nextSection) {
-                    setActiveSection(nextSection);
+            sections.forEach((section) => {
+                if (section.offsetTop <= anchorY) {
+                    nextSection = section.id as 'reviews' | 'comments';
                 }
-            },
-            {
-                rootMargin: '-20% 0px -55% 0px',
-                threshold: [0.15, 0.3, 0.55],
-            },
-        );
+            });
 
-        sections.forEach((section) => observer.observe(section));
+            setActiveSection((current) => (current === nextSection ? current : nextSection));
+        };
 
-        return () => observer.disconnect();
+        updateActiveSection();
+        window.addEventListener('scroll', updateActiveSection, { passive: true });
+        window.addEventListener('resize', updateActiveSection);
+
+        return () => {
+            window.removeEventListener('scroll', updateActiveSection);
+            window.removeEventListener('resize', updateActiveSection);
+        };
     }, []);
 
     return (
@@ -208,9 +208,9 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
                     </div>
                 </article>
 
-                <div className="grid items-start gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
-                    <aside className="pt-3 lg:self-start">
-                        <div className="space-y-5 lg:sticky lg:top-28 lg:h-max">
+                <div className="grid gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
+                    <aside className="pt-3 lg:sticky lg:top-24 lg:self-start">
+                        <div className="space-y-5">
                             <a
                                 href="#reviews"
                                 onClick={() => setActiveSection('reviews')}

@@ -2,13 +2,14 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
 const modalAssets = {
-    storeImage: 'https://www.figma.com/api/mcp/asset/81ddcc0a-c98e-4cc3-b4f3-b40ac545b811',
-    reviewerAvatarA: 'https://www.figma.com/api/mcp/asset/f9e85eb9-0939-4852-8c73-ae80617a75e2',
-    reviewerAvatarB: 'https://www.figma.com/api/mcp/asset/ef3f2ea4-f8b9-4fe0-98da-a46de6783487',
-    reviewFoodA: 'https://www.figma.com/api/mcp/asset/e9365bde-066c-4259-be76-1b89e457352b',
-    reviewFoodB: 'https://www.figma.com/api/mcp/asset/d8082f6f-18e5-42f7-9570-3d2978e30d5b',
+    storeImage: figmaFallbackAssets.storeImage,
+    reviewerAvatarA: figmaFallbackAssets.reviewerAvatarA,
+    reviewerAvatarB: figmaFallbackAssets.reviewerAvatarB,
+    reviewFoodA: figmaFallbackAssets.feedDishImage,
+    reviewFoodB: figmaFallbackAssets.menuItemImage,
 } as const;
 
 type CommentTab = 'all' | 'positive' | 'latest';

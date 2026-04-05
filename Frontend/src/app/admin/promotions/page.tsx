@@ -106,13 +106,16 @@ export default function PromotionsPage() {
     };
 
     const handleAdd = () => {
-        const newPromo: Promotion = {
-            id: Date.now(), name: formData.name, code: formData.code, status: formData.status,
-            type: formData.type, value: formData.value, description: `Áp dụng đơn từ ${formData.minOrder}`,
-            usedCount: 0, totalCount: formData.totalCount, startDate: formData.startDate,
-            endDate: formData.endDate, minOrder: formData.minOrder,
-        };
-        setPromotions([newPromo, ...promotions]);
+        setPromotions((current) => {
+            const nextId = current.reduce((maxId, promo) => Math.max(maxId, promo.id), 0) + 1;
+            const newPromo: Promotion = {
+                id: nextId, name: formData.name, code: formData.code, status: formData.status,
+                type: formData.type, value: formData.value, description: `Áp dụng đơn từ ${formData.minOrder}`,
+                usedCount: 0, totalCount: formData.totalCount, startDate: formData.startDate,
+                endDate: formData.endDate, minOrder: formData.minOrder,
+            };
+            return [newPromo, ...current];
+        });
         setShowAddModal(false);
         setFormData(emptyForm);
     };
