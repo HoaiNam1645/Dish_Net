@@ -20,6 +20,8 @@ export type UserProfile = {
     isPrivate: boolean;
     posts: ProfilePost[];
     videos: ProfileVideo[];
+    isMonetized?: boolean;
+    earnings?: EarningsProfile;
 };
 
 export type ProfilePost = {
@@ -38,6 +40,54 @@ export type ProfileVideo = {
     image: string;
     views: string;
     pinned?: boolean;
+};
+
+export type EarningsItemStatus = 'earning' | 'low' | 'high';
+export type WithdrawalStatus = 'completed' | 'processing' | 'rejected';
+
+export type EarningsItem = {
+    id: string;
+    title: string;
+    image: string;
+    views: string;
+    interactions: string;
+    revenue: string;
+    publishedAt: string;
+    status: EarningsItemStatus;
+};
+
+export type WithdrawalAccount = {
+    id: string;
+    provider: string;
+    accountNumber: string;
+    accountName: string;
+    kind: 'bank' | 'wallet';
+};
+
+export type WithdrawalHistoryItem = {
+    id: string;
+    date: string;
+    amount: string;
+    method: string;
+    status: WithdrawalStatus;
+};
+
+export type EarningsProfile = {
+    todayRevenue: string;
+    todayRevenueDelta: string;
+    totalMonetizedPosts: string;
+    totalMonetizedPostsDelta: string;
+    linkClickRate: string;
+    linkClickRateDelta: string;
+    totalRevenue: string;
+    withdrawSummary: {
+        availableBalance: string;
+        processingAmount: string;
+        totalWithdrawn: string;
+    };
+    items: EarningsItem[];
+    withdrawalAccounts: WithdrawalAccount[];
+    withdrawalHistory: WithdrawalHistoryItem[];
 };
 
 const videoThumbs = [
@@ -102,8 +152,88 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
         showBadge: true,
         showTrustScore: true,
         isPrivate: false,
+        isMonetized: true,
         posts,
         videos,
+        earnings: {
+            todayRevenue: '5.800.000D',
+            todayRevenueDelta: '+12% so voi hom qua',
+            totalMonetizedPosts: '15 don',
+            totalMonetizedPostsDelta: '+8% so voi hom qua',
+            linkClickRate: '12,6 %',
+            linkClickRateDelta: '+3% so voi hom qua',
+            totalRevenue: '10.000.000D',
+            withdrawSummary: {
+                availableBalance: '250,000d',
+                processingAmount: '0',
+                totalWithdrawn: '6,200,000d',
+            },
+            withdrawalAccounts: [
+                {
+                    id: 'vcb',
+                    provider: 'Vietcombank',
+                    accountNumber: '123456789',
+                    accountName: 'Nguyen Van A',
+                    kind: 'bank',
+                },
+                {
+                    id: 'momo',
+                    provider: 'MoMo',
+                    accountNumber: '0987654321',
+                    accountName: 'Nguyen Van A',
+                    kind: 'wallet',
+                },
+            ],
+            withdrawalHistory: [
+                { id: 'w-1', date: '03/06/2024', amount: '1,000,000d', method: 'Vietcombank 123456789', status: 'completed' },
+                { id: 'w-2', date: '01/05/2024', amount: '500,000d', method: 'MoMo 0987654321', status: 'completed' },
+                { id: 'w-3', date: '15/04/2024', amount: '1,200,000d', method: 'Ngan hang ACB 9876543210', status: 'completed' },
+                { id: 'w-4', date: '30/03/2024', amount: '2,000,000d', method: 'Vietcombank 123456789', status: 'completed' },
+                { id: 'w-5', date: '10/03/2024', amount: '700,000d', method: 'ZaloPay 0981234567', status: 'completed' },
+            ],
+            items: [
+                {
+                    id: 'earning-1',
+                    title: 'Review ga nuong cuc ngon o ABC',
+                    image: posts[0]?.images[0] ?? avatar,
+                    views: '30,505',
+                    interactions: '2,115',
+                    revenue: '3.000.000 VND',
+                    publishedAt: '21/02/2026 00:00 SA',
+                    status: 'earning',
+                },
+                {
+                    id: 'earning-2',
+                    title: 'Review ga nuong cuc ngon o ABC',
+                    image: posts[1]?.images[0] ?? avatar,
+                    views: '30,505',
+                    interactions: '2,115',
+                    revenue: '3.000.000 VND',
+                    publishedAt: '21/02/2026 00:00 SA',
+                    status: 'earning',
+                },
+                {
+                    id: 'earning-3',
+                    title: 'Review ga nuong cuc ngon o ABC',
+                    image: posts[2]?.images[0] ?? avatar,
+                    views: '24,505',
+                    interactions: '1,315',
+                    revenue: '1.600.000 VND',
+                    publishedAt: '19/02/2026 00:00 SA',
+                    status: 'high',
+                },
+                {
+                    id: 'earning-4',
+                    title: 'Review ga nuong cuc ngon o ABC',
+                    image: posts[3]?.images[0] ?? avatar,
+                    views: '12,505',
+                    interactions: '845',
+                    revenue: '420.000 VND',
+                    publishedAt: '17/02/2026 00:00 SA',
+                    status: 'low',
+                },
+            ],
+        },
     };
 }
 
