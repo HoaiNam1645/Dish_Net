@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { readMockSession } from '@/components/Auth/mockSession';
+import { useAuth } from '@/shared/AuthContext';
 import CartModal from '@/components/Cart/CartModal';
 import { ensureMockCart, getMockCartUpdatedEventName, getSelectedItemCount, readMockCart } from '@/components/Cart/mockCart';
 
@@ -16,30 +16,26 @@ const messageParticipants = [
 
 export default function UserQuickActions() {
     const pathname = usePathname();
-    const [shouldShow, setShouldShow] = useState(false);
+    const { dangNhap, nguoiDung } = useAuth();
     const [selectedCount, setSelectedCount] = useState(0);
     const [isCartOpen, setIsCartOpen] = useState(false);
 
+    const shouldShow = dangNhap && nguoiDung?.vai_tro === 'nguoi_dung';
+
     useEffect(() => {
-        const syncState = () => {
-            const session = readMockSession();
-            setShouldShow(session.isAuthenticated && session.accountType === 'user');
+        const syncCart = () => {
             setSelectedCount(getSelectedItemCount(readMockCart()));
         };
 
         ensureMockCart();
-        syncState();
+        syncCart();
 
-        window.addEventListener(getMockCartUpdatedEventName(), syncState);
-        window.addEventListener('storage', syncState);
-        window.addEventListener('focus', syncState);
-        document.addEventListener('visibilitychange', syncState);
+        window.addEventListener(getMockCartUpdatedEventName(), syncCart);
+        window.addEventListener('storage', syncCart);
 
         return () => {
-            window.removeEventListener(getMockCartUpdatedEventName(), syncState);
-            window.removeEventListener('storage', syncState);
-            window.removeEventListener('focus', syncState);
-            document.removeEventListener('visibilitychange', syncState);
+            window.removeEventListener(getMockCartUpdatedEventName(), syncCart);
+            window.removeEventListener('storage', syncCart);
         };
     }, []);
 

@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { readMockSession } from '@/components/Auth/mockSession';
+import { useAuth } from '@/shared/AuthContext';
 
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
@@ -286,7 +286,7 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [activeGalleryCard, setActiveGalleryCard] = useState<SpotlightCard | null>(null);
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
-    const [isAuthenticated] = useState(() => (typeof window === 'undefined' ? false : readMockSession().isAuthenticated));
+    const { dangNhap: isAuthenticated } = useAuth();
 
     const rankingItems = data.rankings[rankingMode];
     const rankingLabels = rankingColumnLabels[rankingMode];
