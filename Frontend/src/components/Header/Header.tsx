@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -36,7 +36,7 @@ export default function Header() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const { nguoiDung, dangNhap, dangXuat } = useAuth();
+    const { nguoiDung, dangNhap, dangTai, dangXuat } = useAuth();
     const [recentSearches, setRecentSearches] = useState([
         'Bún bò', 'Mỳ Quảng', 'Khu AAA', 'Cơm ngon bếp việt', 'Cơm ngon hà thành', 'chay express',
     ]);
@@ -71,6 +71,12 @@ export default function Header() {
 
     const vaiTroLabel = nguoiDung?.vai_tro === 'chu_cua_hang' ? 'Cửa hàng'
         : nguoiDung?.vai_tro === 'admin' ? 'Admin' : 'Người dùng';
+    const daHydrate = useSyncExternalStore(
+        () => () => { },
+        () => true,
+        () => false,
+    );
+    const sanSangHienThiTheoPhien = daHydrate && !dangTai;
 
     return (
         <header className="sticky top-0 z-50 flex items-center justify-between border-b-2 border-border-green bg-white px-5 py-1.5">
@@ -129,19 +135,19 @@ export default function Header() {
                     </>
                 )}
 
-                {dangNhap && !isStorePage ? (
+                {sanSangHienThiTheoPhien && dangNhap && !isStorePage ? (
                     <Link href="/store" className="ml-2 whitespace-nowrap rounded-full border border-[#ef4444]/15 bg-[#fff1ee] px-5 py-2.5 text-base font-bold text-[#d92d20] transition hover:-translate-y-0.5 hover:bg-[#ffe7e1]">
                         Vào cửa hàng
                     </Link>
                 ) : null}
 
-                {dangNhap && isStorePage ? (
+                {sanSangHienThiTheoPhien && dangNhap && isStorePage ? (
                     <Link href="/" className="ml-2 whitespace-nowrap rounded-full border border-[#2f6f25]/15 bg-[#eef8ea] px-5 py-2.5 text-base font-bold text-[#2f6f25] transition hover:-translate-y-0.5 hover:bg-[#e4f2df]">
                         Về DishNet
                     </Link>
                 ) : null}
 
-                {dangNhap && nguoiDung ? (
+                {sanSangHienThiTheoPhien && dangNhap && nguoiDung ? (
                     <div className="ml-3 flex items-center gap-3">
                         <div ref={notificationRef} className="relative">
                             <button type="button" onClick={() => { setIsNotificationsOpen((c) => !c); setIsProfileOpen(false); }}
@@ -236,12 +242,14 @@ export default function Header() {
                             ) : null}
                         </div>
                     </div>
-                ) : (
+                ) : sanSangHienThiTheoPhien ? (
                     <Link href="/login"
                         className="whitespace-nowrap rounded-full border border-green-primary bg-green-primary px-8 py-3 text-base font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1e4a13] active:translate-y-0"
                         id="header-login-btn">
                         Đăng nhập
                     </Link>
+                ) : (
+                    <div className="h-[50px] w-[148px] rounded-full border border-transparent" aria-hidden="true" />
                 )}
             </nav>
         </header>

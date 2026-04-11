@@ -77,6 +77,12 @@ export class NguoiDungEntity {
   @Column({ type: 'text', nullable: true })
   ly_do_khoa_hien_tai: string | null;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  kieu_khoa_tai_khoan: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  thoi_gian_mo_khoa: Date | null;
+
   @Column({ type: 'varchar', length: 20, default: 'email' })
   nguon_dang_ky: string;
 
