@@ -5,6 +5,7 @@ import AdminTable, { Column } from '@/components/Admin/AdminTable';
 import Pagination from '@/components/Admin/Pagination';
 import ViewButton from '@/components/Admin/ViewButton';
 import { adminAccountApi, TaiKhoanItem } from '@/shared/adminAccountApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const statusOptions = ['Trạng thái', 'Hoạt động', 'Bị khóa'];
 const typeOptions = ['Loại tài khoản', 'Người dùng', 'Nhà sáng tạo', 'Cửa hàng'];
@@ -55,6 +56,7 @@ const getStatusBadgeStyle = (status: string) => {
 const ITEMS_PER_PAGE = 10;
 
 export default function AccountsPage() {
+    const toast = useToast();
     const [accounts, setAccounts] = useState<TaiKhoanItem[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [selectedStatus, setSelectedStatus] = useState('Trạng thái');
@@ -69,7 +71,6 @@ export default function AccountsPage() {
     const [selectedReason, setSelectedReason] = useState('');
     const [customReason, setCustomReason] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
-    const [actionError, setActionError] = useState('');
 
     const fetchAccounts = useCallback(async () => {
         setLoading(true);
@@ -103,16 +104,16 @@ export default function AccountsPage() {
     const handleConfirmLock = async () => {
         if (!selectedAccountId || !finalReason) return;
         setActionLoading(true);
-        setActionError('');
         try {
             await adminAccountApi.khoaTaiKhoan(selectedAccountId, finalReason);
             setShowLockModal(false);
             setSelectedAccountId(null);
             setSelectedReason('');
             setCustomReason('');
+            toast.success('Đã khóa tài khoản thành công');
             await fetchAccounts();
         } catch (error: unknown) {
-            setActionError(getErrorMessage(error, 'Không thể khóa tài khoản'));
+            toast.error(getErrorMessage(error, 'Không thể khóa tài khoản'));
         } finally {
             setActionLoading(false);
         }
@@ -121,14 +122,14 @@ export default function AccountsPage() {
     const handleConfirmUnlock = async () => {
         if (!selectedAccountId) return;
         setActionLoading(true);
-        setActionError('');
         try {
             await adminAccountApi.moKhoaTaiKhoan(selectedAccountId);
             setShowUnlockModal(false);
             setSelectedAccountId(null);
+            toast.success('Đã mở khóa tài khoản thành công');
             await fetchAccounts();
         } catch (error: unknown) {
-            setActionError(getErrorMessage(error, 'Không thể mở khóa tài khoản'));
+            toast.error(getErrorMessage(error, 'Không thể mở khóa tài khoản'));
         } finally {
             setActionLoading(false);
         }
@@ -194,7 +195,6 @@ export default function AccountsPage() {
                                 setSelectedAccountId(row.id);
                                 setSelectedReason('');
                                 setCustomReason('');
-                                setActionError('');
                                 setShowLockModal(true);
                             }}
                             className="px-4 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -206,7 +206,6 @@ export default function AccountsPage() {
                         <button
                             onClick={() => {
                                 setSelectedAccountId(row.id);
-                                setActionError('');
                                 setShowUnlockModal(true);
                             }}
                             className="px-4 py-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -313,9 +312,8 @@ export default function AccountsPage() {
                                 />
                             )}
                         </div>
-                        {actionError && <p className="text-sm font-medium text-red-600">{actionError}</p>}
                         <div className="flex gap-3 pt-2">
-                            <button onClick={() => { setShowLockModal(false); setSelectedReason(''); setCustomReason(''); setSelectedAccountId(null); setActionError(''); }} className="flex-1 px-5 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Hủy</button>
+                            <button onClick={() => { setShowLockModal(false); setSelectedReason(''); setCustomReason(''); setSelectedAccountId(null); }} className="flex-1 px-5 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Hủy</button>
                             <button
                                 onClick={handleConfirmLock}
                                 className={`flex-1 px-5 py-3 rounded-xl text-sm font-bold text-white transition-colors cursor-pointer ${finalReason && !actionLoading ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-300 cursor-not-allowed'}`}
@@ -331,9 +329,8 @@ export default function AccountsPage() {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 mx-4">
                         <h3 className="text-lg font-bold text-black">Xác nhận mở khóa tài khoản</h3>
                         <p className="text-sm text-gray-600">Bạn có chắc muốn mở khóa tài khoản này? Người dùng sẽ có thể đăng nhập và sử dụng hệ thống bình thường.</p>
-                        {actionError && <p className="text-sm font-medium text-red-600">{actionError}</p>}
                         <div className="flex gap-3 pt-2">
-                            <button onClick={() => { setShowUnlockModal(false); setSelectedAccountId(null); setActionError(''); }} className="flex-1 px-5 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Hủy</button>
+                            <button onClick={() => { setShowUnlockModal(false); setSelectedAccountId(null); }} className="flex-1 px-5 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">Hủy</button>
                             <button
                                 onClick={handleConfirmUnlock}
                                 className={`flex-1 px-5 py-3 rounded-xl text-sm font-bold text-white transition-colors cursor-pointer ${!actionLoading ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-300 cursor-not-allowed'}`}

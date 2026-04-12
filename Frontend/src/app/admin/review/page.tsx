@@ -5,6 +5,7 @@ import AdminTable, { Column } from '@/components/Admin/AdminTable';
 import Pagination from '@/components/Admin/Pagination';
 import ViewButton from '@/components/Admin/ViewButton';
 import { adminReviewApi, YeuCauItem } from '@/shared/adminReviewApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const statusOptions = ['Trạng thái', 'Chờ duyệt', 'Đã duyệt', 'Đã từ chối'];
 const typeOptions = ['Loại yêu cầu', 'Mở cửa hàng', 'Kiếm tiền từ nội dung'];
@@ -53,6 +54,7 @@ function getStatusStyle(status: string) {
 }
 
 export default function ReviewPage() {
+  const toast = useToast();
   const [activeDateFilter, setActiveDateFilter] = useState<(typeof dateFilters)[number]['key']>('today');
   const [selectedStatus, setSelectedStatus] = useState('Trạng thái');
   const [selectedType, setSelectedType] = useState('Loại yêu cầu');

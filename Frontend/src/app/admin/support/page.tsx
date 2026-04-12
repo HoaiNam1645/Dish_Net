@@ -11,6 +11,7 @@ import {
   LoaiTaiKhoan,
   TrangThaiHoTro,
 } from '@/shared/adminSupportApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -71,6 +72,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function SupportPage() {
+  const toast = useToast();
   const [requests, setRequests] = useState<AdminSupportItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('Loại tài khoản');
@@ -81,7 +83,6 @@ export default function SupportPage() {
   const [error, setError] = useState('');
 
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState('');
   const [viewingRequest, setViewingRequest] = useState<ChiTietSupportResponse | null>(null);
   const [responseText, setResponseText] = useState('');
   const [sendingResponse, setSendingResponse] = useState(false);
@@ -114,13 +115,12 @@ export default function SupportPage() {
 
   const openModal = async (requestId: number) => {
     setDetailLoading(true);
-    setDetailError('');
     try {
       const data = await adminSupportApi.layChiTiet(requestId);
       setViewingRequest(data);
       setResponseText(data.thong_tin_phan_hoi?.noi_dung_phan_hoi ?? '');
     } catch (fetchError: unknown) {
-      setDetailError(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu hỗ trợ'));
+      toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu hỗ trợ'));
       setViewingRequest(null);
       setResponseText('');
     } finally {
@@ -131,22 +131,21 @@ export default function SupportPage() {
   const closeModal = () => {
     setViewingRequest(null);
     setResponseText('');
-    setDetailError('');
   };
 
   const handleSendResponse = async () => {
     if (!viewingRequest || !responseText.trim()) return;
 
     setSendingResponse(true);
-    setDetailError('');
     try {
       await adminSupportApi.phanHoi(viewingRequest.id, responseText);
       const refreshed = await adminSupportApi.layChiTiet(viewingRequest.id);
       setViewingRequest(refreshed);
       setResponseText(refreshed.thong_tin_phan_hoi?.noi_dung_phan_hoi ?? '');
+      toast.success('Đã gửi phản hồi thành công');
       await fetchRequests();
     } catch (sendError: unknown) {
-      setDetailError(getErrorMessage(sendError, 'Không thể gửi phản hồi'));
+      toast.error(getErrorMessage(sendError, 'Không thể gửi phản hồi'));
     } finally {
       setSendingResponse(false);
     }
@@ -312,18 +311,8 @@ export default function SupportPage() {
                 <div className="flex justify-center py-10">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-500 border-t-transparent" />
                 </div>
-              ) : detailError && !viewingRequest ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-                  {detailError}
-                </div>
               ) : viewingRequest ? (
                 <>
-                  {detailError ? (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-                      {detailError}
-                    </div>
-                  ) : null}
-
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <InfoField label="Mã yêu cầu" value={viewingRequest.ma_yeu_cau} />
                     <InfoField label="Trạng thái" value={statusLabel[viewingRequest.thong_tin_yeu_cau.trang_thai]} badgeClass={getStatusBadge(viewingRequest.thong_tin_yeu_cau.trang_thai)} />

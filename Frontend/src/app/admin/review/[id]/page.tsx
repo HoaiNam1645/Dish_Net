@@ -9,6 +9,7 @@ import {
   YeuCauLoai,
   YeuCauTrangThai,
 } from '@/shared/adminReviewApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const rejectReasons = [
   'Thông tin không chính xác',
@@ -74,14 +75,13 @@ function getStatusBadge(trangThai: YeuCauTrangThai) {
 
 export default function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const toast = useToast();
   const [request, setRequest] = useState<ChiTietYeuCauResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -89,14 +89,14 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
         const data = await adminReviewApi.layChiTiet(Number(id));
         setRequest(data);
       } catch (fetchError: unknown) {
-        setError(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu'));
+        toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchDetail();
-  }, [id]);
+  }, [id, toast]);
 
   const currentStatus = request?.thong_tin_yeu_cau.trang_thai;
   const finalRejectReason = selectedReason === OTHER_REASON ? customReason.trim() : selectedReason;
@@ -110,12 +110,12 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
     if (!request) return;
 
     setActionLoading(true);
-    setActionError('');
     try {
       await adminReviewApi.pheDuyet(request.id);
       await refreshDetail();
+      toast.success('Đã phê duyệt yêu cầu');
     } catch (approveError: unknown) {
-      setActionError(getErrorMessage(approveError, 'Không thể phê duyệt yêu cầu'));
+      toast.error(getErrorMessage(approveError, 'Không thể phê duyệt yêu cầu'));
     } finally {
       setActionLoading(false);
     }
@@ -125,15 +125,15 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
     if (!request || !finalRejectReason) return;
 
     setActionLoading(true);
-    setActionError('');
     try {
       await adminReviewApi.tuChoi(request.id, finalRejectReason);
       setShowRejectModal(false);
       setSelectedReason('');
       setCustomReason('');
       await refreshDetail();
+      toast.success('Đã từ chối yêu cầu');
     } catch (rejectError: unknown) {
-      setActionError(getErrorMessage(rejectError, 'Không thể từ chối yêu cầu'));
+      toast.error(getErrorMessage(rejectError, 'Không thể từ chối yêu cầu'));
     } finally {
       setActionLoading(false);
     }
@@ -179,12 +179,6 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
         </Link>
         <h1 className="text-xl font-bold text-black">Chi tiết đơn yêu cầu</h1>
       </div>
-
-      {actionError ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {actionError}
-        </div>
-      ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
@@ -359,7 +353,6 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
               <button
                 type="button"
                 onClick={() => {
-                  setActionError('');
                   setShowRejectModal(true);
                 }}
                 disabled={actionLoading}

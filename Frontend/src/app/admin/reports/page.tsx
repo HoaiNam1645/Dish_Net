@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Pagination from '@/components/Admin/Pagination';
 import { adminReportApi, BaoCaoItem, BaoCaoTrangThai } from '@/shared/adminReportApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -23,16 +24,15 @@ function getStatusLabel(status: BaoCaoTrangThai) {
 
 export default function ReportsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [reports, setReports] = useState<BaoCaoItem[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       const data = await adminReportApi.layDanhSach({
         tim_kiem: searchQuery || undefined,
@@ -42,13 +42,13 @@ export default function ReportsPage() {
       setReports(data.du_lieu);
       setTotalPages(data.tong_trang || 1);
     } catch (fetchError: unknown) {
+      toast.error(fetchError instanceof Error ? fetchError.message : 'Không thể tải danh sách báo cáo');
       setReports([]);
       setTotalPages(1);
-      setError(fetchError instanceof Error ? fetchError.message : 'Không thể tải danh sách báo cáo');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery]);
+  }, [currentPage, searchQuery, toast]);
 
   useEffect(() => {
     void fetchReports();
@@ -74,12 +74,6 @@ export default function ReportsPage() {
           </svg>
         </div>
       </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
-        </div>
-      ) : null}
 
       <div className="space-y-4">
         {loading ? (

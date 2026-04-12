@@ -8,6 +8,7 @@ import {
   KhuyenMaiLoai,
   KhuyenMaiTrangThai,
 } from '@/shared/adminPromotionApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -130,6 +131,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function PromotionsPage() {
+  const toast = useToast();
   const [promotions, setPromotions] = useState<KhuyenMaiItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'' | KhuyenMaiTrangThai>('');
@@ -138,8 +140,6 @@ export default function PromotionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -152,7 +152,6 @@ export default function PromotionsPage() {
   useEffect(() => {
     const runFetch = async () => {
       setLoading(true);
-      setError('');
       try {
         const data = await adminPromotionApi.layDanhSach({
           tim_kiem: searchQuery.trim() || undefined,
@@ -165,7 +164,7 @@ export default function PromotionsPage() {
         setPromotions(data.du_lieu);
         setTotalPages(data.tong_trang || 1);
       } catch (fetchError: unknown) {
-        setError(getErrorMessage(fetchError, 'Không thể tải danh sách khuyến mãi'));
+        toast.error(getErrorMessage(fetchError, 'Không thể tải danh sách khuyến mãi'));
       } finally {
         setLoading(false);
       }
@@ -196,7 +195,6 @@ export default function PromotionsPage() {
 
   const loadPromotionList = async (page = currentPage) => {
     setLoading(true);
-    setError('');
     try {
       const data = await adminPromotionApi.layDanhSach({
         tim_kiem: searchQuery.trim() || undefined,
@@ -209,7 +207,7 @@ export default function PromotionsPage() {
       setPromotions(data.du_lieu);
       setTotalPages(data.tong_trang || 1);
     } catch (fetchError: unknown) {
-      setError(getErrorMessage(fetchError, 'Không thể tải danh sách khuyến mãi'));
+      toast.error(getErrorMessage(fetchError, 'Không thể tải danh sách khuyến mãi'));
     } finally {
       setLoading(false);
     }
@@ -243,8 +241,6 @@ export default function PromotionsPage() {
   const handleAdd = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    setError('');
-    setSuccessMessage('');
     try {
       await adminPromotionApi.tao({
         ...formData,
@@ -256,10 +252,10 @@ export default function PromotionsPage() {
       setShowAddModal(false);
       resetForm();
       setCurrentPage(1);
-      setSuccessMessage('Đã thêm khuyến mãi mới');
+      toast.success('Đã thêm khuyến mãi mới');
       await loadPromotionList(1);
     } catch (submitError: unknown) {
-      setError(getErrorMessage(submitError, 'Không thể tạo khuyến mãi'));
+      toast.error(getErrorMessage(submitError, 'Không thể tạo khuyến mãi'));
     } finally {
       setSubmitting(false);
     }
@@ -268,8 +264,6 @@ export default function PromotionsPage() {
   const handleEdit = async () => {
     if (!editingPromo || !canSubmit) return;
     setSubmitting(true);
-    setError('');
-    setSuccessMessage('');
     try {
       await adminPromotionApi.capNhat(editingPromo.id, {
         ...formData,
@@ -280,10 +274,10 @@ export default function PromotionsPage() {
       });
       setShowEditModal(false);
       resetForm();
-      setSuccessMessage('Đã cập nhật khuyến mãi');
+      toast.success('Đã cập nhật khuyến mãi');
       await loadPromotionList();
     } catch (submitError: unknown) {
-      setError(getErrorMessage(submitError, 'Không thể cập nhật khuyến mãi'));
+      toast.error(getErrorMessage(submitError, 'Không thể cập nhật khuyến mãi'));
     } finally {
       setSubmitting(false);
     }
@@ -292,16 +286,14 @@ export default function PromotionsPage() {
   const handleDelete = async () => {
     if (!deletingPromo) return;
     setSubmitting(true);
-    setError('');
-    setSuccessMessage('');
     try {
       await adminPromotionApi.xoa(deletingPromo.id);
       setShowDeleteModal(false);
       setDeletingPromo(null);
-      setSuccessMessage('Đã xóa khuyến mãi');
+      toast.success('Đã xóa khuyến mãi');
       await loadPromotionList();
     } catch (submitError: unknown) {
-      setError(getErrorMessage(submitError, 'Không thể xóa khuyến mãi'));
+      toast.error(getErrorMessage(submitError, 'Không thể xóa khuyến mãi'));
     } finally {
       setSubmitting(false);
     }
@@ -309,14 +301,12 @@ export default function PromotionsPage() {
 
   const handlePause = async (id: number) => {
     setSubmitting(true);
-    setError('');
-    setSuccessMessage('');
     try {
       await adminPromotionApi.tamDung(id);
-      setSuccessMessage('Đã tạm dừng khuyến mãi');
+      toast.success('Đã tạm dừng khuyến mãi');
       await loadPromotionList();
     } catch (submitError: unknown) {
-      setError(getErrorMessage(submitError, 'Không thể tạm dừng khuyến mãi'));
+      toast.error(getErrorMessage(submitError, 'Không thể tạm dừng khuyến mãi'));
     } finally {
       setSubmitting(false);
     }
@@ -511,18 +501,6 @@ export default function PromotionsPage() {
           Thêm khuyến mãi
         </button>
       </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
-        </div>
-      ) : null}
-
-      {successMessage ? (
-        <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-          {successMessage}
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[250px] max-w-md">

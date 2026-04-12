@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminReportApi, ChiTietBaoCaoResponse } from '@/shared/adminReportApi';
+import { useToast } from '@/components/Admin/Toast';
 
 const allActions = [
   'Gỡ nội dung vi phạm',
@@ -44,11 +45,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
   const [report, setReport] = useState<ChiTietBaoCaoResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
 
   const [resolution, setResolution] = useState(resolutionOptions[0]);
   const [violationLevel, setViolationLevel] = useState(violationOptions[0]);
@@ -65,14 +65,14 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
         setCheckedActions(data.ket_qua_xu_ly.hanh_dong_ap_dung);
         setSendWarning(data.ket_qua_xu_ly.gui_canh_bao);
       } catch (fetchError: unknown) {
-        setError(getErrorMessage(fetchError, 'Không thể tải chi tiết báo cáo'));
+        toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết báo cáo'));
       } finally {
         setLoading(false);
       }
     };
 
     void fetchDetail();
-  }, [id]);
+  }, [id, toast]);
 
   const isReadOnly = report?.thong_tin_bao_cao.trang_thai === 'da_xu_ly';
   const statusLabel = useMemo(
@@ -90,8 +90,6 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
     if (!report) return;
 
     setSaving(true);
-    setSavedMessage('');
-    setError('');
     try {
       await adminReportApi.xuLy(report.id, {
         ket_qua_xu_ly: resolution,
@@ -101,9 +99,9 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
       });
       const refreshed = await adminReportApi.layChiTiet(report.id);
       setReport(refreshed);
-      setSavedMessage('Đã lưu kết quả xử lý');
+      toast.success('Đã lưu kết quả xử lý');
     } catch (saveError: unknown) {
-      setError(getErrorMessage(saveError, 'Không thể lưu kết quả xử lý'));
+      toast.error(getErrorMessage(saveError, 'Không thể lưu kết quả xử lý'));
     } finally {
       setSaving(false);
     }
@@ -142,18 +140,6 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
         </button>
         <h1 className="text-xl font-bold text-black tracking-wide">XỬ LÝ BÁO CÁO</h1>
       </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
-        </div>
-      ) : null}
-
-      {savedMessage ? (
-        <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-          {savedMessage}
-        </div>
-      ) : null}
 
       <div className="flex gap-5 items-start">
         <div className="flex-1 space-y-5">
