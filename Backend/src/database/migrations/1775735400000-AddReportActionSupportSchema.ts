@@ -1,14 +1,14 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddReportActionSupportSchema1775735400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const hasKieuKhoaTaiKhoan = await queryRunner.hasColumn(
-      'nguoi_dung',
-      'kieu_khoa_tai_khoan',
+      "nguoi_dung",
+      "kieu_khoa_tai_khoan",
     );
     const hasThoiGianMoKhoa = await queryRunner.hasColumn(
-      'nguoi_dung',
-      'thoi_gian_mo_khoa',
+      "nguoi_dung",
+      "thoi_gian_mo_khoa",
     );
 
     if (!hasKieuKhoaTaiKhoan) {
@@ -144,19 +144,19 @@ export class AddReportActionSupportSchema1775735400000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE IF EXISTS thong_bao');
-    await queryRunner.query('DROP TABLE IF EXISTS binh_luan');
-    await queryRunner.query('DROP TABLE IF EXISTS bai_viet');
-    await queryRunner.query('DROP TABLE IF EXISTS mon_an');
-    await queryRunner.query('DROP TABLE IF EXISTS cua_hang');
+    await queryRunner.query("DROP TABLE IF EXISTS thong_bao");
+    await queryRunner.query("DROP TABLE IF EXISTS binh_luan");
+    await queryRunner.query("DROP TABLE IF EXISTS bai_viet");
+    await queryRunner.query("DROP TABLE IF EXISTS mon_an");
+    await queryRunner.query("DROP TABLE IF EXISTS cua_hang");
 
     const hasKieuKhoaTaiKhoan = await queryRunner.hasColumn(
-      'nguoi_dung',
-      'kieu_khoa_tai_khoan',
+      "nguoi_dung",
+      "kieu_khoa_tai_khoan",
     );
     const hasThoiGianMoKhoa = await queryRunner.hasColumn(
-      'nguoi_dung',
-      'thoi_gian_mo_khoa',
+      "nguoi_dung",
+      "thoi_gian_mo_khoa",
     );
 
     if (hasKieuKhoaTaiKhoan) {

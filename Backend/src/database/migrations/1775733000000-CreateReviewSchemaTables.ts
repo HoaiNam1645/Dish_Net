@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateReviewSchemaTables1775733000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -66,8 +66,8 @@ export class CreateReviewSchemaTables1775733000000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE IF EXISTS nhat_ky_he_thong');
-    await queryRunner.query('DROP TABLE IF EXISTS yeu_cau_nang_cap');
-    await queryRunner.query('DROP TABLE IF EXISTS tep_dinh_kem');
+    await queryRunner.query("DROP TABLE IF EXISTS nhat_ky_he_thong");
+    await queryRunner.query("DROP TABLE IF EXISTS yeu_cau_nang_cap");
+    await queryRunner.query("DROP TABLE IF EXISTS tep_dinh_kem");
   }
 }

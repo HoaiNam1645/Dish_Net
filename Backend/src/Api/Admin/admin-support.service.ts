@@ -2,12 +2,12 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
-import { NguoiDungEntity } from '../Auth/entities/nguoi-dung.entity';
-import { TepDinhKemEntity } from './entities/tep-dinh-kem.entity';
-import { YeuCauHoTroEntity } from './entities/yeu-cau-ho-tro.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, SelectQueryBuilder } from "typeorm";
+import { NguoiDungEntity } from "../Auth/entities/nguoi-dung.entity";
+import { TepDinhKemEntity } from "./entities/tep-dinh-kem.entity";
+import { YeuCauHoTroEntity } from "./entities/yeu-cau-ho-tro.entity";
 
 @Injectable()
 export class AdminSupportService {
@@ -30,22 +30,25 @@ export class AdminSupportService {
     const skip = (trang - 1) * soLuong;
 
     const qb = this.yeuCauHoTroRepo
-      .createQueryBuilder('yc')
-      .leftJoinAndSelect('yc.nguoi_gui', 'nd')
-      .where('nd.la_admin = :laAdmin', { laAdmin: false })
-      .orderBy('yc.thoi_gian_gui', 'DESC')
-      .addOrderBy('yc.id', 'DESC')
+      .createQueryBuilder("yc")
+      .leftJoinAndSelect("yc.nguoi_gui", "nd")
+      .where("nd.la_admin = :laAdmin", { laAdmin: false })
+      .orderBy("yc.thoi_gian_gui", "DESC")
+      .addOrderBy("yc.id", "DESC")
       .skip(skip)
       .take(soLuong);
 
     if (query.tim_kiem?.trim()) {
-      qb.andWhere('(yc.ma_yeu_cau LIKE :search OR nd.ten_hien_thi LIKE :search)', {
-        search: `%${query.tim_kiem.trim()}%`,
-      });
+      qb.andWhere(
+        "(yc.ma_yeu_cau LIKE :search OR nd.ten_hien_thi LIKE :search)",
+        {
+          search: `%${query.tim_kiem.trim()}%`,
+        },
+      );
     }
 
     if (query.trang_thai) {
-      qb.andWhere('yc.trang_thai = :trangThai', {
+      qb.andWhere("yc.trang_thai = :trangThai", {
         trangThai: query.trang_thai,
       });
     }
@@ -81,17 +84,17 @@ export class AdminSupportService {
     });
 
     if (!yeuCau) {
-      throw new NotFoundException('Yeu cau ho tro khong ton tai');
+      throw new NotFoundException("Yeu cau ho tro khong ton tai");
     }
 
     const tepDinhKem = await this.tepDinhKemRepo.find({
       where: {
-        loai_doi_tuong: 'yeu_cau_ho_tro',
+        loai_doi_tuong: "yeu_cau_ho_tro",
         id_doi_tuong: id,
       },
       order: {
-        thu_tu_hien_thi: 'ASC',
-        id: 'ASC',
+        thu_tu_hien_thi: "ASC",
+        id: "ASC",
       },
     });
 
@@ -111,13 +114,14 @@ export class AdminSupportService {
         trang_thai: yeuCau.trang_thai,
         thoi_gian_gui: yeuCau.thoi_gian_gui,
       },
-      thong_tin_phan_hoi: yeuCau.trang_thai === 'da_phan_hoi'
-        ? {
-            noi_dung_phan_hoi: yeuCau.noi_dung_phan_hoi,
-            thoi_gian_phan_hoi: yeuCau.thoi_gian_phan_hoi,
-            admin_phan_hoi: yeuCau.admin_phan_hoi?.email ?? 'Admin',
-          }
-        : null,
+      thong_tin_phan_hoi:
+        yeuCau.trang_thai === "da_phan_hoi"
+          ? {
+              noi_dung_phan_hoi: yeuCau.noi_dung_phan_hoi,
+              thoi_gian_phan_hoi: yeuCau.thoi_gian_phan_hoi,
+              admin_phan_hoi: yeuCau.admin_phan_hoi?.email ?? "Admin",
+            }
+          : null,
       tep_dinh_kem: tepDinhKem.map((tep) => ({
         id: tep.id,
         loai_tep: tep.loai_tep,
@@ -129,7 +133,7 @@ export class AdminSupportService {
 
   async phanHoi(id: number, noiDung: string, idAdmin: number) {
     if (!noiDung.trim()) {
-      throw new BadRequestException('Noi dung phan hoi khong duoc de trong');
+      throw new BadRequestException("Noi dung phan hoi khong duoc de trong");
     }
 
     const yeuCau = await this.yeuCauHoTroRepo.findOne({
@@ -137,21 +141,21 @@ export class AdminSupportService {
     });
 
     if (!yeuCau) {
-      throw new NotFoundException('Yeu cau ho tro khong ton tai');
+      throw new NotFoundException("Yeu cau ho tro khong ton tai");
     }
 
-    if (yeuCau.trang_thai === 'da_phan_hoi') {
-      throw new BadRequestException('Yeu cau ho tro da duoc phan hoi');
+    if (yeuCau.trang_thai === "da_phan_hoi") {
+      throw new BadRequestException("Yeu cau ho tro da duoc phan hoi");
     }
 
     yeuCau.noi_dung_phan_hoi = noiDung.trim();
     yeuCau.id_admin_phan_hoi = idAdmin;
-    yeuCau.trang_thai = 'da_phan_hoi';
+    yeuCau.trang_thai = "da_phan_hoi";
     yeuCau.thoi_gian_phan_hoi = new Date();
 
     await this.yeuCauHoTroRepo.save(yeuCau);
 
-    return { message: 'Phan hoi yeu cau ho tro thanh cong' };
+    return { message: "Phan hoi yeu cau ho tro thanh cong" };
   }
 
   private apDungLocLoaiTaiKhoan(
@@ -159,16 +163,24 @@ export class AdminSupportService {
     loaiTaiKhoan?: string,
   ) {
     switch (loaiTaiKhoan) {
-      case 'nguoi_dung':
-        qb.andWhere('nd.la_nha_sang_tao = :laNhaSangTao', { laNhaSangTao: false })
-          .andWhere('nd.la_chu_cua_hang = :laChuCuaHang', { laChuCuaHang: false });
+      case "nguoi_dung":
+        qb.andWhere("nd.la_nha_sang_tao = :laNhaSangTao", {
+          laNhaSangTao: false,
+        }).andWhere("nd.la_chu_cua_hang = :laChuCuaHang", {
+          laChuCuaHang: false,
+        });
         break;
-      case 'nha_sang_tao':
-        qb.andWhere('nd.la_nha_sang_tao = :laNhaSangTao', { laNhaSangTao: true })
-          .andWhere('nd.la_chu_cua_hang = :laChuCuaHang', { laChuCuaHang: false });
+      case "nha_sang_tao":
+        qb.andWhere("nd.la_nha_sang_tao = :laNhaSangTao", {
+          laNhaSangTao: true,
+        }).andWhere("nd.la_chu_cua_hang = :laChuCuaHang", {
+          laChuCuaHang: false,
+        });
         break;
-      case 'chu_cua_hang':
-        qb.andWhere('nd.la_chu_cua_hang = :laChuCuaHang', { laChuCuaHang: true });
+      case "chu_cua_hang":
+        qb.andWhere("nd.la_chu_cua_hang = :laChuCuaHang", {
+          laChuCuaHang: true,
+        });
         break;
       default:
         break;
@@ -176,8 +188,8 @@ export class AdminSupportService {
   }
 
   private xacDinhLoaiTaiKhoan(nguoiDung: NguoiDungEntity) {
-    if (nguoiDung.la_chu_cua_hang) return 'chu_cua_hang';
-    if (nguoiDung.la_nha_sang_tao) return 'nha_sang_tao';
-    return 'nguoi_dung';
+    if (nguoiDung.la_chu_cua_hang) return "chu_cua_hang";
+    if (nguoiDung.la_nha_sang_tao) return "nha_sang_tao";
+    return "nguoi_dung";
   }
 }

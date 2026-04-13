@@ -1,10 +1,10 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { AdminRevenueService } from './admin-revenue.service';
-import { DanhSachDoanhThuDonHangQueryDto } from './dto/admin-revenue.dto';
+import { Controller, Get, Query } from "@nestjs/common";
+import { Roles } from "../../common/decorators/roles.decorator";
+import { AdminRevenueService } from "./admin-revenue.service";
+import { DanhSachDoanhThuDonHangQueryDto } from "./dto/admin-revenue.dto";
 
-@Controller('admin/doanh-thu')
-@Roles('admin')
+@Controller("admin/doanh-thu")
+@Roles("admin")
 export class AdminRevenueController {
   constructor(private readonly adminRevenueService: AdminRevenueService) {}
 
@@ -13,7 +13,7 @@ export class AdminRevenueController {
     return this.adminRevenueService.layTongQuan();
   }
 
-  @Get('don-hang')
+  @Get("don-hang")
   async layDanhSachDonHang(@Query() query: DanhSachDoanhThuDonHangQueryDto) {
     return this.adminRevenueService.layDanhSachDonHang(query);
   }

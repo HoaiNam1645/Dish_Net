@@ -1,9 +1,15 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddRevenueSourceColumnsToDonHang1775813000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasIdBaiVietNguon = await queryRunner.hasColumn('don_hang', 'id_bai_viet_nguon');
-    const hasIdNhaSangTaoNguon = await queryRunner.hasColumn('don_hang', 'id_nha_sang_tao_nguon');
+    const hasIdBaiVietNguon = await queryRunner.hasColumn(
+      "don_hang",
+      "id_bai_viet_nguon",
+    );
+    const hasIdNhaSangTaoNguon = await queryRunner.hasColumn(
+      "don_hang",
+      "id_nha_sang_tao_nguon",
+    );
 
     if (!hasIdBaiVietNguon) {
       await queryRunner.query(`
@@ -21,8 +27,14 @@ export class AddRevenueSourceColumnsToDonHang1775813000000 implements MigrationI
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasIdNhaSangTaoNguon = await queryRunner.hasColumn('don_hang', 'id_nha_sang_tao_nguon');
-    const hasIdBaiVietNguon = await queryRunner.hasColumn('don_hang', 'id_bai_viet_nguon');
+    const hasIdNhaSangTaoNguon = await queryRunner.hasColumn(
+      "don_hang",
+      "id_nha_sang_tao_nguon",
+    );
+    const hasIdBaiVietNguon = await queryRunner.hasColumn(
+      "don_hang",
+      "id_bai_viet_nguon",
+    );
 
     if (hasIdNhaSangTaoNguon) {
       await queryRunner.query(`

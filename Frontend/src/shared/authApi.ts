@@ -104,6 +104,12 @@ export const authApi = {
       body: JSON.stringify(body),
     }),
 
+  xacNhanQuenMatKhau: (body: { email: string; ma_otp: string }) =>
+    request<{ message: string }>('/auth/xac-nhan-quen-mat-khau', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   datLaiMatKhau: (body: {
     email: string;
     ma_otp: string;

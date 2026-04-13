@@ -2,13 +2,13 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NguoiDungEntity } from '../Auth/entities/nguoi-dung.entity';
-import { NhatKyHeThongEntity } from './entities/nhat-ky-he-thong.entity';
-import { TepDinhKemEntity } from './entities/tep-dinh-kem.entity';
-import { YeuCauNangCapEntity } from './entities/yeu-cau-nang-cap.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { NguoiDungEntity } from "../Auth/entities/nguoi-dung.entity";
+import { NhatKyHeThongEntity } from "./entities/nhat-ky-he-thong.entity";
+import { TepDinhKemEntity } from "./entities/tep-dinh-kem.entity";
+import { YeuCauNangCapEntity } from "./entities/yeu-cau-nang-cap.entity";
 
 type DanhSachQuery = {
   tim_kiem?: string;
@@ -44,34 +44,34 @@ export class AdminReviewService {
     const skip = (trang - 1) * soLuong;
 
     const qb = this.yeuCauRepo
-      .createQueryBuilder('yc')
-      .leftJoinAndSelect('yc.nguoi_gui', 'nd')
-      .orderBy('yc.thoi_gian_gui', 'DESC')
-      .addOrderBy('yc.id', 'DESC')
+      .createQueryBuilder("yc")
+      .leftJoinAndSelect("yc.nguoi_gui", "nd")
+      .orderBy("yc.thoi_gian_gui", "DESC")
+      .addOrderBy("yc.id", "DESC")
       .skip(skip)
       .take(soLuong);
 
     if (query.tim_kiem?.trim()) {
-      qb.andWhere('(nd.ten_hien_thi LIKE :search OR nd.email LIKE :search)', {
+      qb.andWhere("(nd.ten_hien_thi LIKE :search OR nd.email LIKE :search)", {
         search: `%${query.tim_kiem.trim()}%`,
       });
     }
 
     if (query.loai_yeu_cau) {
-      qb.andWhere('yc.loai_yeu_cau = :loaiYeuCau', {
+      qb.andWhere("yc.loai_yeu_cau = :loaiYeuCau", {
         loaiYeuCau: query.loai_yeu_cau,
       });
     }
 
     if (query.trang_thai) {
-      qb.andWhere('yc.trang_thai = :trangThai', {
+      qb.andWhere("yc.trang_thai = :trangThai", {
         trangThai: query.trang_thai,
       });
     }
 
     const dateRange = this.xayDungKhoangThoiGian(query);
     if (dateRange) {
-      qb.andWhere('yc.thoi_gian_gui BETWEEN :tuNgay AND :denNgay', {
+      qb.andWhere("yc.thoi_gian_gui BETWEEN :tuNgay AND :denNgay", {
         tuNgay: dateRange.tuNgay,
         denNgay: dateRange.denNgay,
       });
@@ -106,34 +106,34 @@ export class AdminReviewService {
     });
 
     if (!yc) {
-      throw new NotFoundException('Yeu cau khong ton tai');
+      throw new NotFoundException("Yeu cau khong ton tai");
     }
 
     const [tepMinhChung, lichSu] = await Promise.all([
       this.tepDinhKemRepo.find({
         where: {
-          loai_doi_tuong: 'yeu_cau_nang_cap',
+          loai_doi_tuong: "yeu_cau_nang_cap",
           id_doi_tuong: id,
         },
         order: {
-          thu_tu_hien_thi: 'ASC',
-          id: 'ASC',
+          thu_tu_hien_thi: "ASC",
+          id: "ASC",
         },
       }),
       this.nhatKyRepo.find({
         where: {
-          loai_doi_tuong: 'yeu_cau_nang_cap',
+          loai_doi_tuong: "yeu_cau_nang_cap",
           id_doi_tuong: id,
         },
         relations: {
           nguoi_thuc_hien: true,
         },
-        order: { ngay_tao: 'ASC' },
+        order: { ngay_tao: "ASC" },
       }),
     ]);
 
     const videos = tepMinhChung
-      .filter((tep) => tep.loai_tep === 'video')
+      .filter((tep) => tep.loai_tep === "video")
       .map((tep, index) => ({
         tieu_de: tep.ghi_chu?.trim() || `Video nổi bật ${index + 1}`,
         ngay_dang: yc.thoi_gian_gui.toISOString(),
@@ -158,23 +158,25 @@ export class AdminReviewService {
         trang_thai: yc.trang_thai,
         ly_do_tu_choi: yc.ly_do_tu_choi,
       },
-      thong_tin_dang_ky_cua_hang: yc.loai_yeu_cau === 'mo_cua_hang'
-        ? {
-            ten_cua_hang: yc.ten_cua_hang_de_xuat,
-            dia_chi_cua_hang: yc.dia_chi_kinh_doanh,
-            so_dien_thoai_lien_he: yc.so_dien_thoai_lien_he,
-            mo_ta_cua_hang: yc.ly_do_yeu_cau,
-          }
-        : null,
-      thong_tin_kiem_tien_noi_dung: yc.loai_yeu_cau === 'kiem_tien_noi_dung'
-        ? {
-            ten_kenh: yc.ten_kenh,
-            mo_ta_noi_dung_kenh: yc.mo_ta_kenh,
-            so_bai_dang: yc.tong_bai_dang,
-            so_nguoi_theo_doi: yc.tong_nguoi_theo_doi,
-            video_noi_bat: videos,
-          }
-        : null,
+      thong_tin_dang_ky_cua_hang:
+        yc.loai_yeu_cau === "mo_cua_hang"
+          ? {
+              ten_cua_hang: yc.ten_cua_hang_de_xuat,
+              dia_chi_cua_hang: yc.dia_chi_kinh_doanh,
+              so_dien_thoai_lien_he: yc.so_dien_thoai_lien_he,
+              mo_ta_cua_hang: yc.ly_do_yeu_cau,
+            }
+          : null,
+      thong_tin_kiem_tien_noi_dung:
+        yc.loai_yeu_cau === "kiem_tien_noi_dung"
+          ? {
+              ten_kenh: yc.ten_kenh,
+              mo_ta_noi_dung_kenh: yc.mo_ta_kenh,
+              so_bai_dang: yc.tong_bai_dang,
+              so_nguoi_theo_doi: yc.tong_nguoi_theo_doi,
+              video_noi_bat: videos,
+            }
+          : null,
       tep_minh_chung: tepMinhChung.map((tep) => ({
         id: tep.id,
         loai_tep: tep.loai_tep,
@@ -192,7 +194,12 @@ export class AdminReviewService {
     };
   }
 
-  async pheDuyet(id: number, actor: Actor, ghiChu?: string, diaChiIp?: string | null) {
+  async pheDuyet(
+    id: number,
+    actor: Actor,
+    ghiChu?: string,
+    diaChiIp?: string | null,
+  ) {
     await this.yeuCauRepo.manager.transaction(async (manager) => {
       const yeuCauRepo = manager.getRepository(YeuCauNangCapEntity);
       const nguoiDungRepo = manager.getRepository(NguoiDungEntity);
@@ -204,24 +211,26 @@ export class AdminReviewService {
       });
 
       if (!yc) {
-        throw new NotFoundException('Yeu cau khong ton tai');
+        throw new NotFoundException("Yeu cau khong ton tai");
       }
 
-      if (yc.trang_thai !== 'cho_duyet') {
-        throw new BadRequestException('Chi co the phe duyet yeu cau dang cho duyet');
+      if (yc.trang_thai !== "cho_duyet") {
+        throw new BadRequestException(
+          "Chi co the phe duyet yeu cau dang cho duyet",
+        );
       }
 
       const duLieuCu = this.taoBanGhiTrangThai(yc);
 
-      if (yc.loai_yeu_cau === 'mo_cua_hang') {
+      if (yc.loai_yeu_cau === "mo_cua_hang") {
         yc.nguoi_gui.la_chu_cua_hang = true;
       }
 
-      if (yc.loai_yeu_cau === 'kiem_tien_noi_dung') {
+      if (yc.loai_yeu_cau === "kiem_tien_noi_dung") {
         yc.nguoi_gui.la_nha_sang_tao = true;
       }
 
-      yc.trang_thai = 'da_duyet';
+      yc.trang_thai = "da_duyet";
       yc.id_admin_xu_ly = actor.id;
       yc.thoi_gian_xu_ly = new Date();
       yc.ly_do_tu_choi = null;
@@ -230,22 +239,27 @@ export class AdminReviewService {
       await yeuCauRepo.save(yc);
       await nhatKyRepo.save({
         id_nguoi_thuc_hien: actor.id,
-        loai_doi_tuong: 'yeu_cau_nang_cap',
+        loai_doi_tuong: "yeu_cau_nang_cap",
         id_doi_tuong: yc.id,
-        hanh_dong: 'phe_duyet',
-        noi_dung: ghiChu?.trim() || 'Admin phê duyệt yêu cầu',
+        hanh_dong: "phe_duyet",
+        noi_dung: ghiChu?.trim() || "Admin phê duyệt yêu cầu",
         du_lieu_cu: duLieuCu,
         du_lieu_moi: this.taoBanGhiTrangThai(yc),
         dia_chi_ip: diaChiIp ?? null,
       });
     });
 
-    return { message: 'Phe duyet yeu cau thanh cong' };
+    return { message: "Phe duyet yeu cau thanh cong" };
   }
 
-  async tuChoi(id: number, lyDo: string, actor: Actor, diaChiIp?: string | null) {
+  async tuChoi(
+    id: number,
+    lyDo: string,
+    actor: Actor,
+    diaChiIp?: string | null,
+  ) {
     if (!lyDo.trim()) {
-      throw new BadRequestException('Ly do tu choi khong duoc de trong');
+      throw new BadRequestException("Ly do tu choi khong duoc de trong");
     }
 
     await this.yeuCauRepo.manager.transaction(async (manager) => {
@@ -254,16 +268,18 @@ export class AdminReviewService {
 
       const yc = await yeuCauRepo.findOne({ where: { id } });
       if (!yc) {
-        throw new NotFoundException('Yeu cau khong ton tai');
+        throw new NotFoundException("Yeu cau khong ton tai");
       }
 
-      if (yc.trang_thai !== 'cho_duyet') {
-        throw new BadRequestException('Chi co the tu choi yeu cau dang cho duyet');
+      if (yc.trang_thai !== "cho_duyet") {
+        throw new BadRequestException(
+          "Chi co the tu choi yeu cau dang cho duyet",
+        );
       }
 
       const duLieuCu = this.taoBanGhiTrangThai(yc);
 
-      yc.trang_thai = 'da_tu_choi';
+      yc.trang_thai = "da_tu_choi";
       yc.id_admin_xu_ly = actor.id;
       yc.thoi_gian_xu_ly = new Date();
       yc.ly_do_tu_choi = lyDo.trim();
@@ -271,9 +287,9 @@ export class AdminReviewService {
       await yeuCauRepo.save(yc);
       await nhatKyRepo.save({
         id_nguoi_thuc_hien: actor.id,
-        loai_doi_tuong: 'yeu_cau_nang_cap',
+        loai_doi_tuong: "yeu_cau_nang_cap",
         id_doi_tuong: yc.id,
-        hanh_dong: 'tu_choi',
+        hanh_dong: "tu_choi",
         noi_dung: lyDo.trim(),
         du_lieu_cu: duLieuCu,
         du_lieu_moi: this.taoBanGhiTrangThai(yc),
@@ -281,12 +297,12 @@ export class AdminReviewService {
       });
     });
 
-    return { message: 'Tu choi yeu cau thanh cong' };
+    return { message: "Tu choi yeu cau thanh cong" };
   }
 
   private layNhanNguoiThucHien(item: NhatKyHeThongEntity) {
     if (!item.nguoi_thuc_hien) {
-      return 'Hệ thống';
+      return "Hệ thống";
     }
 
     if (item.nguoi_thuc_hien.la_admin) {
@@ -297,7 +313,7 @@ export class AdminReviewService {
   }
 
   private taoMaYeuCau(id: number) {
-    return `YCNC-${String(id).padStart(4, '0')}`;
+    return `YCNC-${String(id).padStart(4, "0")}`;
   }
 
   private taoBanGhiTrangThai(yc: YeuCauNangCapEntity) {
@@ -311,46 +327,52 @@ export class AdminReviewService {
   }
 
   private xacDinhLoaiTaiKhoan(nguoiDung: NguoiDungEntity) {
-    if (nguoiDung.la_admin) return 'admin';
-    if (nguoiDung.la_chu_cua_hang) return 'chu_cua_hang';
-    if (nguoiDung.la_nha_sang_tao) return 'nha_sang_tao';
-    return 'nguoi_dung';
+    if (nguoiDung.la_admin) return "admin";
+    if (nguoiDung.la_chu_cua_hang) return "chu_cua_hang";
+    if (nguoiDung.la_nha_sang_tao) return "nha_sang_tao";
+    return "nguoi_dung";
   }
 
   private xayDungKhoangThoiGian(query: DanhSachQuery) {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
     switch (query.moc_thoi_gian) {
-      case 'today':
+      case "today":
         return {
           tuNgay: todayStart,
           denNgay: now,
         };
-      case '7days': {
+      case "7days": {
         const from = new Date(now);
         from.setDate(from.getDate() - 7);
         return { tuNgay: from, denNgay: now };
       }
-      case '30days': {
+      case "30days": {
         const from = new Date(now);
         from.setDate(from.getDate() - 30);
         return { tuNgay: from, denNgay: now };
       }
-      case 'custom': {
+      case "custom": {
         if (!query.tu_ngay || !query.den_ngay) {
-          throw new BadRequestException('Vui long chon day du tu ngay va den ngay');
+          throw new BadRequestException(
+            "Vui long chon day du tu ngay va den ngay",
+          );
         }
 
         const tuNgay = new Date(`${query.tu_ngay}T00:00:00`);
         const denNgay = new Date(`${query.den_ngay}T23:59:59`);
 
         if (Number.isNaN(tuNgay.getTime()) || Number.isNaN(denNgay.getTime())) {
-          throw new BadRequestException('Khoang thoi gian khong hop le');
+          throw new BadRequestException("Khoang thoi gian khong hop le");
         }
 
         if (tuNgay > denNgay) {
-          throw new BadRequestException('Tu ngay khong duoc lon hon den ngay');
+          throw new BadRequestException("Tu ngay khong duoc lon hon den ngay");
         }
 
         return { tuNgay, denNgay };

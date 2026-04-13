@@ -1,9 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class DropAdminReviewTempTables1775733600000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE IF EXISTS lich_su_kiem_duyet_yeu_cau');
-    await queryRunner.query('DROP TABLE IF EXISTS yeu_cau_he_thong');
+    await queryRunner.query("DROP TABLE IF EXISTS lich_su_kiem_duyet_yeu_cau");
+    await queryRunner.query("DROP TABLE IF EXISTS yeu_cau_he_thong");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

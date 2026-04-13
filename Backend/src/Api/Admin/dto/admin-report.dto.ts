@@ -1,4 +1,10 @@
-import { ArrayMinSize, IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+} from "class-validator";
 
 export class DanhSachBaoCaoQueryDto {
   @IsOptional()

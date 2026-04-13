@@ -3,9 +3,9 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 type StandardResponse<T> = {
   success: boolean;
@@ -14,9 +14,10 @@ type StandardResponse<T> = {
 };
 
 @Injectable()
-export class TransformResponseInterceptor<T>
-  implements NestInterceptor<T, StandardResponse<T> | T>
-{
+export class TransformResponseInterceptor<T> implements NestInterceptor<
+  T,
+  StandardResponse<T> | T
+> {
   intercept(
     _context: ExecutionContext,
     next: CallHandler,
@@ -29,7 +30,7 @@ export class TransformResponseInterceptor<T>
 
         return {
           success: true,
-          message: 'Request successful',
+          message: "Request successful",
           data,
         };
       }),
@@ -37,15 +38,15 @@ export class TransformResponseInterceptor<T>
   }
 
   private isStandardResponse(data: unknown): data is StandardResponse<T> {
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== "object") {
       return false;
     }
 
     return (
-      'success' in data &&
-      'message' in data &&
-      'data' in data &&
-      typeof (data as { success?: unknown }).success === 'boolean'
+      "success" in data &&
+      "message" in data &&
+      "data" in data &&
+      typeof (data as { success?: unknown }).success === "boolean"
     );
   }
 }

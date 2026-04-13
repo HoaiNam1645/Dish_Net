@@ -7,11 +7,11 @@ import {
   Patch,
   Query,
   Req,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { AdminReportService } from './admin-report.service';
-import { DanhSachBaoCaoQueryDto, XuLyBaoCaoDto } from './dto/admin-report.dto';
+} from "@nestjs/common";
+import { Request } from "express";
+import { Roles } from "../../common/decorators/roles.decorator";
+import { AdminReportService } from "./admin-report.service";
+import { DanhSachBaoCaoQueryDto, XuLyBaoCaoDto } from "./dto/admin-report.dto";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -21,8 +21,8 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@Controller('admin/bao-cao')
-@Roles('admin')
+@Controller("admin/bao-cao")
+@Roles("admin")
 export class AdminReportController {
   constructor(private readonly adminReportService: AdminReportService) {}
 
@@ -31,14 +31,14 @@ export class AdminReportController {
     return this.adminReportService.layDanhSach(query);
   }
 
-  @Get(':id')
-  async layChiTiet(@Param('id', ParseIntPipe) id: number) {
+  @Get(":id")
+  async layChiTiet(@Param("id", ParseIntPipe) id: number) {
     return this.adminReportService.layChiTiet(id);
   }
 
-  @Patch(':id/xu-ly')
+  @Patch(":id/xu-ly")
   async xuLyBaoCao(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: XuLyBaoCaoDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -47,7 +47,7 @@ export class AdminReportController {
       dto,
       {
         id: req.user?.sub ?? 0,
-        email: req.user?.email ?? 'admin',
+        email: req.user?.email ?? "admin",
       },
       req.ip,
     );

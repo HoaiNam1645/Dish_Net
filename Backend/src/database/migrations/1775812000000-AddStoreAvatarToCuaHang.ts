@@ -1,8 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddStoreAvatarToCuaHang1775812000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasAnhDaiDien = await queryRunner.hasColumn('cua_hang', 'anh_dai_dien');
+    const hasAnhDaiDien = await queryRunner.hasColumn(
+      "cua_hang",
+      "anh_dai_dien",
+    );
 
     if (!hasAnhDaiDien) {
       await queryRunner.query(`
@@ -13,7 +16,10 @@ export class AddStoreAvatarToCuaHang1775812000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasAnhDaiDien = await queryRunner.hasColumn('cua_hang', 'anh_dai_dien');
+    const hasAnhDaiDien = await queryRunner.hasColumn(
+      "cua_hang",
+      "anh_dai_dien",
+    );
 
     if (hasAnhDaiDien) {
       await queryRunner.query(`

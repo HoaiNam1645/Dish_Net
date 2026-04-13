@@ -1,15 +1,15 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
-import { getTypeOrmConfig } from './database/typeorm.config';
-import { AuthModule } from './Api/Auth/auth.module';
-import { AdminModule } from './Api/Admin/admin.module';
-import { EmailModule } from './shared/email/email.module';
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { JwtModule } from "@nestjs/jwt";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
+import { RolesGuard } from "./common/guards/roles.guard";
+import { getTypeOrmConfig } from "./database/typeorm.config";
+import { AuthModule } from "./Api/Auth/auth.module";
+import { AdminModule } from "./Api/Admin/admin.module";
+import { EmailModule } from "./shared/email/email.module";
 
 @Module({
   imports: [

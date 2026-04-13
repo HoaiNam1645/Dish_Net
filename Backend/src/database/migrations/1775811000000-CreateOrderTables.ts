@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateOrderTables1775811000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -73,8 +73,8 @@ export class CreateOrderTables1775811000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE IF EXISTS lich_su_don_hang');
-    await queryRunner.query('DROP TABLE IF EXISTS don_hang_chi_tiet');
-    await queryRunner.query('DROP TABLE IF EXISTS don_hang');
+    await queryRunner.query("DROP TABLE IF EXISTS lich_su_don_hang");
+    await queryRunner.query("DROP TABLE IF EXISTS don_hang_chi_tiet");
+    await queryRunner.query("DROP TABLE IF EXISTS don_hang");
   }
 }

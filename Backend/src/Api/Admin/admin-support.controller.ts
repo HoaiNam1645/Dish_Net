@@ -7,14 +7,14 @@ import {
   Patch,
   Query,
   Req,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { AdminSupportService } from './admin-support.service';
+} from "@nestjs/common";
+import { Request } from "express";
+import { Roles } from "../../common/decorators/roles.decorator";
+import { AdminSupportService } from "./admin-support.service";
 import {
   DanhSachYeuCauHoTroQueryDto,
   PhanHoiYeuCauHoTroDto,
-} from './dto/admin-support.dto';
+} from "./dto/admin-support.dto";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -24,8 +24,8 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@Controller('admin/yeu-cau-ho-tro')
-@Roles('admin')
+@Controller("admin/yeu-cau-ho-tro")
+@Roles("admin")
 export class AdminSupportController {
   constructor(private readonly adminSupportService: AdminSupportService) {}
 
@@ -34,14 +34,14 @@ export class AdminSupportController {
     return this.adminSupportService.layDanhSach(query);
   }
 
-  @Get(':id')
-  async layChiTiet(@Param('id', ParseIntPipe) id: number) {
+  @Get(":id")
+  async layChiTiet(@Param("id", ParseIntPipe) id: number) {
     return this.adminSupportService.layChiTiet(id);
   }
 
-  @Patch(':id/phan-hoi')
+  @Patch(":id/phan-hoi")
   async phanHoi(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: PhanHoiYeuCauHoTroDto,
     @Req() req: AuthenticatedRequest,
   ) {

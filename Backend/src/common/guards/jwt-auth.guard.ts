@@ -3,11 +3,11 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import { AUTH_COOKIE_NAME, IS_PUBLIC_KEY } from '../constants/auth.constants';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { AUTH_COOKIE_NAME, IS_PUBLIC_KEY } from "../constants/auth.constants";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -38,12 +38,12 @@ export class JwtAuthGuard implements CanActivate {
     const token = request.cookies?.[AUTH_COOKIE_NAME];
 
     if (!token) {
-      throw new UnauthorizedException('Ban chua dang nhap');
+      throw new UnauthorizedException("Ban chua dang nhap");
     }
 
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET ?? 'dishnet-secret',
+        secret: process.env.JWT_SECRET ?? "dishnet-secret",
       });
 
       request.user = {
@@ -54,7 +54,7 @@ export class JwtAuthGuard implements CanActivate {
 
       return true;
     } catch {
-      throw new UnauthorizedException('Token khong hop le hoac da het han');
+      throw new UnauthorizedException("Token khong hop le hoac da het han");
     }
   }
 }

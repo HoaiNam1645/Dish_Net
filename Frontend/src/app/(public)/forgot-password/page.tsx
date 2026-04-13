@@ -10,6 +10,14 @@ function FieldError({ message }: { message?: string }) {
     return <p className="mt-2 text-[13px] font-medium text-[#ff4d4f]">{message}</p>;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}
+
 function EyeIcon({ open }: { open: boolean }) {
     return open ? (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,19 +132,32 @@ export default function ForgotPasswordPage() {
             setCountdown(60);
             setSubmitted(false);
             setStep(2);
-        } catch (err: any) {
-            setServerError(err.message || 'Có lỗi xảy ra');
+        } catch (error: unknown) {
+            setServerError(getErrorMessage(error, 'Có lỗi xảy ra'));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleStep2 = (event: FormEvent) => {
+    const handleStep2 = async (event: FormEvent) => {
         event.preventDefault();
         setSubmitted(true);
+        setServerError('');
         if (errors.otp) return;
-        setSubmitted(false);
-        setStep(3);
+
+        setLoading(true);
+        try {
+            await authApi.xacNhanQuenMatKhau({
+                email,
+                ma_otp: otp.join(''),
+            });
+            setSubmitted(false);
+            setStep(3);
+        } catch (error: unknown) {
+            setServerError(getErrorMessage(error, 'Mã OTP không hợp lệ'));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleStep3 = async (event: FormEvent) => {
@@ -154,8 +175,8 @@ export default function ForgotPasswordPage() {
                 xac_nhan_mat_khau: confirmPassword,
             });
             setShowSuccessModal(true);
-        } catch (err: any) {
-            setServerError(err.message || 'Đặt lại mật khẩu thất bại');
+        } catch (error: unknown) {
+            setServerError(getErrorMessage(error, 'Đặt lại mật khẩu thất bại'));
         } finally {
             setLoading(false);
         }
@@ -165,6 +186,7 @@ export default function ForgotPasswordPage() {
         try {
             await authApi.guiLaiOtp({ email, loai_xac_thuc: 'quen_mat_khau' });
             setCountdown(60);
+            setServerError('');
         } catch {}
     };
 
@@ -223,8 +245,9 @@ export default function ForgotPasswordPage() {
                                         <button type="button" onClick={handleResend} className="ml-2 font-bold text-[#3b82f6] hover:underline">Gửi lại</button>
                                     )}
                                 </p>
-                                <button type="submit" className="h-[46px] w-full rounded-[6px] bg-[#61AF5E] text-[15px] font-bold uppercase tracking-[0.04em] text-white transition hover:bg-[#4e9a4b]">
-                                    Gửi
+                                <button type="submit" disabled={loading}
+                                    className="h-[46px] w-full rounded-[6px] bg-[#61AF5E] text-[15px] font-bold uppercase tracking-[0.04em] text-white transition hover:bg-[#4e9a4b] disabled:opacity-60">
+                                    {loading ? 'Đang xác nhận...' : 'Gửi'}
                                 </button>
                             </form>
                         </>

@@ -6,7 +6,7 @@ import {
   Matches,
   Max,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class DanhSachKhuyenMaiQueryDto {
   @IsOptional()

@@ -3,10 +3,10 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
-import { ROLES_KEY } from '../constants/auth.constants';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { Request } from "express";
+import { ROLES_KEY } from "../constants/auth.constants";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -34,7 +34,7 @@ export class RolesGuard implements CanActivate {
     const userRole = request.user?.vai_tro;
 
     if (!userRole || !requiredRoles.includes(userRole)) {
-      throw new ForbiddenException('Ban khong co quyen truy cap endpoint nay');
+      throw new ForbiddenException("Ban khong co quyen truy cap endpoint nay");
     }
 
     return true;

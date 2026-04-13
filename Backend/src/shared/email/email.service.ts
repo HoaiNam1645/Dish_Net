@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import * as nodemailer from "nodemailer";
 
 export interface GuiEmailOptions {
   den: string;
@@ -15,19 +15,22 @@ export class EmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || 'smtp.gmail.com',
+      host: process.env.MAIL_HOST || "smtp.gmail.com",
       port: Number(process.env.MAIL_PORT || 587),
-      secure: process.env.MAIL_SECURE === 'true',
+      secure: process.env.MAIL_SECURE === "true",
       auth: {
-        user: process.env.MAIL_USER || '',
-        pass: process.env.MAIL_PASSWORD || '',
+        user: process.env.MAIL_USER || "",
+        pass: process.env.MAIL_PASSWORD || "",
       },
     });
   }
 
   async guiEmail(options: GuiEmailOptions): Promise<boolean> {
-    const tenGui = process.env.MAIL_FROM_NAME || 'DishNet';
-    const emailGui = process.env.MAIL_FROM_ADDRESS || process.env.MAIL_USER || 'noreply@dishnet.vn';
+    const tenGui = process.env.MAIL_FROM_NAME || "DishNet";
+    const emailGui =
+      process.env.MAIL_FROM_ADDRESS ||
+      process.env.MAIL_USER ||
+      "noreply@dishnet.vn";
 
     try {
       await this.transporter.sendMail({
@@ -37,7 +40,9 @@ export class EmailService {
         text: options.noiDungText,
         html: options.noiDungHtml,
       });
-      this.logger.log(`Da gui email toi: ${options.den} | Tieu de: ${options.tieuDe}`);
+      this.logger.log(
+        `Da gui email toi: ${options.den} | Tieu de: ${options.tieuDe}`,
+      );
       return true;
     } catch (error) {
       this.logger.error(`Gui email that bai toi: ${options.den}`, error);
@@ -45,31 +50,39 @@ export class EmailService {
     }
   }
 
-  async guiOtpDangKy(email: string, otp: string, tenHienThi: string): Promise<boolean> {
+  async guiOtpDangKy(
+    email: string,
+    otp: string,
+    tenHienThi: string,
+  ): Promise<boolean> {
     return this.guiEmail({
       den: email,
       tieuDe: `[DishNet] Mã xác nhận đăng ký tài khoản`,
       noiDungHtml: this.taoTemplateOtp({
-        tieuDe: 'Xác nhận đăng ký tài khoản',
+        tieuDe: "Xác nhận đăng ký tài khoản",
         tenNguoiDung: tenHienThi,
         otp,
-        moTa: 'Bạn vừa đăng ký tài khoản DishNet. Vui lòng nhập mã xác nhận bên dưới để hoàn tất đăng ký.',
-        thoiHan: '60 phút',
+        moTa: "Bạn vừa đăng ký tài khoản DishNet. Vui lòng nhập mã xác nhận bên dưới để hoàn tất đăng ký.",
+        thoiHan: "60 phút",
       }),
       noiDungText: `Xin chào ${tenHienThi}, mã OTP đăng ký DishNet của bạn là: ${otp}. Mã có hiệu lực trong 60 phút.`,
     });
   }
 
-  async guiOtpQuenMatKhau(email: string, otp: string, tenHienThi: string): Promise<boolean> {
+  async guiOtpQuenMatKhau(
+    email: string,
+    otp: string,
+    tenHienThi: string,
+  ): Promise<boolean> {
     return this.guiEmail({
       den: email,
       tieuDe: `[DishNet] Mã xác nhận đặt lại mật khẩu`,
       noiDungHtml: this.taoTemplateOtp({
-        tieuDe: 'Đặt lại mật khẩu',
+        tieuDe: "Đặt lại mật khẩu",
         tenNguoiDung: tenHienThi,
         otp,
-        moTa: 'Bạn vừa yêu cầu đặt lại mật khẩu tài khoản DishNet. Vui lòng nhập mã xác nhận bên dưới để tiếp tục.',
-        thoiHan: '60 phút',
+        moTa: "Bạn vừa yêu cầu đặt lại mật khẩu tài khoản DishNet. Vui lòng nhập mã xác nhận bên dưới để tiếp tục.",
+        thoiHan: "60 phút",
       }),
       noiDungText: `Xin chào ${tenHienThi}, mã OTP đặt lại mật khẩu DishNet của bạn là: ${otp}. Mã có hiệu lực trong 60 phút.`,
     });

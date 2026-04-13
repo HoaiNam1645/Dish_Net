@@ -1,4 +1,4 @@
-import type { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateAuthTables1744200000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -89,8 +89,8 @@ export class CreateAuthTables1744200000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE IF EXISTS phien_dang_nhap');
-    await queryRunner.query('DROP TABLE IF EXISTS ma_xac_thuc');
-    await queryRunner.query('DROP TABLE IF EXISTS nguoi_dung');
+    await queryRunner.query("DROP TABLE IF EXISTS phien_dang_nhap");
+    await queryRunner.query("DROP TABLE IF EXISTS ma_xac_thuc");
+    await queryRunner.query("DROP TABLE IF EXISTS nguoi_dung");
   }
 }

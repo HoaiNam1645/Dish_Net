@@ -9,15 +9,15 @@ import {
   Post,
   Query,
   Req,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { AdminPromotionService } from './admin-promotion.service';
+} from "@nestjs/common";
+import { Request } from "express";
+import { Roles } from "../../common/decorators/roles.decorator";
+import { AdminPromotionService } from "./admin-promotion.service";
 import {
   CapNhatKhuyenMaiDto,
   DanhSachKhuyenMaiQueryDto,
   TaoKhuyenMaiDto,
-} from './dto/admin-promotion.dto';
+} from "./dto/admin-promotion.dto";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -27,8 +27,8 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@Controller('admin/khuyen-mai')
-@Roles('admin')
+@Controller("admin/khuyen-mai")
+@Roles("admin")
 export class AdminPromotionController {
   constructor(private readonly adminPromotionService: AdminPromotionService) {}
 
@@ -46,15 +46,15 @@ export class AdminPromotionController {
       dto,
       {
         id: req.user?.sub ?? 0,
-        email: req.user?.email ?? 'admin',
+        email: req.user?.email ?? "admin",
       },
       req.ip,
     );
   }
 
-  @Patch(':id')
+  @Patch(":id")
   async capNhatKhuyenMai(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: CapNhatKhuyenMaiDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -63,37 +63,37 @@ export class AdminPromotionController {
       dto,
       {
         id: req.user?.sub ?? 0,
-        email: req.user?.email ?? 'admin',
+        email: req.user?.email ?? "admin",
       },
       req.ip,
     );
   }
 
-  @Patch(':id/tam-dung')
+  @Patch(":id/tam-dung")
   async tamDungKhuyenMai(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.adminPromotionService.tamDung(
       id,
       {
         id: req.user?.sub ?? 0,
-        email: req.user?.email ?? 'admin',
+        email: req.user?.email ?? "admin",
       },
       req.ip,
     );
   }
 
-  @Delete(':id')
+  @Delete(":id")
   async xoaKhuyenMai(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.adminPromotionService.xoa(
       id,
       {
         id: req.user?.sub ?? 0,
-        email: req.user?.email ?? 'admin',
+        email: req.user?.email ?? "admin",
       },
       req.ip,
     );

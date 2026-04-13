@@ -7,15 +7,15 @@ import {
   Patch,
   Query,
   Req,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { AdminReviewService } from './admin-review.service';
+} from "@nestjs/common";
+import { Request } from "express";
+import { Roles } from "../../common/decorators/roles.decorator";
+import { AdminReviewService } from "./admin-review.service";
 import {
   DanhSachYeuCauQueryDto,
   PheDuyetYeuCauDto,
   TuChoiYeuCauDto,
-} from './dto/admin-review.dto';
+} from "./dto/admin-review.dto";
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -25,8 +25,8 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@Controller('admin/yeu-cau-he-thong')
-@Roles('admin')
+@Controller("admin/yeu-cau-he-thong")
+@Roles("admin")
 export class AdminReviewController {
   constructor(private readonly adminReviewService: AdminReviewService) {}
 
@@ -35,14 +35,14 @@ export class AdminReviewController {
     return this.adminReviewService.layDanhSach(query);
   }
 
-  @Get(':id')
-  async layChiTiet(@Param('id', ParseIntPipe) id: number) {
+  @Get(":id")
+  async layChiTiet(@Param("id", ParseIntPipe) id: number) {
     return this.adminReviewService.layChiTiet(id);
   }
 
-  @Patch(':id/phe-duyet')
+  @Patch(":id/phe-duyet")
   async pheDuyet(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: PheDuyetYeuCauDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -56,9 +56,9 @@ export class AdminReviewController {
     );
   }
 
-  @Patch(':id/tu-choi')
+  @Patch(":id/tu-choi")
   async tuChoi(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: TuChoiYeuCauDto,
     @Req() req: AuthenticatedRequest,
   ) {
