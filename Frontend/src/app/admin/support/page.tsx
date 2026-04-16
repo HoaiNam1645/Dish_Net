@@ -83,6 +83,7 @@ export default function SupportPage() {
   const [error, setError] = useState('');
 
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const [viewingRequest, setViewingRequest] = useState<ChiTietSupportResponse | null>(null);
   const [responseText, setResponseText] = useState('');
   const [sendingResponse, setSendingResponse] = useState(false);
@@ -115,12 +116,13 @@ export default function SupportPage() {
 
   const openModal = async (requestId: number) => {
     setDetailLoading(true);
+    setDetailError('');
     try {
       const data = await adminSupportApi.layChiTiet(requestId);
       setViewingRequest(data);
       setResponseText(data.thong_tin_phan_hoi?.noi_dung_phan_hoi ?? '');
     } catch (fetchError: unknown) {
-      toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu hỗ trợ'));
+      setDetailError(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu hỗ trợ'));
       setViewingRequest(null);
       setResponseText('');
     } finally {
@@ -131,6 +133,7 @@ export default function SupportPage() {
   const closeModal = () => {
     setViewingRequest(null);
     setResponseText('');
+    setDetailError('');
   };
 
   const handleSendResponse = async () => {
@@ -286,15 +289,15 @@ export default function SupportPage() {
 
       {(viewingRequest || detailLoading || detailError) ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 relative">
-            <div className="px-7 pt-6 pb-0">
-              <div className="flex items-start justify-between mb-1">
-                <h3 className="text-lg font-bold text-black">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+            <div className="px-6 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <h3 className="text-base font-bold text-black">
                   {viewingRequest?.thong_tin_yeu_cau.trang_thai === 'chua_phan_hoi' ? 'Phản hồi yêu cầu hỗ trợ' : 'Chi tiết phản hồi'}
                 </h3>
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer mt-0.5"
+                  className="text-gray-400 hover:text-gray-600 transition-colors w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 6 6 18" /><path d="M6 6 18 18" />
@@ -302,88 +305,92 @@ export default function SupportPage() {
                 </button>
               </div>
               {viewingRequest ? (
-                <p className="text-right text-xs text-gray-400 mb-4">{formatDate(viewingRequest.thong_tin_yeu_cau.thoi_gian_gui)}</p>
+                <p className="text-right text-xs text-gray-400 mt-0.5">{formatDate(viewingRequest.thong_tin_yeu_cau.thoi_gian_gui)}</p>
               ) : null}
             </div>
 
-            <div className="px-7 pb-6 space-y-4">
+            <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-0">
               {detailLoading ? (
                 <div className="flex justify-center py-10">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-500 border-t-transparent" />
                 </div>
               ) : viewingRequest ? (
-                <>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="py-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <InfoField label="Mã yêu cầu" value={viewingRequest.ma_yeu_cau} />
                     <InfoField label="Trạng thái" value={statusLabel[viewingRequest.thong_tin_yeu_cau.trang_thai]} badgeClass={getStatusBadge(viewingRequest.thong_tin_yeu_cau.trang_thai)} />
                   </div>
 
-                  <div className="rounded-xl border border-gray-100 p-4">
-                    <h4 className="mb-3 text-sm font-bold text-black">Thông tin người gửi</h4>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-gray-100 p-3">
+                    <h4 className="mb-2 text-xs font-bold text-black">Thông tin người gửi</h4>
+                    <div className="grid grid-cols-2 gap-2">
                       <InfoField label="Người gửi" value={viewingRequest.thong_tin_nguoi_gui.ten_nguoi_dung} />
                       <InfoField label="Loại tài khoản" value={accountTypeLabel[viewingRequest.thong_tin_nguoi_gui.loai_tai_khoan]} badgeClass={getAccountTypeBadge(viewingRequest.thong_tin_nguoi_gui.loai_tai_khoan)} />
                       <InfoField label="Email" value={viewingRequest.thong_tin_nguoi_gui.email} />
-                      <InfoField label="Số điện thoại" value={viewingRequest.thong_tin_nguoi_gui.so_dien_thoai || '—'} />
+                      <InfoField label="SĐT" value={viewingRequest.thong_tin_nguoi_gui.so_dien_thoai || '—'} />
                     </div>
                   </div>
 
-                  <InfoField label="Chủ đề yêu cầu" value={viewingRequest.thong_tin_yeu_cau.chu_de} />
+                  <InfoField label="Chủ đề" value={viewingRequest.thong_tin_yeu_cau.chu_de} />
 
                   <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-sm font-semibold text-black">Nội dung yêu cầu hỗ trợ</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-semibold text-black">Nội dung yêu cầu</label>
                       <span className="text-xs text-gray-400">{viewingRequest.thong_tin_yeu_cau.noi_dung_yeu_cau.length}/1000</span>
                     </div>
                     <textarea
                       value={viewingRequest.thong_tin_yeu_cau.noi_dung_yeu_cau}
                       readOnly
-                      rows={4}
-                      className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-4 py-3 text-sm outline-none resize-none"
+                      rows={3}
+                      className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-3 py-2 text-sm outline-none resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-black mb-1.5">Tệp đính kèm</label>
+                    <label className="block text-xs font-semibold text-black mb-1">Tệp đính kèm</label>
                     {viewingRequest.tep_dinh_kem.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {viewingRequest.tep_dinh_kem.map((attachment) => (
                           <a
                             key={attachment.id}
                             href={attachment.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 shadow-sm hover:bg-gray-50"
+                            className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 shadow-sm hover:bg-gray-50 text-xs"
                           >
-                            <span className="text-sm text-gray-700">{attachment.ghi_chu || attachment.url}</span>
-                            <span className="text-xs text-blue-500">Mở</span>
+                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 1 0 2.828 2.828l6.414-6.586a4 4 0 0 0-5.656-5.656l-6.415 6.585a6 6 0 1 0 8.486 8.486L20.5 13" />
+                            </svg>
+                            <span className="text-gray-600 max-w-[120px] truncate">{attachment.ghi_chu || 'Tệp đính kèm'}</span>
                           </a>
                         ))}
                       </div>
                     ) : (
-                      <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-400">
+                      <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-400">
                         Chưa có tệp đính kèm
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-black mb-1.5">Kết quả xử lý</label>
+                    <label className="block text-xs font-semibold text-black mb-1">
+                      {viewingRequest.thong_tin_yeu_cau.trang_thai === 'chua_phan_hoi' ? 'Nội dung phản hồi' : 'Phản hồi của admin'}
+                    </label>
                     {viewingRequest.thong_tin_yeu_cau.trang_thai === 'chua_phan_hoi' ? (
                       <textarea
                         value={responseText}
                         onChange={(e) => setResponseText(e.target.value)}
-                        rows={5}
+                        rows={4}
                         placeholder="Nhập nội dung phản hồi..."
-                        className="w-full bg-white border border-gray-200 focus:border-green-500 text-gray-700 rounded-xl px-4 py-3 text-sm outline-none resize-none shadow-sm placeholder:text-gray-300"
+                        className="w-full bg-white border border-gray-200 focus:border-green-500 text-gray-700 rounded-xl px-3 py-2 text-sm outline-none resize-none shadow-sm placeholder:text-gray-300"
                       />
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <textarea
                           value={viewingRequest.thong_tin_phan_hoi?.noi_dung_phan_hoi || ''}
                           readOnly
-                          rows={5}
-                          className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-4 py-3 text-sm outline-none resize-none"
+                          rows={3}
+                          className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-3 py-2 text-sm outline-none resize-none"
                         />
                         <p className="text-xs text-gray-400 text-right">
                           {viewingRequest.thong_tin_phan_hoi
@@ -399,20 +406,29 @@ export default function SupportPage() {
                       <button
                         onClick={() => void handleSendResponse()}
                         disabled={!responseText.trim() || sendingResponse}
-                        className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors cursor-pointer"
+                        className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors cursor-pointer"
                       >
                         {sendingResponse ? 'Đang gửi...' : 'Gửi phản hồi'}
                       </button>
                     ) : (
                       <button
                         onClick={closeModal}
-                        className="w-full py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors cursor-pointer"
+                        className="w-full py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors cursor-pointer"
                       >
                         Quay lại
                       </button>
                     )}
                   </div>
-                </>
+                </div>
+              ) : detailError ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 text-sm">{detailError}</p>
+                </div>
               ) : null}
             </div>
           </div>
@@ -425,11 +441,11 @@ export default function SupportPage() {
 function InfoField({ label, value, badgeClass }: { label: string; value: string; badgeClass?: string }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-black mb-1.5">{label}</label>
+      <label className="block text-xs font-semibold text-black mb-1">{label}</label>
       {badgeClass ? (
-        <span className={`inline-block px-4 py-2 rounded-lg text-xs font-semibold ${badgeClass}`}>{value}</span>
+        <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-semibold ${badgeClass}`}>{value}</span>
       ) : (
-        <div className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-4 py-2.5 text-sm">
+        <div className="w-full bg-gray-100 border border-gray-200 text-gray-600 rounded-xl px-3 py-2 text-xs">
           {value}
         </div>
       )}
