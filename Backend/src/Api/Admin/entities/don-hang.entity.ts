@@ -43,13 +43,13 @@ export class DonHangEntity {
   @Column({ type: "bigint", unsigned: true, nullable: true })
   id_nha_sang_tao_nguon: number | null;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: "text", nullable: true, select: false, insert: false, update: false })
   ghi_chu_tai_xe: string | null;
 
-  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true, select: false, insert: false, update: false })
   vi_do_giao: number | null;
 
-  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true, select: false, insert: false, update: false })
   kinh_do_giao: number | null;
 
   @Column({ type: "varchar", length: 30 })

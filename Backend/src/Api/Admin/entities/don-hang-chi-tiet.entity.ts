@@ -33,7 +33,7 @@ export class DonHangChiTietEntity {
   @Column({ type: "decimal", precision: 14, scale: 2 })
   thanh_tien: number;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: "text", nullable: true, select: false, insert: false, update: false })
   topping_snapshot: string | null;
 
   @Column({ type: "text", nullable: true })

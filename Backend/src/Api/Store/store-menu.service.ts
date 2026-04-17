@@ -4,8 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { DanhMucMonEntity } from '../Admin/entities/danh-muc-mon.entity';
 import { MonAnEntity } from '../Admin/entities/mon-an.entity';
 import { ToppingEntity } from '../Admin/entities/topping.entity';
@@ -22,6 +22,8 @@ import {
 @Injectable()
 export class StoreMenuService {
   constructor(
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
     @InjectRepository(DanhMucMonEntity)
     private readonly danhMucRepo: Repository<DanhMucMonEntity>,
     @InjectRepository(MonAnEntity)
@@ -32,6 +34,24 @@ export class StoreMenuService {
     private readonly cuaHangRepo: Repository<CuaHangEntity>,
   ) {}
 
+  private async hasDanhMucMonTable(): Promise<boolean> {
+    const runner = this.dataSource.createQueryRunner();
+    try {
+      return await runner.hasTable('danh_muc_mon');
+    } finally {
+      await runner.release();
+    }
+  }
+
+  private async ensureDanhMucMonTable(): Promise<void> {
+    const hasTable = await this.hasDanhMucMonTable();
+    if (!hasTable) {
+      throw new BadRequestException(
+        'Chức năng danh mục chưa khả dụng vì database chưa được cập nhật bảng danh_muc_mon',
+      );
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════════
   // DANH MỤC
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -40,6 +60,11 @@ export class StoreMenuService {
    * Lấy danh sách danh mục của cửa hàng
    */
   async layDanhSachDanhMuc(nguoiDungId: number) {
+    const hasDanhMucTable = await this.hasDanhMucMonTable();
+    if (!hasDanhMucTable) {
+      return { du_lieu: [] };
+    }
+
     const cuaHang = await this.layCuaHang(nguoiDungId);
 
     const danhSach = await this.danhMucRepo.find({
@@ -63,6 +88,7 @@ export class StoreMenuService {
    * Tạo danh mục mới cho cửa hàng
    */
   async taoDanhMuc(nguoiDungId: number, payload: TaoDanhMucDto) {
+    await this.ensureDanhMucMonTable();
     const cuaHang = await this.layCuaHang(nguoiDungId);
 
     const existing = await this.danhMucRepo.findOne({
@@ -101,6 +127,7 @@ export class StoreMenuService {
    * Cập nhật danh mục
    */
   async capNhatDanhMuc(nguoiDungId: number, id: number, payload: CapNhatDanhMucDto) {
+    await this.ensureDanhMucMonTable();
     const cuaHang = await this.layCuaHang(nguoiDungId);
 
     const danhMuc = await this.danhMucRepo.findOne({
@@ -141,6 +168,7 @@ export class StoreMenuService {
    * Xóa danh mục
    */
   async xoaDanhMuc(nguoiDungId: number, id: number) {
+    await this.ensureDanhMucMonTable();
     const cuaHang = await this.layCuaHang(nguoiDungId);
 
     const danhMuc = await this.danhMucRepo.findOne({
@@ -177,6 +205,7 @@ export class StoreMenuService {
    */
   async layDanhSachMonAn(nguoiDungId: number, query: DanhSachMonAnQueryDto) {
     const cuaHang = await this.layCuaHang(nguoiDungId);
+    const hasDanhMucTable = await this.hasDanhMucMonTable();
 
     const trang = Number(query.trang) || 1;
     const soLuong = Number(query.so_luong) || 20;
@@ -184,10 +213,13 @@ export class StoreMenuService {
 
     const qb = this.monAnRepo
       .createQueryBuilder('ma')
-      .leftJoinAndMapOne('ma.danh_muc', 'danh_muc_mon', 'dm', 'dm.id = ma.id_danh_muc')
       .where('ma.id_cua_hang = :idCuaHang', { idCuaHang: cuaHang.id })
       .skip(skip)
       .take(soLuong);
+
+    if (hasDanhMucTable) {
+      qb.leftJoinAndSelect('ma.danh_muc', 'dm');
+    }
 
     if (query.tim_kiem?.trim()) {
       qb.andWhere(
@@ -212,12 +244,15 @@ export class StoreMenuService {
 
     const [items, tongSo] = await qb.getManyAndCount();
 
-    const toppingQb = this.toppingRepo
-      .createQueryBuilder('tp')
-      .where('tp.id_mon_an IN (:...ids)', {
-        ids: items.map((i) => Number(i.id)),
-      });
-    const toppingsRaw = await toppingQb.getMany();
+    const itemIds = items.map((i) => Number(i.id));
+    const toppingsRaw = itemIds.length
+      ? await this.toppingRepo
+          .createQueryBuilder('tp')
+          .where('tp.id_mon_an IN (:...ids)', {
+            ids: itemIds,
+          })
+          .getMany()
+      : [];
 
     const toppingMap = new Map<number, typeof toppingsRaw>();
     for (const tp of toppingsRaw) {
@@ -258,7 +293,7 @@ export class StoreMenuService {
         tong_danh_gia: Number(item.tong_danh_gia),
         la_mon_noi_bat: Boolean(item.la_mon_noi_bat),
         id_danh_muc: item.id_danh_muc ? Number(item.id_danh_muc) : null,
-        ten_danh_muc: null,
+        ten_danh_muc: item.danh_muc?.ten_danh_muc ?? null,
         toppings: (toppingMap.get(Number(item.id)) ?? []).map((tp) => ({
           id: Number(tp.id),
           ten_topping: tp.ten_topping,
@@ -292,12 +327,18 @@ export class StoreMenuService {
    */
   async taoMonAn(nguoiDungId: number, payload: TaoMonAnDto) {
     const cuaHang = await this.layCuaHang(nguoiDungId);
+    const hasDanhMucTable = await this.hasDanhMucMonTable();
 
     if (!payload.ten_mon?.trim()) {
       throw new BadRequestException('Tên món không được để trống');
     }
     if (payload.gia_ban === undefined || payload.gia_ban < 0) {
       throw new BadRequestException('Giá bán không hợp lệ');
+    }
+    if (payload.id_danh_muc && !hasDanhMucTable) {
+      throw new BadRequestException(
+        'Không thể gán danh mục vì database chưa được cập nhật bảng danh_muc_mon',
+      );
     }
 
     const maxMa = await this.monAnRepo
@@ -356,12 +397,18 @@ export class StoreMenuService {
    */
   async capNhatMonAn(nguoiDungId: number, id: number, payload: CapNhatMonAnDto) {
     const cuaHang = await this.layCuaHang(nguoiDungId);
+    const hasDanhMucTable = await this.hasDanhMucMonTable();
 
     const monAn = await this.monAnRepo.findOne({
       where: { id, id_cua_hang: cuaHang.id },
     });
     if (!monAn) {
       throw new NotFoundException('Món ăn không tồn tại');
+    }
+    if (payload.id_danh_muc !== undefined && payload.id_danh_muc && !hasDanhMucTable) {
+      throw new BadRequestException(
+        'Không thể cập nhật danh mục vì database chưa được cập nhật bảng danh_muc_mon',
+      );
     }
 
     if (payload.ten_mon !== undefined) {

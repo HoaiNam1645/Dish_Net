@@ -7,10 +7,15 @@ import {
   MonAnItem,
   TopMonItem,
   ItemStatus,
+  MenuSortOption,
   DanhMucItem,
   fmt,
   mapDbStatusToUi,
 } from '@/shared/storeMenuApi';
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
 /* ═══════════════════════════════════════════
    TYPES & CONSTANTS
@@ -75,8 +80,8 @@ function EditItemModal({
       });
       onSave({ ...item, ten_mon: name, mo_ta: desc, gia_ban: priceNum, id_danh_muc: idDanhMuc ? Number(idDanhMuc) : null, trang_thai_ban: status });
       onClose();
-    } catch (e: any) {
-      setError(e.message || 'Lỗi khi lưu');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Lỗi khi lưu'));
     } finally {
       setSaving(false);
     }
@@ -182,8 +187,8 @@ function DeleteItemModal({ item, onClose, onDelete }: { item: MonAnItem; onClose
       await storeMenuApi.xoaMonAn(item.id);
       onDelete();
       onClose();
-    } catch (e: any) {
-      setError(e.message || 'Lỗi khi xóa');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Lỗi khi xóa'));
     } finally {
       setDeleting(false);
     }
@@ -233,6 +238,7 @@ function AddItemModal({
   const [status, setStatus] = useState<ItemStatus>('dang_ban');
   const [desc, setDesc] = useState('');
   const [price, setPrice] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [idDanhMuc, setIdDanhMuc] = useState('');
   const [toppings, setToppings] = useState([{ name: '', price: '' }]);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -252,6 +258,7 @@ function AddItemModal({
         mo_ta: desc,
         gia_ban: priceNum,
         id_danh_muc: idDanhMuc || undefined,
+        hinh_anh_dai_dien: imageUrl || undefined,
         trang_thai_ban: status,
         toppings: toppings.filter((t) => t.name.trim()).map((t) => ({
           ten_topping: t.name.trim(),
@@ -263,7 +270,7 @@ function AddItemModal({
         ma_mon: '',
         ten_mon: name,
         mo_ta: desc || null,
-        hinh_anh_dai_dien: null,
+        hinh_anh_dai_dien: imageUrl || null,
         gia_ban: priceNum,
         gia_goc: null,
         trang_thai_ban: status,
@@ -276,8 +283,8 @@ function AddItemModal({
         toppings: [],
       });
       onClose();
-    } catch (e: any) {
-      setError(e.message || 'Lỗi khi thêm món');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Lỗi khi thêm món'));
     } finally {
       setSaving(false);
     }
@@ -293,9 +300,21 @@ function AddItemModal({
         </div>
         <div className="px-6 pb-6 pt-4">
           <div className="flex items-center gap-4 rounded-[10px] border border-dashed border-[#ccc] p-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-[8px] bg-[#f0f0f0] text-[24px] text-[#999]">+</div>
-            <div className="flex-1" />
-            <button className="rounded-[8px] border border-[#ddd] px-4 py-1.5 text-[13px] font-medium text-black transition hover:bg-gray-50">Thêm ảnh</button>
+            {imageUrl ? (
+              <img src={imageUrl} alt="preview" className="h-16 w-16 rounded-[8px] object-cover" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-[8px] bg-[#f0f0f0] text-[24px] text-[#999]">+</div>
+            )}
+            <div className="flex-1">
+              <label className="text-[13px] font-medium text-black">Hình ảnh món</label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="Dán URL hình ảnh"
+                className="mt-1 w-full rounded-[8px] border border-[#e0e0e0] px-3 py-2 text-[13px] text-black outline-none focus:border-[#2e7d32]"
+              />
+            </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
@@ -433,7 +452,7 @@ export default function MenuTab() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState<ItemStatus | 'Tất cả'>('Tất cả');
   const [statusDropdown, setStatusDropdown] = useState(false);
-  const [sortBy, setSortBy] = useState<string>('moi_nhat');
+  const [sortBy, setSortBy] = useState<MenuSortOption>('moi_nhat');
   const [sortDropdown, setSortDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -459,7 +478,7 @@ export default function MenuTab() {
         tim_kiem: searchText || undefined,
         id_danh_muc: activeCategory !== 'all' ? activeCategory : undefined,
         trang_thai: statusFilter !== 'Tất cả' ? statusFilter as ItemStatus : undefined,
-        sap_xep: sortBy as any,
+        sap_xep: sortBy,
         trang: page,
         so_luong: 20,
       });
@@ -488,12 +507,10 @@ export default function MenuTab() {
   useEffect(() => {
     const t = setTimeout(() => loadItems(1), 400);
     return () => clearTimeout(t);
-  }, [searchText]);
+  }, [searchText, loadItems]);
 
   // Category filter bar
   const categoryOptions = useMemo(() => {
-    const counts = new Map<string | null, number>();
-    // We'll use the full list for category counts
     return [
       { key: 'all', label: `Tất cả (${totalItems})` },
       ...danhMucList.map((d) => ({

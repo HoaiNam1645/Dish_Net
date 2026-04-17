@@ -31,6 +31,20 @@ interface PromoUI {
   image: string;
   gia_tri_toi_da: number | null;
   mo_ta?: string | null;
+  rawDiscountValue: number;
+  rawMinOrder: number;
+  rawMaxUse: number | null;
+  rawStartDate: string;
+  rawEndDate: string;
+}
+
+function toDateTimeLocal(value: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 /* ═══════════════════════════════════════════
@@ -83,6 +97,11 @@ function mapApiToUi(item: KhuyenMaiItem): PromoUI {
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=60&h=60&fit=crop',
     gia_tri_toi_da: item.gia_tri_toi_da,
     mo_ta: item.mo_ta,
+    rawDiscountValue: item.gia_tri_khuyen_mai,
+    rawMinOrder: item.don_hang_toi_thieu,
+    rawMaxUse: item.so_luot_toi_da,
+    rawStartDate: item.thoi_gian_bat_dau,
+    rawEndDate: item.thoi_gian_ket_thuc,
   };
 }
 
@@ -165,11 +184,13 @@ function DeleteConfirmModal({ promo, onClose, onConfirm }: {
    ═══════════════════════════════════════════ */
 function PromoModal({
   promo,
+  mode,
   onClose,
   onSave,
   isLoading,
 }: {
   promo: PromoUI | null;
+  mode: 'create' | 'edit';
   onClose: () => void;
   onSave: (data: {
     ten_khuyen_mai: string;
@@ -185,35 +206,31 @@ function PromoModal({
   }) => void;
   isLoading: boolean;
 }) {
-  const isEdit = !!promo;
+  const isEdit = mode === 'edit';
   const [name, setName] = useState(promo?.name || '');
   const [code, setCode] = useState(promo?.code || '');
   const [type, setType] = useState<PromoType>(promo?.type || 'phan_tram');
-  const [discountValue, setDiscountValue] = useState('');
-  const [maxDiscount, setMaxDiscount] = useState('');
-  const [minOrder, setMinOrder] = useState(promo?.minOrder || '');
-  const [maxUse, setMaxUse] = useState(promo?.maxUse ? String(promo.maxUse) : '');
+  const [discountValue, setDiscountValue] = useState(promo ? String(promo.rawDiscountValue) : '');
+  const [maxDiscount, setMaxDiscount] = useState(promo?.gia_tri_toi_da ? String(promo.gia_tri_toi_da) : '');
+  const [minOrder, setMinOrder] = useState(promo ? String(promo.rawMinOrder) : '');
+  const [maxUse, setMaxUse] = useState(promo?.rawMaxUse ? String(promo.rawMaxUse) : '');
   const [startDate, setStartDate] = useState(
-    promo?.startDate
-      ? (() => {
-          const d = new Date(promo.startDate);
-          return d.toISOString().slice(0, 16);
-        })()
+    promo?.rawStartDate
+      ? toDateTimeLocal(promo.rawStartDate)
       : '',
   );
   const [endDate, setEndDate] = useState(
-    promo?.endDate
-      ? (() => {
-          const d = new Date(promo.endDate);
-          return d.toISOString().slice(0, 16);
-        })()
+    promo?.rawEndDate
+      ? toDateTimeLocal(promo.rawEndDate)
       : '',
   );
+  const [description, setDescription] = useState(promo?.mo_ta || '');
   const [error, setError] = useState('');
 
   const handleSave = () => {
     if (!name.trim()) { setError('Tên chương trình không được để trống'); return; }
     if (!code.trim()) { setError('Mã khuyến mãi không được để trống'); return; }
+    if (!startDate || !endDate) { setError('Vui lòng chọn đầy đủ thời gian bắt đầu và kết thúc'); return; }
     setError('');
 
     const giaTri = Number(discountValue.replace(/\D/g, '')) || 0;
@@ -231,6 +248,7 @@ function PromoModal({
       so_luot_toi_da: luotToiDa,
       thoi_gian_bat_dau: startDate,
       thoi_gian_ket_thuc: endDate,
+      mo_ta: description.trim() || undefined,
     });
   };
 
@@ -327,18 +345,37 @@ function PromoModal({
           {/* Time */}
           <div>
             <label className="text-[13px] font-bold text-black">Thời gian</label>
-            <div className="mt-2 grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-black whitespace-nowrap">Ngày bắt đầu :</span>
-                <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#ddd] px-2 py-1.5 text-[13px] text-black outline-none focus:border-[#2e7d32]" />
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[13px] text-black">Ngày bắt đầu</label>
+                <input
+                  type="datetime-local"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#ddd] px-3 py-2 text-[13px] text-black outline-none focus:border-[#2e7d32]"
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-black whitespace-nowrap">Ngày kết thúc :</span>
-                <input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#ddd] px-2 py-1.5 text-[13px] text-black outline-none focus:border-[#2e7d32]" />
+              <div>
+                <label className="mb-1 block text-[13px] text-black">Ngày kết thúc</label>
+                <input
+                  type="datetime-local"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#ddd] px-3 py-2 text-[13px] text-black outline-none focus:border-[#2e7d32]"
+                />
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="text-[13px] font-bold text-black">Mô tả</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="mt-2 w-full rounded-[8px] border border-[#ddd] px-3 py-2 text-[14px] text-black outline-none focus:border-[#2e7d32]"
+            />
           </div>
 
           {error && <p className="text-[13px] text-[#d32f2f] font-medium">{error}</p>}
@@ -373,7 +410,7 @@ function PromoCard({
   onDelete: () => void;
   onPause: () => void;
   onActivate: () => void;
-  onDuplicate: () => void;
+  onDuplicate: (promo: PromoUI) => void;
 }) {
   return (
     <div className="rounded-[12px] border border-[#e8e8e8] bg-white p-5 shadow-sm">
@@ -429,7 +466,7 @@ function PromoCard({
             <button type="button" onClick={onDelete} className="rounded-[8px] bg-[#d32f2f] px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-[#b71c1c]">Xóa</button>
           )}
           {promo.status === 'ended' && (
-            <button type="button" onClick={onDuplicate} className="rounded-[8px] border border-[#ddd] bg-white px-5 py-2 text-[13px] font-semibold text-[#555] transition hover:bg-[#f8f8f8]">Nhân bản</button>
+            <button type="button" onClick={() => onDuplicate(promo)} className="rounded-[8px] border border-[#ddd] bg-white px-5 py-2 text-[13px] font-semibold text-[#555] transition hover:bg-[#f8f8f8]">Nhân bản</button>
           )}
         </div>
       </div>
@@ -448,6 +485,7 @@ export default function PromotionsTab() {
   const [sortBy, setSortBy] = useState<SortOption>('moi_nhat');
   const [currentPage, setCurrentPage] = useState(1);
   const [editPromo, setEditPromo] = useState<PromoUI | null>(null);
+  const [duplicatePromo, setDuplicatePromo] = useState<PromoUI | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromoUI | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -490,6 +528,7 @@ export default function PromotionsTab() {
         await storePromotionApi.tao(data);
       }
       setEditPromo(null);
+      setDuplicatePromo(null);
       setShowAddModal(false);
       await fetchPromos();
     } catch (err) {
@@ -531,8 +570,14 @@ export default function PromotionsTab() {
     }
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = (promo: PromoUI) => {
     setEditPromo(null);
+    setDuplicatePromo({
+      ...promo,
+      id: '',
+      code: `${promo.code}_COPY`,
+      status: 'upcoming',
+    });
     setShowAddModal(true);
   };
 
@@ -548,7 +593,7 @@ export default function PromotionsTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-[22px] font-bold uppercase text-black">QUẢN LÝ KHUYẾN MÃI</h1>
-        <button type="button" onClick={() => { setEditPromo(null); setShowAddModal(true); }}
+        <button type="button" onClick={() => { setEditPromo(null); setDuplicatePromo(null); setShowAddModal(true); }}
           className="flex items-center gap-2 rounded-[10px] bg-[#2e7d32] px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#256b28]">
           <span className="text-[18px]">+</span> Thêm khuyến mãi
         </button>
@@ -673,8 +718,9 @@ export default function PromotionsTab() {
       {/* Modals */}
       {showAddModal && (
         <PromoModal
-          promo={null}
-          onClose={() => setShowAddModal(false)}
+          promo={duplicatePromo}
+          mode="create"
+          onClose={() => { setShowAddModal(false); setDuplicatePromo(null); }}
           onSave={handleSave}
           isLoading={isLoading}
         />
@@ -682,6 +728,7 @@ export default function PromotionsTab() {
       {editPromo && (
         <PromoModal
           promo={editPromo}
+          mode="edit"
           onClose={() => setEditPromo(null)}
           onSave={handleSave}
           isLoading={isLoading}

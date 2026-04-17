@@ -1,5 +1,5 @@
 'use client';
-/* eslint-disable-next-line @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -52,6 +52,17 @@ interface StoreOrder {
     refundAt: string;
     rejectReason?: string;
   };
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /* ═══════════════════════════════════════════
@@ -184,6 +195,49 @@ function mapApiOrder(item: StoreOrderItem, apiItems: StoreOrderDetail['danh_sach
   };
 }
 
+function mapApiOrderWithDetail(
+  item: StoreOrderItem,
+  detail?: StoreOrderDetail,
+): StoreOrder {
+  const base = mapApiOrder(item, detail?.danh_sach_mon_an ?? []);
+  const latestReview = detail?.danh_gia?.[0];
+  const latestHistory = detail?.lich_su_cap_nhat?.[detail.lich_su_cap_nhat.length - 1];
+  const rejectPrefix = 'Chủ cửa hàng từ chối hoàn tiền. Lý do: ';
+  const isRefundRejected = latestHistory?.noi_dung?.startsWith(rejectPrefix);
+  const rejectReason = isRefundRejected
+    ? latestHistory?.noi_dung?.slice(rejectPrefix.length) ?? ''
+    : undefined;
+  const isRefundApproved = detail?.trang_thai_db === 'da_hoan_tien';
+
+  return {
+    ...base,
+    ngay_dat: formatDateTime(item.thoi_gian_dat),
+    cancelInfo: base.cancelInfo
+      ? {
+          ...base.cancelInfo,
+          requestAt: formatDateTime(item.thoi_gian_huy),
+          refundAt: formatDateTime(item.thoi_gian_hoan_tien),
+        }
+      : undefined,
+    returnInfo: base.returnInfo
+      ? {
+          ...base.returnInfo,
+          requestAt: formatDateTime(item.thoi_gian_hoan_tien),
+          refund: isRefundApproved ? 'approved' : isRefundRejected ? 'rejected' : base.returnInfo.refund,
+          refundAt: isRefundApproved ? formatDateTime(item.thoi_gian_hoan_tien) : base.returnInfo.refundAt,
+          rejectReason,
+        }
+      : undefined,
+    review: latestReview
+      ? {
+          rating: latestReview.so_sao,
+          text: latestReview.noi_dung ?? '',
+          images: [],
+        }
+      : undefined,
+  };
+}
+
 /* ═══════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════ */
@@ -214,7 +268,7 @@ const STATUS_BADGE: Record<OrderTabKey, { text: string; cls: string }> = {
   returned: { text: 'Trả hàng', cls: 'bg-[#f0a050] text-white' },
 };
 
-const PROCESS_FILTER = ['Tất cả đơn', 'Đơn mới nhất', '⏳ Đơn sắp trễ', '🚨 Đơn quá giờ'] as const;
+const PROCESS_FILTER = ['Tất cả đơn', 'Đơn mới nhất', 'Đơn cũ nhất'] as const;
 const REJECT_REASONS = ['Hết món', 'Quán quá tải', 'Ngoài khu vực phục vụ', 'Món tạm ngưng bán', 'Hết nguyên liệu', 'Khác'];
 const REFUND_REJECT_REASONS = [
   'Không có bằng chứng hợp lệ', 'Món ăn vẫn đạt chất lượng khi giao',
@@ -241,6 +295,9 @@ function ConfirmOrderModal({
   onReject: () => void;
 }) {
   const [prepTime, setPrepTime] = useState(PREP_TIMES[0]);
+  const [customPrepTime, setCustomPrepTime] = useState('');
+  const isCustomPrepTime = prepTime === 'Nhập thời gian';
+  const resolvedPrepTime = isCustomPrepTime ? `${customPrepTime} phút` : prepTime;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={onClose}>
@@ -279,7 +336,7 @@ function ConfirmOrderModal({
             <p className="text-[14px] font-bold text-black">Chọn thời gian chuẩn bị món</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               {PREP_TIMES.map((t) => (
-                <label key={t} className="flex cursor-pointer items-center gap-2">
+                <label key={t} className="flex cursor-pointer items-center gap-2" onClick={() => setPrepTime(t)}>
                   <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${prepTime === t ? 'border-[#2e7d32]' : 'border-[#ccc]'}`}>
                     {prepTime === t && <span className="h-2.5 w-2.5 rounded-full bg-[#2e7d32]" />}
                   </span>
@@ -287,9 +344,26 @@ function ConfirmOrderModal({
                 </label>
               ))}
             </div>
+            {isCustomPrepTime && (
+              <input
+                type="number"
+                min="1"
+                value={customPrepTime}
+                onChange={(e) => setCustomPrepTime(e.target.value)}
+                placeholder="Nhập số phút"
+                className="mt-3 w-full rounded-[10px] border border-[#e0e0e0] px-3 py-2 text-[13px] text-black outline-none"
+              />
+            )}
           </div>
           <div className="mt-5 flex items-center justify-center gap-3">
-            <button type="button" onClick={() => onConfirm(prepTime)} className="rounded-[10px] bg-[#2e7d32] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#256b28]">Xác nhận</button>
+            <button
+              type="button"
+              onClick={() => resolvedPrepTime && onConfirm(resolvedPrepTime)}
+              disabled={isCustomPrepTime && !customPrepTime.trim()}
+              className="rounded-[10px] bg-[#2e7d32] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#256b28] disabled:opacity-60"
+            >
+              Xác nhận
+            </button>
             <button type="button" onClick={onReject} className="rounded-[10px] bg-[#d32f2f] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#b71c1c]">Từ chối</button>
           </div>
         </div>
@@ -336,6 +410,9 @@ function RejectReasonModal({ onClose, onReject }: { onClose: () => void; onRejec
    ═══════════════════════════════════════════ */
 function ExtendTimeModal({ onClose, onExtend }: { onClose: () => void; onExtend: (time: string) => void }) {
   const [time, setTime] = useState('');
+  const [customMinutes, setCustomMinutes] = useState('');
+  const isCustomTime = time === 'Khác';
+  const resolvedTime = isCustomTime ? `${customMinutes} phút` : time;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={onClose}>
       <div className="relative w-full max-w-[460px] rounded-[16px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" onClick={(e) => e.stopPropagation()}>
@@ -354,9 +431,26 @@ function ExtendTimeModal({ onClose, onExtend }: { onClose: () => void; onExtend:
               </label>
             ))}
           </div>
+          {isCustomTime && (
+            <input
+              type="number"
+              min="1"
+              value={customMinutes}
+              onChange={(e) => setCustomMinutes(e.target.value)}
+              placeholder="Nhập số phút gia hạn"
+              className="mt-3 w-full rounded-[10px] border border-[#e0e0e0] px-3 py-2 text-[13px] text-black outline-none"
+            />
+          )}
           <div className="mt-5 flex items-center justify-center gap-3">
             <button type="button" onClick={onClose} className="rounded-[10px] border border-[#ddd] bg-white px-8 py-2.5 text-[14px] font-semibold text-black transition hover:bg-gray-50">Hủy</button>
-            <button type="button" onClick={() => { if (time) { onExtend(time); onClose(); } }} className="rounded-[10px] bg-[#d32f2f] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#b71c1c]">Gia hạn</button>
+            <button
+              type="button"
+              onClick={() => { if (resolvedTime) { onExtend(resolvedTime); onClose(); } }}
+              disabled={isCustomTime && !customMinutes.trim()}
+              className="rounded-[10px] bg-[#d32f2f] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#b71c1c] disabled:opacity-60"
+            >
+              Gia hạn
+            </button>
           </div>
         </div>
       </div>
@@ -801,6 +895,7 @@ export default function OrdersTab() {
   const [processFilter, setProcessFilter] = useState<string>(PROCESS_FILTER[0]);
   const [processOpen, setProcessOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -841,7 +936,7 @@ export default function OrdersTab() {
         (res.du_lieu).map(async (item) => {
           try {
             const detail = await storeOrderApi.layChiTiet(item.ma_don_hang);
-            return mapApiOrder(item, detail.danh_sach_mon_an);
+            return mapApiOrderWithDetail(item, detail);
           } catch {
             return mapApiOrder(item, []);
           }
@@ -851,12 +946,12 @@ export default function OrdersTab() {
       setOrders(ordersWithDetail);
       setTabCounts(res.tab_counts);
       setCurrentPage(page);
+      setTotalPages(res.tong_trang);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Tải đơn hàng thất bại');
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabDbKey, debouncedSearch, timeFilter, customDateRange.tu_ngay, customDateRange.den_ngay]);
 
   // Trigger loadOrders khi các dependency thay đổi (sau khi mounted)
@@ -867,11 +962,7 @@ export default function OrdersTab() {
       return;
     }
     loadOrders(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    loadOrders,
-  ]);
+  }, [loadOrders]);
 
   // Debounce search input
   useEffect(() => {
@@ -881,7 +972,6 @@ export default function OrdersTab() {
       setCurrentPage(1);
     }, 500);
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
   // Action handlers
@@ -961,7 +1051,7 @@ export default function OrdersTab() {
     setDetailLoading(true);
     try {
       const detail = await storeOrderApi.layChiTiet(order.ma_don_hang);
-      const full = mapApiOrder(detailToOrderItem(detail), detail.danh_sach_mon_an);
+      const full = mapApiOrderWithDetail(detailToOrderItem(detail), detail);
       setDetailOrder(full);
     } catch {
       // keep order data as-is
@@ -970,10 +1060,9 @@ export default function OrdersTab() {
     }
   };
 
-  const showProcessFilter = activeTab === 'pending';
-  const showSortFilter =
-    activeTab === 'delivering' || activeTab === 'delivered' ||
-    activeTab === 'cancelled' || activeTab === 'returned';
+  const displayedOrders = processFilter === 'Đơn cũ nhất' && activeTab === 'pending'
+    ? [...orders].reverse()
+    : orders;
 
   return (
     <div>
@@ -1013,12 +1102,13 @@ export default function OrdersTab() {
           />
         </div>
         <div className="relative flex items-center gap-1 rounded-full border border-[#ddd] bg-white px-4 py-2 text-[13px] text-black">
-          <button type="button" onClick={() => showSortFilter && setTimeFilterOpen(!timeFilterOpen)} className={`flex items-center gap-1 ${showSortFilter ? '' : 'cursor-default'}`}>
+          <button type="button" onClick={() => setTimeFilterOpen(!timeFilterOpen)} className="flex items-center gap-1">
             <span>{timeFilter === 'today' ? 'Hôm nay' : timeFilter === '7days' ? '7 ngày' : timeFilter === '30days' ? '30 ngày' : timeFilter === 'custom' ? 'Tùy chỉnh' : 'Tất cả'}</span>
-            {showSortFilter && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
-          {timeFilterOpen && showSortFilter && (
+          {timeFilterOpen && (
             <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[140px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
+              <button type="button" onClick={() => { setTimeFilter(''); setTimeFilterOpen(false); }} className={`block w-full px-4 py-2.5 text-left text-[13px] transition hover:bg-[#f6faf4] ${timeFilter === '' ? 'font-bold text-[#2e7d32]' : 'text-black'}`}>Tất cả</button>
               <button type="button" onClick={() => { setTimeFilter('today'); setTimeFilterOpen(false); }} className={`block w-full px-4 py-2.5 text-left text-[13px] transition hover:bg-[#f6faf4] ${timeFilter === 'today' ? 'font-bold text-[#2e7d32]' : 'text-black'}`}>Hôm nay</button>
               <button type="button" onClick={() => { setTimeFilter('7days'); setTimeFilterOpen(false); }} className={`block w-full px-4 py-2.5 text-left text-[13px] transition hover:bg-[#f6faf4] ${timeFilter === '7days' ? 'font-bold text-[#2e7d32]' : 'text-black'}`}>7 ngày</button>
               <button type="button" onClick={() => { setTimeFilter('30days'); setTimeFilterOpen(false); }} className={`block w-full px-4 py-2.5 text-left text-[13px] transition hover:bg-[#f6faf4] ${timeFilter === '30days' ? 'font-bold text-[#2e7d32]' : 'text-black'}`}>30 ngày</button>
@@ -1033,28 +1123,18 @@ export default function OrdersTab() {
             <input type="date" value={customDateRange.den_ngay} onChange={(e) => { setCustomDateRange((p) => ({ ...p, den_ngay: e.target.value })); }} className="text-[13px] text-black outline-none" />
           </div>
         )}
-        <div className="flex items-center gap-2">
-          {!showProcessFilter && (
-            <button
-              type="button"
-              onClick={() => { setProcessFilter(PROCESS_FILTER[0]); setProcessOpen(true); }}
-              className="flex items-center gap-1 rounded-full border border-[#ddd] bg-white px-4 py-2 text-[13px] text-black"
-            >
-              <span>{showSortFilter ? 'Sắp xếp' : 'Đơn cần xử lý'}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
-            </button>
-          )}
-          {showProcessFilter && (
+        <div className="relative flex items-center gap-2">
+          {activeTab === 'pending' && (
             <button
               type="button"
               onClick={() => setProcessOpen(!processOpen)}
               className="flex items-center gap-1 rounded-full border border-[#ddd] bg-white px-4 py-2 text-[13px] text-black"
             >
-              <span>Sắp xếp</span>
+              <span>{processFilter}</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
             </button>
           )}
-          {processOpen && showProcessFilter && (
+          {processOpen && activeTab === 'pending' && (
             <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[180px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
               {PROCESS_FILTER.map((f) => (
                 <button
@@ -1100,7 +1180,7 @@ export default function OrdersTab() {
             <p className="text-[15px] text-[#999]">Không có đơn hàng nào</p>
           </div>
         )}
-        {!loading && !error && orders.map((order) => (
+        {!loading && !error && displayedOrders.map((order) => (
           <OrderCard
             key={order.id}
             order={order}
@@ -1109,7 +1189,7 @@ export default function OrdersTab() {
             onDeliver={handleDeliver}
             onExtend={(id) => { const o = orders.find((x) => x.id === id); if (o) setExtendOrder(o); }}
             onViewReview={(id) => { const o = orders.find((x) => x.id === id); if (o) setReviewOrder(o); }}
-            onViewDetail={(id) => { const o = orders.find((x) => x.id === id); if (o) setDetailOrder(o); }}
+            onViewDetail={handleViewDetail}
             onApproveRefund={handleApproveRefund}
             onRejectRefund={(id) => { const o = orders.find((x) => x.id === id); if (o) setRejectRefundOrder(o); }}
           />
@@ -1125,7 +1205,7 @@ export default function OrdersTab() {
             disabled={currentPage <= 1}
             className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[#999] transition hover:bg-[#f0f0f0] disabled:cursor-not-allowed disabled:opacity-40"
           >‹</button>
-          {[1, 2, 3, 4, 5, 6].map((p) => (
+          {Array.from({ length: totalPages }, (_, index) => index + 1).slice(0, 7).map((p) => (
             <button
               key={p}
               type="button"
@@ -1137,7 +1217,8 @@ export default function OrdersTab() {
           <button
             type="button"
             onClick={() => loadOrders(currentPage + 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[#999] transition hover:bg-[#f0f0f0]"
+            disabled={currentPage >= totalPages}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[#999] transition hover:bg-[#f0f0f0] disabled:cursor-not-allowed disabled:opacity-40"
           >›</button>
         </div>
       )}
