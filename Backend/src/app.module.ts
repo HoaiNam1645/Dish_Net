@@ -9,6 +9,7 @@ import { RolesGuard } from "./common/guards/roles.guard";
 import { getTypeOrmConfig } from "./database/typeorm.config";
 import { AuthModule } from "./Api/Auth/auth.module";
 import { AdminModule } from "./Api/Admin/admin.module";
+import { StoreModule } from "./Api/Store/store.module";
 import { EmailModule } from "./shared/email/email.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { EmailModule } from "./shared/email/email.module";
     EmailModule,
     AuthModule,
     AdminModule,
+    StoreModule,
   ],
   controllers: [AppController],
   providers: [

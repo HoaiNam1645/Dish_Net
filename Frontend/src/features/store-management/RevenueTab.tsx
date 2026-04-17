@@ -169,7 +169,7 @@ const SUMMARY_CARDS = [
 /* ═══════════════════════════════════════════
    REVENUE TAB COMPONENT
    ═══════════════════════════════════════════ */
-export default function RevenueTab({ onViewOrderDetail }: { onViewOrderDetail: (code: string) => void }) {
+export default function RevenueTab() {
     const [statusFilter, setStatusFilter] = useState<string>(ORDER_STATUS_FILTER[0]);
     const [searchText, setSearchText] = useState('');
     const [timeDropdown, setTimeDropdown] = useState(false);
@@ -309,7 +309,6 @@ export default function RevenueTab({ onViewOrderDetail }: { onViewOrderDetail: (
                                         {/* ⑤ */}
                                         <button
                                             type="button"
-                                            onClick={() => onViewOrderDetail(order.code)}
                                             className="rounded-[6px] bg-[#2e7d32] px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-[#256b28]"
                                         >
                                             Xem chi tiết

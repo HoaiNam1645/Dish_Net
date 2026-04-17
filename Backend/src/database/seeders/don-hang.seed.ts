@@ -264,6 +264,10 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 59000,
       so_luong: 2,
       thanh_tien: 118000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm rau muống", gia: 5000, so_luong: 1 },
+        { ten: "Thêm chả", gia: 8000, so_luong: 1 },
+      ]),
       ghi_chu: "Ít cay",
     },
     {
@@ -274,6 +278,10 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 65000,
       so_luong: 2,
       thanh_tien: 130000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Trứng ốp la", gia: 10000, so_luong: 1 },
+        { ten: "Thêm thịt", gia: 15000, so_luong: 1 },
+      ]),
       ghi_chu: "Thêm trứng ốp la",
     },
     {
@@ -284,6 +292,7 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 59000,
       so_luong: 1,
       thanh_tien: 59000,
+      topping_snapshot: null,
       ghi_chu: null,
     },
     {
@@ -294,6 +303,10 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 65000,
       so_luong: 3,
       thanh_tien: 195000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm pate", gia: 12000, so_luong: 1 },
+        { ten: "Thêm xíu", gia: 10000, so_luong: 1 },
+      ]),
       ghi_chu: null,
     },
     {
@@ -304,6 +317,7 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 65000,
       so_luong: 1,
       thanh_tien: 65000,
+      topping_snapshot: null,
       ghi_chu: "Không hành",
     },
     {
@@ -314,6 +328,9 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 59000,
       so_luong: 2,
       thanh_tien: 118000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm sa tế", gia: 6000, so_luong: 1 },
+      ]),
       ghi_chu: "Thêm sa tế riêng",
     },
     {
@@ -324,6 +341,9 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 65000,
       so_luong: 2,
       thanh_tien: 130000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Nước mắm pha", gia: 5000, so_luong: 1 },
+      ]),
       ghi_chu: "Thêm nước mắm",
     },
     {
@@ -334,6 +354,10 @@ export async function seedDonHang(context: SeederContext) {
       don_gia: 59000,
       so_luong: 2,
       thanh_tien: 118000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm rau thơm", gia: 3000, so_luong: 1 },
+        { ten: "Thêm mắm tôm", gia: 5000, so_luong: 1 },
+      ]),
       ghi_chu: null,
     },
   ]);

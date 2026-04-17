@@ -116,4 +116,95 @@ export async function seedKhuyenMai(context: SeederContext) {
       mo_ta: "Đơn tối thiểu 300.000đ",
     },
   ]);
+
+  // --- Khuyến mãi cửa hàng ---
+  const storePromoCodes = [
+    "NETBUN25",
+    "NEHUE15",
+    "NETHS20",
+    "QUANCOM10",
+  ];
+
+  await repo
+    .createQueryBuilder()
+    .delete()
+    .where("ma_khuyen_mai IN (:...codes)", { codes: storePromoCodes })
+    .execute();
+
+  const storeId1 = context.storeByEmail.get("store@dishnet.vn");
+  const storeId2 = context.storeByEmail.get("multi@dishnet.vn");
+
+  if (storeId1) {
+    await repo.save([
+      {
+        pham_vi_ap_dung: "cua_hang",
+        id_cua_hang: storeId1,
+        ten_khuyen_mai: "Giảm 25% Bún Bò Huế",
+        ma_khuyen_mai: "NETBUN25",
+        loai_khuyen_mai: "phan_tram",
+        gia_tri_khuyen_mai: 25,
+        gia_tri_toi_da: 20000,
+        don_hang_toi_thieu: 40000,
+        so_luot_toi_da: 100,
+        so_luot_da_dung: 42,
+        thoi_gian_bat_dau: new Date("2026-04-01T00:00:00"),
+        thoi_gian_ket_thuc: new Date("2026-04-30T23:59:59"),
+        trang_thai: "dang_dien_ra",
+        mo_ta: "Giảm 25% tối đa 20.000đ cho đơn từ 40.000đ",
+      },
+      {
+        pham_vi_ap_dung: "cua_hang",
+        id_cua_hang: storeId1,
+        ten_khuyen_mai: "Miễn phí vận chuyển Nét Huế",
+        ma_khuyen_mai: "NEHUE15",
+        loai_khuyen_mai: "mien_phi_van_chuyen",
+        gia_tri_khuyen_mai: 0,
+        gia_tri_toi_da: null,
+        don_hang_toi_thieu: 80000,
+        so_luot_toi_da: 50,
+        so_luot_da_dung: 15,
+        thoi_gian_bat_dau: new Date("2026-04-10T00:00:00"),
+        thoi_gian_ket_thuc: new Date("2026-04-20T23:59:59"),
+        trang_thai: "dang_dien_ra",
+        mo_ta: "Miễn phí ship cho đơn từ 80.000đ",
+      },
+      {
+        pham_vi_ap_dung: "cua_hang",
+        id_cua_hang: storeId1,
+        ten_khuyen_mai: "Giảm 20k Hải Sản",
+        ma_khuyen_mai: "NETHS20",
+        loai_khuyen_mai: "so_tien",
+        gia_tri_khuyen_mai: 20000,
+        gia_tri_toi_da: null,
+        don_hang_toi_thieu: 60000,
+        so_luot_toi_da: 30,
+        so_luot_da_dung: 8,
+        thoi_gian_bat_dau: new Date("2026-04-12T00:00:00"),
+        thoi_gian_ket_thuc: new Date("2026-04-16T23:59:59"),
+        trang_thai: "sap_dien_ra",
+        mo_ta: "Giảm 20.000đ cho đơn hải sản từ 60.000đ",
+      },
+    ]);
+  }
+
+  if (storeId2) {
+    await repo.save([
+      {
+        pham_vi_ap_dung: "cua_hang",
+        id_cua_hang: storeId2,
+        ten_khuyen_mai: "Giảm 10% Cơm Bình Dân",
+        ma_khuyen_mai: "QUANCOM10",
+        loai_khuyen_mai: "phan_tram",
+        gia_tri_khuyen_mai: 10,
+        gia_tri_toi_da: 15000,
+        don_hang_toi_thieu: 30000,
+        so_luot_toi_da: 200,
+        so_luot_da_dung: 67,
+        thoi_gian_bat_dau: new Date("2026-04-05T00:00:00"),
+        thoi_gian_ket_thuc: new Date("2026-04-30T23:59:59"),
+        trang_thai: "dang_dien_ra",
+        mo_ta: "Giảm 10% tối đa 15.000đ cho đơn từ 30.000đ",
+      },
+    ]);
+  }
 }

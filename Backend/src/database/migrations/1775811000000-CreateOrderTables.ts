@@ -48,6 +48,7 @@ export class CreateOrderTables1775811000000 implements MigrationInterface {
         don_gia DECIMAL(14, 2) NOT NULL,
         so_luong INT NOT NULL,
         thanh_tien DECIMAL(14, 2) NOT NULL,
+        topping_snapshot JSON NULL,
         ghi_chu TEXT NULL,
         PRIMARY KEY (id),
         CONSTRAINT fk_don_hang_chi_tiet_don_hang FOREIGN KEY (id_don_hang) REFERENCES don_hang(id) ON DELETE CASCADE,

@@ -11,6 +11,8 @@ type NguoiDung = {
   anh_dai_dien: string | null;
   ten_dang_nhap: string;
   vai_tro: string;
+  id_cua_hang?: number;
+  ten_cua_hang?: string;
 };
 
 type AuthContextType = {

@@ -13,6 +13,8 @@ import { MonAnEntity } from "../Api/Admin/entities/mon-an.entity";
 import { BaiVietEntity } from "../Api/Admin/entities/bai-viet.entity";
 import { BinhLuanEntity } from "../Api/Admin/entities/binh-luan.entity";
 import { KhuyenMaiEntity } from "../Api/Admin/entities/khuyen-mai.entity";
+import { DanhMucMonEntity } from "../Api/Admin/entities/danh-muc-mon.entity";
+import { ToppingEntity } from "../Api/Admin/entities/topping.entity";
 import { DonHangEntity } from "../Api/Admin/entities/don-hang.entity";
 import { DonHangChiTietEntity } from "../Api/Admin/entities/don-hang-chi-tiet.entity";
 import { LichSuDonHangEntity } from "../Api/Admin/entities/lich-su-don-hang.entity";
@@ -42,6 +44,8 @@ export function getTypeOrmConfig(): TypeOrmModuleOptions & DataSourceOptions {
       BaiVietEntity,
       BinhLuanEntity,
       KhuyenMaiEntity,
+      DanhMucMonEntity,
+      ToppingEntity,
       DonHangEntity,
       DonHangChiTietEntity,
       LichSuDonHangEntity,

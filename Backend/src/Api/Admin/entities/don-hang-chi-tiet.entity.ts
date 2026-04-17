@@ -34,6 +34,9 @@ export class DonHangChiTietEntity {
   thanh_tien: number;
 
   @Column({ type: "text", nullable: true })
+  topping_snapshot: string | null;
+
+  @Column({ type: "text", nullable: true })
   ghi_chu: string | null;
 
   @ManyToOne(() => DonHangEntity, (donHang) => donHang.chi_tiet, {

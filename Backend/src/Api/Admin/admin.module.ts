@@ -29,6 +29,8 @@ import { MonAnEntity } from "./entities/mon-an.entity";
 import { BaiVietEntity } from "./entities/bai-viet.entity";
 import { BinhLuanEntity } from "./entities/binh-luan.entity";
 import { KhuyenMaiEntity } from "./entities/khuyen-mai.entity";
+import { DanhMucMonEntity } from "./entities/danh-muc-mon.entity";
+import { ToppingEntity } from "./entities/topping.entity";
 import { DonHangEntity } from "./entities/don-hang.entity";
 import { DonHangChiTietEntity } from "./entities/don-hang-chi-tiet.entity";
 import { LichSuDonHangEntity } from "./entities/lich-su-don-hang.entity";
@@ -49,6 +51,8 @@ import { LichSuDonHangEntity } from "./entities/lich-su-don-hang.entity";
       BaiVietEntity,
       BinhLuanEntity,
       KhuyenMaiEntity,
+      DanhMucMonEntity,
+      ToppingEntity,
       DonHangEntity,
       DonHangChiTietEntity,
       LichSuDonHangEntity,

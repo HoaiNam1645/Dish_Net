@@ -9,6 +9,8 @@ export type SeederContext = {
   requestByKey: Map<string, YeuCauNangCapEntity>;
   reportByCode: Map<string, BaoCaoEntity>;
   objectIds: Map<string, number>;
+  storeByEmail: Map<string, number>;
+  categoryByKey: Map<string, number>;
 };
 
 export function createSeederContext(dataSource: DataSource): SeederContext {
@@ -18,6 +20,8 @@ export function createSeederContext(dataSource: DataSource): SeederContext {
     requestByKey: new Map(),
     reportByCode: new Map(),
     objectIds: new Map(),
+    storeByEmail: new Map(),
+    categoryByKey: new Map(),
   };
 }
 
