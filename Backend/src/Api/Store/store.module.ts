@@ -6,6 +6,10 @@ import { StorePromotionController } from './store-promotion.controller';
 import { StorePromotionService } from './store-promotion.service';
 import { StoreMenuController } from './store-menu.controller';
 import { StoreMenuService } from './store-menu.service';
+import { StoreOverviewController } from './store-overview.controller';
+import { StoreOverviewService } from './store-overview.service';
+import { StoreRevenueController } from './store-revenue.controller';
+import { StoreRevenueService } from './store-revenue.service';
 import { DonHangEntity } from '../Admin/entities/don-hang.entity';
 import { DonHangChiTietEntity } from '../Admin/entities/don-hang-chi-tiet.entity';
 import { LichSuDonHangEntity } from '../Admin/entities/lich-su-don-hang.entity';
@@ -30,7 +34,19 @@ import { KhuyenMaiEntity } from '../Admin/entities/khuyen-mai.entity';
       ToppingEntity,
     ]),
   ],
-  controllers: [StoreOrderController, StorePromotionController, StoreMenuController],
-  providers: [StoreOrderService, StorePromotionService, StoreMenuService],
+  controllers: [
+    StoreOrderController,
+    StorePromotionController,
+    StoreMenuController,
+    StoreOverviewController,
+    StoreRevenueController,
+  ],
+  providers: [
+    StoreOrderService,
+    StorePromotionService,
+    StoreMenuService,
+    StoreOverviewService,
+    StoreRevenueService,
+  ],
 })
 export class StoreModule {}

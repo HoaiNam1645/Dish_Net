@@ -12,6 +12,9 @@ export async function seedDonHang(context: SeederContext) {
   const donHangRepo = context.dataSource.getRepository(DonHangEntity);
   const chiTietRepo = context.dataSource.getRepository(DonHangChiTietEntity);
   const lichSuRepo = context.dataSource.getRepository(LichSuDonHangEntity);
+  const pb25RevenueOrderCodes = Array.from({ length: 12 }, (_, index) =>
+    `PB25REV${String(index + 1).padStart(2, "0")}`,
+  );
 
   const maDonHangSeeds = [
     "DH2026041101",
@@ -22,6 +25,12 @@ export async function seedDonHang(context: SeederContext) {
     "DH2026040608",
     "DH2026032505",
     "DH2026032006",
+    "PB24TODAY01",
+    "PB24TODAY02",
+    "PB24TODAY03",
+    "PB24TODAY04",
+    "PB24TODAY05",
+    ...pb25RevenueOrderCodes,
   ];
 
   const existingOrders = await donHangRepo.find({
@@ -45,6 +54,21 @@ export async function seedDonHang(context: SeederContext) {
 
   await monAnRepo.delete([702]);
   await cuaHangRepo.delete([602]);
+
+  const homNay = new Date();
+  const atTimeToday = (hours: number, minutes: number) => {
+    const d = new Date(homNay);
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  };
+  const atDaysAgo = (daysAgo: number, hours: number, minutes: number) => {
+    const d = new Date(homNay);
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  };
+  const addMinutes = (date: Date, minutes: number) =>
+    new Date(date.getTime() + minutes * 60_000);
 
   const cuaHang2 = await cuaHangRepo.save({
     id: 602,
@@ -73,6 +97,411 @@ export async function seedDonHang(context: SeederContext) {
       "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=640&q=80",
     gia_ban: 65000,
     trang_thai_ban: "dang_ban",
+  });
+
+  const pb25RevenueBlueprints = [
+    {
+      code: "PB25REV01",
+      buyerEmail: "user@dishnet.vn",
+      daysAgo: 1,
+      hours: 9,
+      minutes: 20,
+      source: "truc_tiep",
+      paymentMethod: "tien_mat",
+      status: "da_giao",
+      dishId: context.objectIds.get("mon_an_seed")!,
+      dishName: "Bún bò đặc biệt",
+      unitPrice: 59000,
+      quantity: 2,
+      shippingFee: 15000,
+      discount: 10000,
+      platformFee: 20000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV02",
+      buyerEmail: "creator@dishnet.vn",
+      daysAgo: 2,
+      hours: 12,
+      minutes: 5,
+      source: "tim_kiem",
+      paymentMethod: "vnpay",
+      status: "da_giao",
+      dishId: context.objectIds.get("mon_an_seed_2")!,
+      dishName: "Bún bò tái nạm",
+      unitPrice: 62000,
+      quantity: 2,
+      shippingFee: 15000,
+      discount: 12000,
+      platformFee: 21000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV03",
+      buyerEmail: "multi@dishnet.vn",
+      daysAgo: 3,
+      hours: 18,
+      minutes: 15,
+      source: "bai_viet",
+      paymentMethod: "the",
+      status: "da_giao",
+      dishId: 702,
+      dishName: "Cơm tấm sườn bì chả",
+      unitPrice: 65000,
+      quantity: 2,
+      shippingFee: 18000,
+      discount: 5000,
+      platformFee: 22000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV04",
+      buyerEmail: "store@dishnet.vn",
+      daysAgo: 5,
+      hours: 11,
+      minutes: 30,
+      source: "khuyen_mai",
+      paymentMethod: "vi_dien_tu",
+      status: "da_giao",
+      dishId: context.objectIds.get("mon_an_seed")!,
+      dishName: "Bún bò đặc biệt",
+      unitPrice: 59000,
+      quantity: 3,
+      shippingFee: 18000,
+      discount: 20000,
+      platformFee: 30000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV05",
+      buyerEmail: "user@dishnet.vn",
+      daysAgo: 7,
+      hours: 13,
+      minutes: 5,
+      source: "truc_tiep",
+      paymentMethod: "tien_mat",
+      status: "dang_giao",
+      dishId: context.objectIds.get("mon_an_seed_2")!,
+      dishName: "Bún bò tái nạm",
+      unitPrice: 62000,
+      quantity: 3,
+      shippingFee: 20000,
+      discount: 15000,
+      platformFee: 32000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV06",
+      buyerEmail: "creator@dishnet.vn",
+      daysAgo: 9,
+      hours: 19,
+      minutes: 0,
+      source: "tim_kiem",
+      paymentMethod: "vnpay",
+      status: "dang_chuan_bi",
+      dishId: 702,
+      dishName: "Cơm tấm sườn bì chả",
+      unitPrice: 65000,
+      quantity: 3,
+      shippingFee: 22000,
+      discount: 10000,
+      platformFee: 33000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV07",
+      buyerEmail: "multi@dishnet.vn",
+      daysAgo: 12,
+      hours: 8,
+      minutes: 40,
+      source: "bai_viet",
+      paymentMethod: "the",
+      status: "da_giao",
+      dishId: context.objectIds.get("mon_an_seed")!,
+      dishName: "Bún bò đặc biệt",
+      unitPrice: 59000,
+      quantity: 4,
+      shippingFee: 22000,
+      discount: 25000,
+      platformFee: 38000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV08",
+      buyerEmail: "store@dishnet.vn",
+      daysAgo: 15,
+      hours: 14,
+      minutes: 10,
+      source: "khuyen_mai",
+      paymentMethod: "vi_dien_tu",
+      status: "da_huy",
+      dishId: context.objectIds.get("mon_an_seed_2")!,
+      dishName: "Bún bò tái nạm",
+      unitPrice: 62000,
+      quantity: 2,
+      shippingFee: 15000,
+      discount: 0,
+      platformFee: 0,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV09",
+      buyerEmail: "user@dishnet.vn",
+      daysAgo: 18,
+      hours: 10,
+      minutes: 55,
+      source: "truc_tiep",
+      paymentMethod: "tien_mat",
+      status: "da_giao",
+      dishId: 702,
+      dishName: "Cơm tấm sườn bì chả",
+      unitPrice: 65000,
+      quantity: 3,
+      shippingFee: 18000,
+      discount: 18000,
+      platformFee: 34000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV10",
+      buyerEmail: "creator@dishnet.vn",
+      daysAgo: 22,
+      hours: 20,
+      minutes: 15,
+      source: "tim_kiem",
+      paymentMethod: "vnpay",
+      status: "tra_hang",
+      dishId: context.objectIds.get("mon_an_seed")!,
+      dishName: "Bún bò đặc biệt",
+      unitPrice: 59000,
+      quantity: 2,
+      shippingFee: 15000,
+      discount: 8000,
+      platformFee: 0,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV11",
+      buyerEmail: "multi@dishnet.vn",
+      daysAgo: 26,
+      hours: 9,
+      minutes: 35,
+      source: "bai_viet",
+      paymentMethod: "the",
+      status: "da_giao",
+      dishId: context.objectIds.get("mon_an_seed_2")!,
+      dishName: "Bún bò tái nạm",
+      unitPrice: 62000,
+      quantity: 4,
+      shippingFee: 25000,
+      discount: 30000,
+      platformFee: 42000,
+      creatorFee: 0,
+    },
+    {
+      code: "PB25REV12",
+      buyerEmail: "store@dishnet.vn",
+      daysAgo: 29,
+      hours: 16,
+      minutes: 45,
+      source: "khuyen_mai",
+      paymentMethod: "vi_dien_tu",
+      status: "da_giao",
+      dishId: 702,
+      dishName: "Cơm tấm sườn bì chả",
+      unitPrice: 65000,
+      quantity: 2,
+      shippingFee: 16000,
+      discount: 10000,
+      platformFee: 22000,
+      creatorFee: 0,
+    },
+  ] as const;
+
+  const pb25RevenueSeeds = pb25RevenueBlueprints.map((item) => {
+    const tamTinh = item.unitPrice * item.quantity;
+    const tongThanhToan = tamTinh + item.shippingFee - item.discount;
+    const doanhThuThucNhan = tamTinh - item.discount - item.platformFee;
+
+    const thoiGianDat = atDaysAgo(item.daysAgo, item.hours, item.minutes);
+    const thoiGianXacNhan = addMinutes(thoiGianDat, 5);
+    const thoiGianGiao = addMinutes(thoiGianDat, 35);
+    const thoiGianHoanTat = addMinutes(thoiGianDat, 55);
+    const thoiGianHuy = addMinutes(thoiGianDat, 12);
+    const thoiGianTraHang = addMinutes(thoiGianHoanTat, 35);
+
+    const baseOrder: DeepPartial<DonHangEntity> = {
+      ma_don_hang: item.code,
+      id_nguoi_mua: getUserId(context, item.buyerEmail)!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Khách hàng PB25",
+      so_dien_thoai_nhan: "0900000000",
+      dia_chi_giao: "15 Phan Châu Trinh, Hải Châu, Đà Nẵng",
+      nguon_don_hang: item.source,
+      phuong_thuc_thanh_toan: item.paymentMethod,
+      trang_thai_don_hang: item.status,
+      tam_tinh: tamTinh,
+      phi_van_chuyen: item.shippingFee,
+      tong_giam_gia: item.discount,
+      tong_thanh_toan: tongThanhToan,
+      thu_nhap_cua_hang:
+        item.status === "da_huy" || item.status === "tra_hang"
+          ? 0
+          : doanhThuThucNhan,
+      hoa_hong_nen_tang: item.platformFee,
+      hoa_hong_nha_sang_tao: item.creatorFee,
+      thoi_gian_dat: thoiGianDat,
+    };
+
+    if (item.status === "dang_chuan_bi" || item.status === "dang_giao" || item.status === "da_giao" || item.status === "tra_hang") {
+      baseOrder.thoi_gian_xac_nhan = thoiGianXacNhan;
+    }
+    if (item.status === "dang_giao" || item.status === "da_giao" || item.status === "tra_hang") {
+      baseOrder.thoi_gian_giao = thoiGianGiao;
+    }
+    if (item.status === "da_giao" || item.status === "tra_hang") {
+      baseOrder.thoi_gian_hoan_tat = thoiGianHoanTat;
+    }
+    if (item.status === "da_huy") {
+      baseOrder.ly_do_huy = "Khách đổi kế hoạch trong ngày";
+      baseOrder.nguoi_huy = "nguoi_mua";
+      baseOrder.thoi_gian_huy = thoiGianHuy;
+    }
+    if (item.status === "tra_hang") {
+      baseOrder.ly_do_tra_hang = "Khách phản hồi món không đúng ghi chú";
+    }
+
+    const history =
+      item.status === "da_giao"
+        ? [
+            {
+              trang_thai_tu: null,
+              trang_thai_den: "cho_xac_nhan",
+              noi_dung: "Khách hàng đặt đơn mới",
+              thoi_gian_cap_nhat: thoiGianDat,
+            },
+            {
+              trang_thai_tu: "cho_xac_nhan",
+              trang_thai_den: "da_xac_nhan",
+              noi_dung: "Cửa hàng xác nhận đơn hàng",
+              thoi_gian_cap_nhat: thoiGianXacNhan,
+            },
+            {
+              trang_thai_tu: "da_xac_nhan",
+              trang_thai_den: "dang_giao",
+              noi_dung: "Đơn đang được giao",
+              thoi_gian_cap_nhat: thoiGianGiao,
+            },
+            {
+              trang_thai_tu: "dang_giao",
+              trang_thai_den: "da_giao",
+              noi_dung: "Đơn hàng đã giao thành công",
+              thoi_gian_cap_nhat: thoiGianHoanTat,
+            },
+          ]
+        : item.status === "dang_giao"
+          ? [
+              {
+                trang_thai_tu: null,
+                trang_thai_den: "cho_xac_nhan",
+                noi_dung: "Khách hàng đặt đơn mới",
+                thoi_gian_cap_nhat: thoiGianDat,
+              },
+              {
+                trang_thai_tu: "cho_xac_nhan",
+                trang_thai_den: "da_xac_nhan",
+                noi_dung: "Cửa hàng xác nhận đơn hàng",
+                thoi_gian_cap_nhat: thoiGianXacNhan,
+              },
+              {
+                trang_thai_tu: "da_xac_nhan",
+                trang_thai_den: "dang_giao",
+                noi_dung: "Đơn đang được giao",
+                thoi_gian_cap_nhat: thoiGianGiao,
+              },
+            ]
+          : item.status === "dang_chuan_bi"
+            ? [
+                {
+                  trang_thai_tu: null,
+                  trang_thai_den: "cho_xac_nhan",
+                  noi_dung: "Khách hàng đặt đơn mới",
+                  thoi_gian_cap_nhat: thoiGianDat,
+                },
+                {
+                  trang_thai_tu: "cho_xac_nhan",
+                  trang_thai_den: "da_xac_nhan",
+                  noi_dung: "Cửa hàng xác nhận đơn hàng",
+                  thoi_gian_cap_nhat: thoiGianXacNhan,
+                },
+                {
+                  trang_thai_tu: "da_xac_nhan",
+                  trang_thai_den: "dang_chuan_bi",
+                  noi_dung: "Cửa hàng đang chuẩn bị món",
+                  thoi_gian_cap_nhat: addMinutes(thoiGianXacNhan, 4),
+                },
+              ]
+            : item.status === "da_huy"
+              ? [
+                  {
+                    trang_thai_tu: null,
+                    trang_thai_den: "cho_xac_nhan",
+                    noi_dung: "Khách hàng đặt đơn mới",
+                    thoi_gian_cap_nhat: thoiGianDat,
+                  },
+                  {
+                    trang_thai_tu: "cho_xac_nhan",
+                    trang_thai_den: "da_huy",
+                    noi_dung: "Khách hàng hủy đơn hàng",
+                    thoi_gian_cap_nhat: thoiGianHuy,
+                  },
+                ]
+              : [
+                  {
+                    trang_thai_tu: null,
+                    trang_thai_den: "cho_xac_nhan",
+                    noi_dung: "Khách hàng đặt đơn mới",
+                    thoi_gian_cap_nhat: thoiGianDat,
+                  },
+                  {
+                    trang_thai_tu: "cho_xac_nhan",
+                    trang_thai_den: "da_xac_nhan",
+                    noi_dung: "Cửa hàng xác nhận đơn hàng",
+                    thoi_gian_cap_nhat: thoiGianXacNhan,
+                  },
+                  {
+                    trang_thai_tu: "da_xac_nhan",
+                    trang_thai_den: "dang_giao",
+                    noi_dung: "Đơn đang được giao",
+                    thoi_gian_cap_nhat: thoiGianGiao,
+                  },
+                  {
+                    trang_thai_tu: "dang_giao",
+                    trang_thai_den: "da_giao",
+                    noi_dung: "Đơn hàng đã giao thành công",
+                    thoi_gian_cap_nhat: thoiGianHoanTat,
+                  },
+                  {
+                    trang_thai_tu: "da_giao",
+                    trang_thai_den: "tra_hang",
+                    noi_dung: "Khách hàng gửi yêu cầu trả hàng",
+                    thoi_gian_cap_nhat: thoiGianTraHang,
+                  },
+                ];
+
+    return {
+      code: item.code,
+      order: baseOrder,
+      detail: {
+        id_mon_an: item.dishId,
+        ten_mon_snapshot: item.dishName,
+        don_gia: item.unitPrice,
+        so_luong: item.quantity,
+        thanh_tien: tamTinh,
+      },
+      history,
+      historyUserId: getUserId(context, item.buyerEmail)!,
+    };
   });
 
   const orderSeeds: DeepPartial<DonHangEntity>[] = [
@@ -249,11 +678,144 @@ export async function seedDonHang(context: SeederContext) {
       thoi_gian_giao: new Date("2026-03-20T19:00:00"),
       thoi_gian_hoan_tat: new Date("2026-03-20T19:25:00"),
     },
+    // PB24 demo data: luôn nằm trong ngày hiện tại để màn Tổng quan có dữ liệu
+    {
+      ma_don_hang: "PB24TODAY01",
+      id_nguoi_mua: getUserId(context, "user@dishnet.vn")!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Nguyễn Văn A",
+      so_dien_thoai_nhan: "0901234567",
+      dia_chi_giao: "15 Phan Châu Trinh, Hải Châu, Đà Nẵng",
+      nguon_don_hang: "truc_tiep",
+      phuong_thuc_thanh_toan: "tien_mat",
+      trang_thai_don_hang: "da_giao",
+      tam_tinh: 180000,
+      phi_van_chuyen: 15000,
+      tong_giam_gia: 20000,
+      tong_thanh_toan: 175000,
+      thu_nhap_cua_hang: 145000,
+      hoa_hong_nen_tang: 30000,
+      hoa_hong_nha_sang_tao: 0,
+      thoi_gian_dat: atTimeToday(9, 5),
+      thoi_gian_xac_nhan: atTimeToday(9, 10),
+      thoi_gian_giao: atTimeToday(9, 35),
+      thoi_gian_hoan_tat: atTimeToday(9, 55),
+    },
+    {
+      ma_don_hang: "PB24TODAY02",
+      id_nguoi_mua: getUserId(context, "creator@dishnet.vn")!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Khoa Pug TV",
+      so_dien_thoai_nhan: "0911222333",
+      dia_chi_giao: "12 Hàng Bông, Hoàn Kiếm, Hà Nội",
+      nguon_don_hang: "tim_kiem",
+      phuong_thuc_thanh_toan: "vnpay",
+      trang_thai_don_hang: "dang_giao",
+      tam_tinh: 118000,
+      phi_van_chuyen: 12000,
+      tong_giam_gia: 5000,
+      tong_thanh_toan: 125000,
+      thu_nhap_cua_hang: 104000,
+      hoa_hong_nen_tang: 21000,
+      hoa_hong_nha_sang_tao: 0,
+      thoi_gian_dat: atTimeToday(10, 20),
+      thoi_gian_xac_nhan: atTimeToday(10, 25),
+      thoi_gian_giao: atTimeToday(10, 50),
+    },
+    {
+      ma_don_hang: "PB24TODAY03",
+      id_nguoi_mua: getUserId(context, "multi@dishnet.vn")!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Vừa Review Vừa Bán Đồ Ăn",
+      so_dien_thoai_nhan: "0944555666",
+      dia_chi_giao: "40 Nguyễn Như Hạnh, Đà Nẵng",
+      nguon_don_hang: "khuyen_mai",
+      phuong_thuc_thanh_toan: "vi_dien_tu",
+      trang_thai_don_hang: "da_huy",
+      tam_tinh: 59000,
+      phi_van_chuyen: 10000,
+      tong_giam_gia: 0,
+      tong_thanh_toan: 69000,
+      thu_nhap_cua_hang: 0,
+      hoa_hong_nen_tang: 0,
+      hoa_hong_nha_sang_tao: 0,
+      ly_do_huy: "Khách đổi ý sau khi đặt",
+      nguoi_huy: "nguoi_mua",
+      thoi_gian_dat: atTimeToday(11, 5),
+      thoi_gian_huy: atTimeToday(11, 12),
+    },
+    {
+      ma_don_hang: "PB24TODAY04",
+      id_nguoi_mua: getUserId(context, "locked@dishnet.vn")!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Kẻ Gây Rối",
+      so_dien_thoai_nhan: "0966777888",
+      dia_chi_giao: "55 Tôn Đức Thắng, Đống Đa, Hà Nội",
+      nguon_don_hang: "bai_viet",
+      id_bai_viet_nguon: context.objectIds.get("bai_viet_seed")!,
+      id_nha_sang_tao_nguon: getUserId(context, "creator@dishnet.vn")!,
+      phuong_thuc_thanh_toan: "the",
+      trang_thai_don_hang: "tra_hang",
+      tam_tinh: 177000,
+      phi_van_chuyen: 18000,
+      tong_giam_gia: 12000,
+      tong_thanh_toan: 183000,
+      thu_nhap_cua_hang: 0,
+      hoa_hong_nen_tang: 0,
+      hoa_hong_nha_sang_tao: 0,
+      ly_do_tra_hang: "Món ăn giao sai ghi chú",
+      thoi_gian_dat: atTimeToday(12, 10),
+      thoi_gian_xac_nhan: atTimeToday(12, 16),
+      thoi_gian_giao: atTimeToday(12, 40),
+      thoi_gian_hoan_tat: atTimeToday(13, 5),
+    },
+    {
+      ma_don_hang: "PB24TODAY05",
+      id_nguoi_mua: getUserId(context, "store@dishnet.vn")!,
+      id_cua_hang: context.objectIds.get("cua_hang_seed")!,
+      nguoi_nhan: "Nét Huế - Hàng Bông",
+      so_dien_thoai_nhan: "0933444555",
+      dia_chi_giao: "198 Hàng Bông, Hoàn Kiếm, Hà Nội",
+      nguon_don_hang: "truc_tiep",
+      phuong_thuc_thanh_toan: "tien_mat",
+      trang_thai_don_hang: "dang_chuan_bi",
+      tam_tinh: 236000,
+      phi_van_chuyen: 22000,
+      tong_giam_gia: 15000,
+      tong_thanh_toan: 243000,
+      thu_nhap_cua_hang: 202000,
+      hoa_hong_nen_tang: 41000,
+      hoa_hong_nha_sang_tao: 0,
+      thoi_gian_dat: atTimeToday(14, 0),
+      thoi_gian_xac_nhan: atTimeToday(14, 5),
+    },
+    ...pb25RevenueSeeds.map((item) => item.order),
   ];
 
   const orders = await donHangRepo.save(orderSeeds);
 
   const orderByCode = new Map(orders.map((item) => [item.ma_don_hang, item]));
+  const pb25RevenueDetails = pb25RevenueSeeds.map((item) => ({
+    id_don_hang: orderByCode.get(item.code)!.id,
+    id_mon_an: item.detail.id_mon_an,
+    ten_mon_snapshot: item.detail.ten_mon_snapshot,
+    hinh_anh_snapshot: null,
+    don_gia: item.detail.don_gia,
+    so_luong: item.detail.so_luong,
+    thanh_tien: item.detail.thanh_tien,
+    topping_snapshot: null,
+    ghi_chu: "Seed PB25",
+  }));
+  const pb25RevenueHistories = pb25RevenueSeeds.flatMap((item) =>
+    item.history.map((historyItem) => ({
+      id_don_hang: orderByCode.get(item.code)!.id,
+      trang_thai_tu: historyItem.trang_thai_tu,
+      trang_thai_den: historyItem.trang_thai_den,
+      noi_dung: historyItem.noi_dung,
+      id_nguoi_cap_nhat: item.historyUserId,
+      thoi_gian_cap_nhat: historyItem.thoi_gian_cap_nhat,
+    })),
+  );
 
   await chiTietRepo.save([
     {
@@ -360,6 +922,88 @@ export async function seedDonHang(context: SeederContext) {
       ]),
       ghi_chu: null,
     },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed")!,
+      ten_mon_snapshot: "Bún bò đặc biệt",
+      hinh_anh_snapshot: null,
+      don_gia: 59000,
+      so_luong: 2,
+      thanh_tien: 118000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm chả", gia: 8000, so_luong: 1 },
+      ]),
+      ghi_chu: "Ít cay",
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed_2")!,
+      ten_mon_snapshot: "Bún bò tái nạm",
+      hinh_anh_snapshot: null,
+      don_gia: 62000,
+      so_luong: 1,
+      thanh_tien: 62000,
+      topping_snapshot: null,
+      ghi_chu: null,
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY02")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed")!,
+      ten_mon_snapshot: "Bún bò đặc biệt",
+      hinh_anh_snapshot: null,
+      don_gia: 59000,
+      so_luong: 2,
+      thanh_tien: 118000,
+      topping_snapshot: null,
+      ghi_chu: "Không hành",
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY03")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed_2")!,
+      ten_mon_snapshot: "Bún bò tái nạm",
+      hinh_anh_snapshot: null,
+      don_gia: 62000,
+      so_luong: 1,
+      thanh_tien: 62000,
+      topping_snapshot: null,
+      ghi_chu: null,
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed")!,
+      ten_mon_snapshot: "Bún bò đặc biệt",
+      hinh_anh_snapshot: null,
+      don_gia: 59000,
+      so_luong: 3,
+      thanh_tien: 177000,
+      topping_snapshot: JSON.stringify([
+        { ten: "Thêm rau thơm", gia: 3000, so_luong: 1 },
+      ]),
+      ghi_chu: "Nhiều hành",
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY05")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed_2")!,
+      ten_mon_snapshot: "Bún bò tái nạm",
+      hinh_anh_snapshot: null,
+      don_gia: 62000,
+      so_luong: 2,
+      thanh_tien: 124000,
+      topping_snapshot: null,
+      ghi_chu: null,
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY05")!.id,
+      id_mon_an: context.objectIds.get("mon_an_seed")!,
+      ten_mon_snapshot: "Bún bò đặc biệt",
+      hinh_anh_snapshot: null,
+      don_gia: 59000,
+      so_luong: 2,
+      thanh_tien: 118000,
+      topping_snapshot: null,
+      ghi_chu: "Đang chuẩn bị",
+    },
+    ...pb25RevenueDetails,
   ]);
 
   await lichSuRepo.save([
@@ -571,5 +1215,142 @@ export async function seedDonHang(context: SeederContext) {
       id_nguoi_cap_nhat: getUserId(context, "locked@dishnet.vn")!,
       thoi_gian_cap_nhat: new Date("2026-03-20T20:05:00"),
     },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      trang_thai_tu: null,
+      trang_thai_den: "cho_xac_nhan",
+      noi_dung: "Khách hàng đặt đơn mới",
+      id_nguoi_cap_nhat: getUserId(context, "user@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(9, 5),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      trang_thai_tu: "cho_xac_nhan",
+      trang_thai_den: "da_xac_nhan",
+      noi_dung: "Cửa hàng xác nhận đơn hàng",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(9, 10),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      trang_thai_tu: "da_xac_nhan",
+      trang_thai_den: "dang_giao",
+      noi_dung: "Đơn đang được giao",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(9, 35),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY01")!.id,
+      trang_thai_tu: "dang_giao",
+      trang_thai_den: "da_giao",
+      noi_dung: "Đơn hàng đã giao thành công",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(9, 55),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY02")!.id,
+      trang_thai_tu: null,
+      trang_thai_den: "cho_xac_nhan",
+      noi_dung: "Khách hàng đặt đơn mới",
+      id_nguoi_cap_nhat: getUserId(context, "creator@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(10, 20),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY02")!.id,
+      trang_thai_tu: "cho_xac_nhan",
+      trang_thai_den: "da_xac_nhan",
+      noi_dung: "Cửa hàng xác nhận đơn hàng",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(10, 25),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY02")!.id,
+      trang_thai_tu: "da_xac_nhan",
+      trang_thai_den: "dang_giao",
+      noi_dung: "Đơn đang được giao",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(10, 50),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY03")!.id,
+      trang_thai_tu: null,
+      trang_thai_den: "cho_xac_nhan",
+      noi_dung: "Khách hàng đặt đơn mới",
+      id_nguoi_cap_nhat: getUserId(context, "multi@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(11, 5),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY03")!.id,
+      trang_thai_tu: "cho_xac_nhan",
+      trang_thai_den: "da_huy",
+      noi_dung: "Khách hàng hủy đơn hàng",
+      id_nguoi_cap_nhat: getUserId(context, "multi@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(11, 12),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      trang_thai_tu: null,
+      trang_thai_den: "cho_xac_nhan",
+      noi_dung: "Khách hàng đặt đơn mới",
+      id_nguoi_cap_nhat: getUserId(context, "locked@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(12, 10),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      trang_thai_tu: "cho_xac_nhan",
+      trang_thai_den: "da_xac_nhan",
+      noi_dung: "Cửa hàng xác nhận đơn hàng",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(12, 16),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      trang_thai_tu: "da_xac_nhan",
+      trang_thai_den: "dang_giao",
+      noi_dung: "Đơn đang được giao",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(12, 40),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      trang_thai_tu: "dang_giao",
+      trang_thai_den: "da_giao",
+      noi_dung: "Đơn hàng đã giao thành công",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(13, 5),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY04")!.id,
+      trang_thai_tu: "da_giao",
+      trang_thai_den: "tra_hang",
+      noi_dung: "Khách hàng gửi yêu cầu trả hàng",
+      id_nguoi_cap_nhat: getUserId(context, "locked@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(13, 20),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY05")!.id,
+      trang_thai_tu: null,
+      trang_thai_den: "cho_xac_nhan",
+      noi_dung: "Khách hàng đặt đơn mới",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(14, 0),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY05")!.id,
+      trang_thai_tu: "cho_xac_nhan",
+      trang_thai_den: "da_xac_nhan",
+      noi_dung: "Cửa hàng xác nhận đơn hàng",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(14, 5),
+    },
+    {
+      id_don_hang: orderByCode.get("PB24TODAY05")!.id,
+      trang_thai_tu: "da_xac_nhan",
+      trang_thai_den: "dang_chuan_bi",
+      noi_dung: "Cửa hàng đang chuẩn bị món",
+      id_nguoi_cap_nhat: getUserId(context, "store@dishnet.vn")!,
+      thoi_gian_cap_nhat: atTimeToday(14, 10),
+    },
+    ...pb25RevenueHistories,
   ]);
 }

@@ -1,345 +1,662 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import OrderDetailView from './OrderDetailView';
+import type { OrderDetailData } from './OrderDetailView';
+import { fmt, storeOrderApi, type StoreOrderDetail } from '@/shared/storeOrderApi';
+import {
+  storeRevenueApi,
+  type StoreRevenueOverviewResponse,
+  type StoreRevenueOrderListResponse,
+  type StoreRevenueStatusFilter,
+} from '@/shared/storeRevenueApi';
+import { STORE_OVERVIEW_REFRESH_EVENT } from '@/shared/storeEvents';
 
-/* ═══════════════════════════════════════════
-   TYPES & DATA
-   ═══════════════════════════════════════════ */
-type OrderStatus = 'Đã giao' | 'Đã hủy' | 'Trả hàng' | 'Đang giao hàng';
+type OrderStatus = 'Đã giao' | 'Đã hủy' | 'Trả hàng' | 'Đang giao hàng' | 'Đang giao';
+type TimeFilterValue = 'today' | '7days' | '30days' | 'custom';
 
-interface RevenueOrder {
-    code: string;
-    customer: string;
-    value: string;
-    discount: string;
-    discountPercent: string;
-    fee: string;
-    date: string;
-    status: OrderStatus;
-    income: string;
-}
+const ORDER_STATUS_FILTER: Array<{ label: string; value: StoreRevenueStatusFilter }> = [
+  { label: 'Tất cả', value: 'tat_ca' },
+  { label: 'Đã giao', value: 'da_giao' },
+  { label: 'Đã hủy', value: 'da_huy' },
+  { label: 'Trả hàng', value: 'tra_hang' },
+  { label: 'Đang giao hàng', value: 'dang_giao' },
+];
 
-const ORDER_STATUS_FILTER = ['Tất cả', 'Đã giao', 'Đã hủy', 'Trả hàng', 'Đang giao hàng'] as const;
-const TIME_FILTER = ['Mới đây nhất', 'Cũ nhất'] as const;
+const TIME_FILTER: Array<{ label: string; value: TimeFilterValue }> = [
+  { label: 'Hôm nay', value: 'today' },
+  { label: '7 ngày qua', value: '7days' },
+  { label: '30 ngày qua', value: '30days' },
+  { label: 'Tùy chỉnh', value: 'custom' },
+];
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-    'Đã giao': 'text-[#2e7d32]',
-    'Đã hủy': 'text-[#d32f2f]',
-    'Trả hàng': 'text-[#d32f2f]',
-    'Đang giao hàng': 'text-[#1976d2]',
+  'Đã giao': 'text-[#2e7d32]',
+  'Đã hủy': 'text-[#d32f2f]',
+  'Trả hàng': 'text-[#d32f2f]',
+  'Đang giao hàng': 'text-[#1976d2]',
+  'Đang giao': 'text-[#1976d2]',
 };
 
-const REVENUE_ORDERS: RevenueOrder[] = [
-    { code: 'QA001', customer: 'Nguyen A', value: '120.000đ', discount: '-20.000đ', discountPercent: '-15%', fee: '', date: '22/02/2026 05:00 CH', status: 'Đã giao', income: '85.000đ' },
-    { code: 'QA002', customer: 'Nguyen B', value: '150.000đ', discount: '-10.000đ', discountPercent: '-15%', fee: '', date: '22/02/2026 05:00 CH', status: 'Đã hủy', income: '0đ' },
-    { code: 'QA003', customer: 'Nguyen C', value: '220.000đ', discount: '-5.000đ', discountPercent: '-15%', fee: '', date: '22/02/2026 05:00 CH', status: 'Trả hàng', income: '0đ' },
-    { code: 'QA004', customer: 'Nguyen D', value: '520.000đ', discount: '-50.000đ', discountPercent: '-15%', fee: '', date: '22/02/2026 05:00 CH', status: 'Đang giao hàng', income: 'Tạm tính: 399.500đ' },
-    { code: 'QA004', customer: 'Nguyen D', value: '520.000đ', discount: '-50.000đ', discountPercent: '-15%', fee: '', date: '22/02/2026 05:00 CH', status: 'Đang giao hàng', income: 'Tạm tính: 399.500đ' },
-];
+const PIE_COLORS = ['#2e7d32', '#66bb6a', '#f0a050', '#42a5f5', '#ab47bc', '#8d6e63'];
 
-/* chart data points (30 days) */
-const CHART_DATA = [220, 225, 230, 228, 240, 235, 245, 250, 248, 255, 260, 265, 258, 270, 275, 272, 280, 285, 290, 295, 300, 305, 310, 315, 310, 320, 330, 340, 350, 370];
-const CHART_LABELS = ['0.0', '', '12', '', '14', '', '16', '', '18', '', '20', '', '23', '', '25', '', '14', '', '16', '', '18', '', '20', '', '26', '', '', '', '', ''];
-
-/* donut data */
-const DONUT_ITEMS = [
-    { name: 'Bún bò Huế số 1', color: '#2e7d32', percent: 40 },
-    { name: 'Bún bò Huế số 2', color: '#66bb6a', percent: 25 },
-    { name: 'Bún bò Huế số 3', color: '#f0a050', percent: 15 },
-    { name: 'Món khác', color: '#e0e0e0', percent: 20 },
-];
-
-/* ═══════════════════════════════════════════
-   SIMPLE LINE CHART (SVG)
-   ═══════════════════════════════════════════ */
-function RevenueLineChart() {
-    const W = 680;
-    const H = 220;
-    const PAD = { t: 20, r: 30, b: 30, l: 45 };
-    const innerW = W - PAD.l - PAD.r;
-    const innerH = H - PAD.t - PAD.b;
-
-    const minV = Math.min(...CHART_DATA) - 10;
-    const maxV = Math.max(...CHART_DATA) + 10;
-
-    const points = CHART_DATA.map((v, i) => {
-        const x = PAD.l + (i / (CHART_DATA.length - 1)) * innerW;
-        const y = PAD.t + innerH - ((v - minV) / (maxV - minV)) * innerH;
-        return { x, y, v };
-    });
-
-    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-    const areaD = `${pathD} L${points[points.length - 1].x},${H - PAD.b} L${points[0].x},${H - PAD.b} Z`;
-
-    // Y-axis labels
-    const yLabels = [220, 310, maxV].map((v) => ({
-        label: `${Math.round(v)}K`,
-        y: PAD.t + innerH - ((v - minV) / (maxV - minV)) * innerH,
-    }));
-
-    return (
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-            {/* Grid lines */}
-            {yLabels.map((yl) => (
-                <g key={yl.label}>
-                    <line x1={PAD.l} y1={yl.y} x2={W - PAD.r} y2={yl.y} stroke="#f0f0f0" strokeWidth="1" />
-                    <text x={PAD.l - 8} y={yl.y + 4} textAnchor="end" className="fill-[#999] text-[10px]">{yl.label}</text>
-                </g>
-            ))}
-
-            {/* Area fill */}
-            <path d={areaD} fill="url(#areaGrad)" opacity="0.3" />
-            <defs>
-                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2e7d32" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#2e7d32" stopOpacity="0" />
-                </linearGradient>
-            </defs>
-
-            {/* Line */}
-            <path d={pathD} fill="none" stroke="#2e7d32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
-            {/* Last point highlight */}
-            <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="6" fill="#2e7d32" />
-            <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="3" fill="white" />
-            <text x={points[points.length - 1].x} y={points[points.length - 1].y - 12} textAnchor="middle" className="fill-[#2e7d32] text-[11px] font-bold">
-                370K
-            </text>
-
-            {/* X-axis labels */}
-            {CHART_LABELS.map((label, i) => label ? (
-                <text
-                    key={i}
-                    x={PAD.l + (i / (CHART_DATA.length - 1)) * innerW}
-                    y={H - 8}
-                    textAnchor="middle"
-                    className="fill-[#999] text-[9px]"
-                >
-                    {label}
-                </text>
-            ) : null)}
-        </svg>
-    );
+function formatDateTime(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-/* ═══════════════════════════════════════════
-   DONUT CHART (CSS)
-   ═══════════════════════════════════════════ */
-function DonutChart() {
-    const segments = DONUT_ITEMS.reduce<Array<(typeof DONUT_ITEMS)[number] & { start: number; end: number }>>((allSegments, item) => {
-        const previousEnd = allSegments[allSegments.length - 1]?.end ?? 0;
-        return [...allSegments, { ...item, start: previousEnd, end: previousEnd + item.percent }];
-    }, []);
+function mapTimeline(detail: StoreOrderDetail): OrderDetailData['timeline'] {
+  const statusDb = detail.trang_thai_db;
+  const daHoanTat = ['da_giao', 'da_hoan_tien'].includes(statusDb);
+  const daHuy = statusDb === 'da_huy';
+  const traHang = statusDb === 'tra_hang';
 
-    const conicGradient = segments.map((s) => `${s.color} ${s.start}% ${s.end}%`).join(', ');
+  return [
+    {
+      label: 'Đã đặt hàng',
+      time: formatDateTime(detail.thoi_gian_dat),
+      done: Boolean(detail.thoi_gian_dat),
+    },
+    {
+      label: 'Đã xác nhận đơn hàng',
+      time: formatDateTime(detail.thoi_gian_xac_nhan),
+      done: Boolean(detail.thoi_gian_xac_nhan),
+    },
+    {
+      label: 'Đang giao',
+      time: formatDateTime(detail.thoi_gian_giao),
+      done: Boolean(detail.thoi_gian_giao),
+    },
+    {
+      label: daHuy ? 'Đã hủy' : traHang ? 'Trả hàng' : 'Hoàn thành',
+      time: formatDateTime(
+        daHuy
+          ? detail.thoi_gian_huy
+          : detail.thoi_gian_hoan_tat ?? detail.thoi_gian_hoan_tien,
+      ),
+      done: daHuy || traHang || daHoanTat,
+    },
+  ];
+}
 
-    return (
-        <div className="flex items-center gap-5">
-            <div className="relative h-[130px] w-[130px] shrink-0">
-                <div
-                    className="h-full w-full rounded-full"
-                    style={{ background: `conic-gradient(${conicGradient})` }}
-                />
-                <div className="absolute inset-[20%] flex items-center justify-center rounded-full bg-white text-[18px] font-bold text-[#2e7d32]">
-                    80%
-                </div>
-            </div>
-            <div className="space-y-2">
-                {DONUT_ITEMS.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-[12px]">
-                        <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="text-black">{item.name}</span>
-                    </div>
-                ))}
-            </div>
+function mapOrderDetailToView(detail: StoreOrderDetail): OrderDetailData {
+  const review = detail.danh_gia?.[0];
+
+  return {
+    code: detail.ma_don_hang,
+    customer: detail.thong_tin_khach_hang.ten_hien_thi,
+    customerPhone: detail.thong_tin_khach_hang.so_dien_thoai,
+    date: formatDateTime(detail.thoi_gian_dat),
+    deliveryDate: detail.thoi_gian_hoan_tat
+      ? formatDateTime(detail.thoi_gian_hoan_tat)
+      : detail.thoi_gian_giao
+        ? formatDateTime(detail.thoi_gian_giao)
+        : undefined,
+    status: detail.trang_thai_don_hang,
+    items: detail.danh_sach_mon_an.map((item) => ({
+      name: item.ten_mon,
+      qty: item.so_luong,
+      price: fmt(item.don_gia),
+      image:
+        item.hinh_anh ||
+        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=60&h=60&fit=crop',
+    })),
+    subtotal: fmt(detail.tong_tien_don_hang.tam_tinh),
+    shippingFee: fmt(detail.tong_tien_don_hang.phi_van_chuyen),
+    discountAmount: fmt(detail.tong_tien_don_hang.tong_giam_gia),
+    totalValue: fmt(detail.tong_tien_don_hang.tong_thanh_toan),
+    netIncome: fmt(detail.tong_tien_don_hang.thu_nhap_cua_hang),
+    timeline: mapTimeline(detail),
+    review: review
+      ? {
+          rating: review.so_sao,
+          date: formatDateTime(review.ngay_danh_gia),
+          text: review.noi_dung ?? '',
+        }
+      : undefined,
+  };
+}
+
+function RevenueLineChart({
+  data,
+}: {
+  data: StoreRevenueOverviewResponse['bieu_do_doanh_thu_30_ngay'];
+}) {
+  const W = 680;
+  const H = 220;
+  const PAD = { t: 20, r: 20, b: 30, l: 48 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+
+  const values = data.map((d) => d.doanh_thu);
+  const minV = Math.min(...values, 0);
+  const maxV = Math.max(...values, 1);
+  const range = Math.max(1, maxV - minV);
+
+  const points = data.map((v, i) => {
+    const x = PAD.l + (i / Math.max(1, data.length - 1)) * innerW;
+    const y = PAD.t + innerH - ((v.doanh_thu - minV) / range) * innerH;
+    return { x, y, v };
+  });
+
+  if (points.length === 0) return null;
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaD = `${pathD} L${points[points.length - 1].x},${H - PAD.b} L${points[0].x},${H - PAD.b} Z`;
+
+  const yLabels = [0, 0.5, 1].map((k) => {
+    const value = minV + range * k;
+    const y = PAD.t + innerH - k * innerH;
+    return { value, y };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+      {yLabels.map((yl, idx) => (
+        <g key={idx}>
+          <line x1={PAD.l} y1={yl.y} x2={W - PAD.r} y2={yl.y} stroke="#f0f0f0" strokeWidth="1" />
+          <text x={PAD.l - 8} y={yl.y + 4} textAnchor="end" className="fill-[#999] text-[10px]">
+            {Math.round(yl.value / 1000)}K
+          </text>
+        </g>
+      ))}
+
+      <path d={areaD} fill="url(#areaGradRevenue)" opacity="0.3" />
+      <defs>
+        <linearGradient id="areaGradRevenue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2e7d32" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#2e7d32" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      <path
+        d={pathD}
+        fill="none"
+        stroke="#2e7d32"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="5" fill="#2e7d32" />
+
+      {points
+        .filter((_, i) => i % 5 === 0 || i === points.length - 1)
+        .map((p, i) => (
+          <text key={i} x={p.x} y={H - 8} textAnchor="middle" className="fill-[#999] text-[9px]">
+            {p.v.nhan}
+          </text>
+        ))}
+    </svg>
+  );
+}
+
+function DonutChart({
+  items,
+}: {
+  items: Array<{ ten_mon_an: string; ty_le: number }>;
+}) {
+  const segments = items.map((item, index) => ({
+    ...item,
+    color: PIE_COLORS[index % PIE_COLORS.length],
+  }));
+
+  const normalized =
+    segments.length > 0
+      ? segments
+      : [{ ten_mon_an: 'Chưa có dữ liệu', ty_le: 100, color: '#e0e0e0' }];
+
+  const conic = normalized
+    .reduce(
+      (acc, item) => {
+        const start = acc.cursor;
+        const end = acc.cursor + item.ty_le;
+        return {
+          cursor: end,
+          parts: [...acc.parts, `${item.color} ${start}% ${end}%`],
+        };
+      },
+      { cursor: 0, parts: [] as string[] },
+    )
+    .parts.join(', ');
+
+  return (
+    <div className="flex items-center gap-5">
+      <div className="relative h-[130px] w-[130px] shrink-0">
+        <div className="h-full w-full rounded-full" style={{ background: `conic-gradient(${conic})` }} />
+        <div className="absolute inset-[20%] flex items-center justify-center rounded-full bg-white text-[16px] font-bold text-[#2e7d32]">
+          {normalized[0]?.ty_le ?? 0}%
         </div>
-    );
+      </div>
+      <div className="space-y-2">
+        {normalized.map((item) => (
+          <div key={item.ten_mon_an} className="flex items-center gap-2 text-[12px]">
+            <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="text-black">{item.ten_mon_an}</span>
+            <span className="text-[#666]">{item.ty_le}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-/* ═══════════════════════════════════════════
-   SUMMARY CARDS
-   ═══════════════════════════════════════════ */
-const SUMMARY_CARDS = [
-    { label: 'Hôm nay', value: '5.800.000Đ', change: '+12% so với hôm qua', changeColor: 'text-[#2e7d32]' },
-    { label: 'Thực nhận', value: '4.460.000Đ', change: '+14% so với hôm qua', changeColor: 'text-[#2e7d32]' },
-    { label: 'Tổng đơn hàng', value: '215 đơn', change: '+8% so với hôm qua', changeColor: 'text-[#2e7d32]' },
-    { label: 'Tỷ lệ hủy/ hoàn', value: '12,6 %', change: '+3% so với hôm qua', changeColor: 'text-[#2e7d32]' },
-];
-
-/* ═══════════════════════════════════════════
-   REVENUE TAB COMPONENT
-   ═══════════════════════════════════════════ */
 export default function RevenueTab() {
-    const [statusFilter, setStatusFilter] = useState<string>(ORDER_STATUS_FILTER[0]);
-    const [searchText, setSearchText] = useState('');
-    const [timeDropdown, setTimeDropdown] = useState(false);
-    const [statusDropdown, setStatusDropdown] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StoreRevenueStatusFilter>('tat_ca');
+  const [searchText, setSearchText] = useState('');
+  const [timeFilter, setTimeFilter] = useState<TimeFilterValue>('today');
+  const [customFromDate, setCustomFromDate] = useState('');
+  const [customToDate, setCustomToDate] = useState('');
 
-    const filteredOrders = useMemo(() => {
-        return REVENUE_ORDERS.filter((o) => {
-            if (statusFilter !== 'Tất cả' && o.status !== statusFilter) return false;
-            if (searchText && !o.code.toLowerCase().includes(searchText.toLowerCase()) && !o.customer.toLowerCase().includes(searchText.toLowerCase())) return false;
-            return true;
+  const [timeDropdown, setTimeDropdown] = useState(false);
+  const [statusDropdown, setStatusDropdown] = useState(false);
+
+  const [overviewData, setOverviewData] = useState<StoreRevenueOverviewResponse | null>(null);
+  const [orderListData, setOrderListData] = useState<StoreRevenueOrderListResponse | null>(null);
+
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [orderListLoading, setOrderListLoading] = useState(true);
+
+  const [overviewError, setOverviewError] = useState('');
+  const [orderListError, setOrderListError] = useState('');
+
+  const [selectedOrderCode, setSelectedOrderCode] = useState<string | null>(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderDetailData | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+
+  const loadOverview = useCallback(async (silent = false) => {
+    if (!silent) setOverviewLoading(true);
+    setOverviewError('');
+
+    try {
+      const res = await storeRevenueApi.layTongQuan();
+      setOverviewData(res);
+    } catch (e) {
+      setOverviewError(e instanceof Error ? e.message : 'Không thể tải tổng quan doanh thu.');
+    } finally {
+      if (!silent) setOverviewLoading(false);
+    }
+  }, []);
+
+  const loadOrderList = useCallback(
+    async (silent = false) => {
+      if (!silent) setOrderListLoading(true);
+
+      if (timeFilter === 'custom' && (!customFromDate || !customToDate)) {
+        if (!silent) {
+          setOrderListError('Vui lòng chọn đầy đủ Từ ngày và Đến ngày để lọc tùy chỉnh.');
+          setOrderListLoading(false);
+        }
+        return;
+      }
+
+      setOrderListError('');
+
+      try {
+        const res = await storeRevenueApi.layDanhSachDonHang({
+          tim_kiem: searchText.trim() || undefined,
+          trang_thai: statusFilter,
+          bo_loc_thoi_gian: timeFilter,
+          tu_ngay: timeFilter === 'custom' ? customFromDate : undefined,
+          den_ngay: timeFilter === 'custom' ? customToDate : undefined,
+          trang: 1,
+          so_luong: 20,
         });
-    }, [statusFilter, searchText]);
+        setOrderListData(res);
+      } catch (e) {
+        setOrderListError(e instanceof Error ? e.message : 'Không thể tải danh sách đơn hàng doanh thu.');
+      } finally {
+        if (!silent) setOrderListLoading(false);
+      }
+    },
+    [searchText, statusFilter, timeFilter, customFromDate, customToDate],
+  );
 
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  useEffect(() => {
+    void loadOrderList();
+  }, [loadOrderList]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadOverview(true);
+      void loadOrderList(true);
+    }, 20000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [loadOverview, loadOrderList]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void loadOverview(true);
+      void loadOrderList(true);
+    };
+
+    window.addEventListener(STORE_OVERVIEW_REFRESH_EVENT, onRefresh);
+
+    return () => {
+      window.removeEventListener(STORE_OVERVIEW_REFRESH_EVENT, onRefresh);
+    };
+  }, [loadOverview, loadOrderList]);
+
+  const handleViewDetail = useCallback(async (maDonHang: string) => {
+    setSelectedOrderCode(maDonHang);
+    setDetailLoading(true);
+    setDetailError('');
+    try {
+      const detail = await storeOrderApi.layChiTiet(maDonHang);
+      setSelectedOrderDetail(mapOrderDetailToView(detail));
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : 'Không thể tải chi tiết đơn hàng.');
+      setSelectedOrderCode(null);
+      setSelectedOrderDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const summary = overviewData?.thong_ke_tong_quan;
+  const chart30 = overviewData?.bieu_do_doanh_thu_30_ngay ?? [];
+  const donutData = overviewData?.bieu_do_doanh_thu_theo_mon ?? [];
+  const topMon = overviewData?.top_mon_ban_chay ?? [];
+  const orders = orderListData?.du_lieu ?? [];
+
+  const timeFilterLabel = useMemo(() => {
+    return TIME_FILTER.find((item) => item.value === timeFilter)?.label ?? 'Theo thời gian';
+  }, [timeFilter]);
+
+  if (selectedOrderDetail) {
     return (
-        <div>
-            <h1 className="text-[22px] font-bold uppercase text-black">QUẢN LÝ DOANH THU</h1>
-
-            {/* ── ① Summary Cards ── */}
-            <div className="mt-5 grid grid-cols-4 gap-4">
-                {SUMMARY_CARDS.map((card) => (
-                    <div key={card.label} className="rounded-[12px] bg-white p-5 shadow-sm">
-                        <p className="text-[13px] text-[#888]">{card.label}</p>
-                        <p className="mt-2 text-[24px] font-bold text-black">{card.value}</p>
-                        <p className={`mt-1 text-[12px] ${card.changeColor}`}>{card.change}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* ── Charts Row ── */}
-            <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_320px]">
-                {/* Line chart */}
-                <div className="rounded-[12px] bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-[15px] font-bold text-black">Thống kê doanh thu 30 ngày qua</h3>
-                        <button className="text-[16px] text-[#999] transition hover:text-black">🔄</button>
-                    </div>
-                    <div className="mt-3">
-                        <RevenueLineChart />
-                    </div>
-                </div>
-
-                {/* Donut chart */}
-                <div className="rounded-[12px] bg-white p-5 shadow-sm">
-                    <h3 className="text-[15px] font-bold text-black">Doanh thu theo món</h3>
-                    <div className="mt-5">
-                        <DonutChart />
-                    </div>
-                </div>
-            </div>
-
-            {/* ── ② Orders Table ── */}
-            <div className="mt-5 rounded-[12px] bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-[15px] font-bold text-black">Doanh thu theo trạng thái đơn</h3>
-                    <div className="flex items-center gap-3">
-                        {/* ② Time filter */}
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => { setTimeDropdown(!timeDropdown); setStatusDropdown(false); }}
-                                className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black"
-                            >
-                                <span>Theo thời gian</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
-                            </button>
-                            {timeDropdown && (
-                                <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[160px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
-                                    {TIME_FILTER.map((t) => (
-                                        <button key={t} type="button" onClick={() => setTimeDropdown(false)} className="block w-full px-3 py-2 text-left text-[13px] text-black transition hover:bg-[#f6faf4]">{t}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* ③ Status filter */}
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => { setStatusDropdown(!statusDropdown); setTimeDropdown(false); }}
-                                className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black"
-                            >
-                                <span>Trạng thái đơn</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
-                            </button>
-                            {statusDropdown && (
-                                <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[180px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
-                                    {ORDER_STATUS_FILTER.map((s) => (
-                                        <button key={s} type="button" onClick={() => { setStatusFilter(s); setStatusDropdown(false); }} className={`block w-full px-3 py-2 text-left text-[13px] transition hover:bg-[#f6faf4] ${statusFilter === s ? 'font-bold text-[#2e7d32]' : 'text-black'}`}>{s}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* ④ Search */}
-                        <div className="flex items-center gap-2 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5">
-                            <input
-                                type="text"
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Tìm kiếm"
-                                className="w-24 bg-transparent text-[13px] text-black outline-none placeholder:text-[#999]"
-                            />
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="mt-4 overflow-x-auto">
-                    <table className="w-full text-[13px]">
-                        <thead>
-                            <tr className="border-b border-[#e8e8e8] text-left text-[#888]">
-                                <th className="px-2 py-3 font-medium">Mã đơn</th>
-                                <th className="px-2 py-3 font-medium">Tên khách</th>
-                                <th className="px-2 py-3 font-medium">Giá trị đơn hàng</th>
-                                <th className="px-2 py-3 font-medium">Giảm giá</th>
-                                <th className="px-2 py-3 font-medium">Phí</th>
-                                <th className="px-2 py-3 font-medium">Giờ đặt</th>
-                                <th className="px-2 py-3 font-medium">Trạng thái đơn hàng</th>
-                                <th className="px-2 py-3 font-medium">Thu nhập đơn</th>
-                                <th className="px-2 py-3 font-medium"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredOrders.map((order, idx) => (
-                                <tr key={`${order.code}-${idx}`} className="border-b border-[#f0f0f0]">
-                                    <td className="px-2 py-3 font-medium text-black">{order.code}</td>
-                                    <td className="px-2 py-3 text-black">{order.customer}</td>
-                                    <td className="px-2 py-3 text-[#f0a050]">{order.value}</td>
-                                    <td className="px-2 py-3 text-[#d32f2f]">{order.discount}</td>
-                                    <td className="px-2 py-3 text-black">{order.discountPercent}</td>
-                                    <td className="px-2 py-3 text-black">{order.date}</td>
-                                    <td className={`px-2 py-3 font-semibold ${STATUS_COLORS[order.status]}`}>{order.status}</td>
-                                    <td className="px-2 py-3 text-black">{order.income}</td>
-                                    <td className="px-2 py-3">
-                                        {/* ⑤ */}
-                                        <button
-                                            type="button"
-                                            className="rounded-[6px] bg-[#2e7d32] px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-[#256b28]"
-                                        >
-                                            Xem chi tiết
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="mt-5 flex items-center justify-center gap-1">
-                    <button className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[#999] transition hover:bg-[#f0f0f0]">‹</button>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((p) => (
-                        <button
-                            key={p}
-                            type="button"
-                            onClick={() => setCurrentPage(p)}
-                            className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] transition ${
-                                currentPage === p
-                                    ? 'bg-[#2e7d32] font-bold text-white'
-                                    : 'text-[#555] hover:bg-[#f0f0f0]'
-                            }`}
-                        >
-                            {p}
-                        </button>
-                    ))}
-                    <button className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[#999] transition hover:bg-[#f0f0f0]">›</button>
-                </div>
-            </div>
-        </div>
+      <OrderDetailView
+        order={selectedOrderDetail}
+        onBack={() => {
+          setSelectedOrderCode(null);
+          setSelectedOrderDetail(null);
+        }}
+      />
     );
+  }
+
+  return (
+    <div>
+      <h1 className="text-[22px] font-bold uppercase text-black">QUẢN LÝ DOANH THU</h1>
+
+      {overviewError ? (
+        <div className="mt-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
+          {overviewError}
+        </div>
+      ) : null}
+      {orderListError ? (
+        <div className="mt-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
+          {orderListError}
+        </div>
+      ) : null}
+      {detailError ? (
+        <div className="mt-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
+          {detailError}
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid grid-cols-4 gap-4">
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <p className="text-[13px] text-[#888]">Doanh thu hôm nay</p>
+          <p className="mt-2 text-[24px] font-bold text-black">
+            {overviewLoading ? '...' : fmt(summary?.doanh_thu_hom_nay ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <p className="text-[13px] text-[#888]">Doanh thu thực nhận</p>
+          <p className="mt-2 text-[24px] font-bold text-black">
+            {overviewLoading ? '...' : fmt(summary?.doanh_thu_thuc_nhan ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <p className="text-[13px] text-[#888]">Tổng số đơn hàng</p>
+          <p className="mt-2 text-[24px] font-bold text-black">
+            {overviewLoading ? '...' : (summary?.tong_so_don_hang ?? 0).toLocaleString('vi-VN')}
+          </p>
+        </div>
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <p className="text-[13px] text-[#888]">Tỷ lệ hủy/hoàn</p>
+          <p className="mt-2 text-[24px] font-bold text-black">
+            {overviewLoading ? '...' : `${summary?.ty_le_huy_hoan ?? 0}%`}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <h3 className="text-[15px] font-bold text-black">Thống kê doanh thu 30 ngày qua</h3>
+          <div className="mt-3">
+            {overviewLoading ? (
+              <p className="text-[13px] text-[#888]">Đang tải...</p>
+            ) : (
+              <RevenueLineChart data={chart30} />
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[12px] bg-white p-5 shadow-sm">
+          <h3 className="text-[15px] font-bold text-black">Doanh thu theo món</h3>
+          <div className="mt-5">
+            {overviewLoading ? (
+              <p className="text-[13px] text-[#888]">Đang tải...</p>
+            ) : (
+              <DonutChart items={donutData.slice(0, 5)} />
+            )}
+          </div>
+          <div className="mt-4 border-t border-[#f0f0f0] pt-3">
+            <p className="text-[13px] font-semibold text-black">Top món bán chạy</p>
+            <div className="mt-2 space-y-1.5">
+              {topMon.length === 0 ? (
+                <p className="text-[12px] text-[#888]">Chưa có dữ liệu.</p>
+              ) : (
+                topMon.map((item) => (
+                  <div
+                    key={`${item.xep_hang}-${item.ten_mon_an}`}
+                    className="flex items-center justify-between text-[12px]"
+                  >
+                    <span className="text-black">
+                      {item.xep_hang}. {item.ten_mon_an}
+                    </span>
+                    <span className="font-semibold text-[#2e7d32]">{item.so_luong_da_ban} món</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[12px] bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <h3 className="pt-1 text-[15px] font-bold text-black">Doanh thu theo trạng thái đơn</h3>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeDropdown(!timeDropdown);
+                    setStatusDropdown(false);
+                  }}
+                  className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black"
+                >
+                  <span>{timeFilterLabel}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {timeDropdown && (
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[180px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
+                    {TIME_FILTER.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => {
+                          setTimeFilter(t.value);
+                          setTimeDropdown(false);
+                        }}
+                        className={`block w-full px-3 py-2 text-left text-[13px] transition hover:bg-[#f6faf4] ${
+                          timeFilter === t.value ? 'font-bold text-[#2e7d32]' : 'text-black'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusDropdown(!statusDropdown);
+                    setTimeDropdown(false);
+                  }}
+                  className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black"
+                >
+                  <span>Trạng thái đơn</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {statusDropdown && (
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-10 w-[180px] rounded-[8px] border border-[#ddd] bg-white shadow-lg">
+                    {ORDER_STATUS_FILTER.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(s.value);
+                          setStatusDropdown(false);
+                        }}
+                        className={`block w-full px-3 py-2 text-left text-[13px] transition hover:bg-[#f6faf4] ${
+                          statusFilter === s.value ? 'font-bold text-[#2e7d32]' : 'text-black'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5">
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Tìm kiếm"
+                  className="w-24 bg-transparent text-[13px] text-black outline-none placeholder:text-[#999]"
+                />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              </div>
+            </div>
+
+            {timeFilter === 'custom' ? (
+              <div className="flex items-center gap-2 rounded-[8px] border border-[#e8e8e8] bg-[#fafafa] px-2 py-1.5">
+                <input
+                  type="date"
+                  value={customFromDate}
+                  onChange={(e) => setCustomFromDate(e.target.value)}
+                  className="rounded border border-[#ddd] px-2 py-1 text-[12px] text-black outline-none"
+                />
+                <span className="text-[12px] text-[#666]">đến</span>
+                <input
+                  type="date"
+                  value={customToDate}
+                  onChange={(e) => setCustomToDate(e.target.value)}
+                  className="rounded border border-[#ddd] px-2 py-1 text-[12px] text-black outline-none"
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-[#e8e8e8] text-left text-[#888]">
+                <th className="px-2 py-3 font-medium">Mã đơn</th>
+                <th className="px-2 py-3 font-medium">Tên khách</th>
+                <th className="px-2 py-3 font-medium">Giá trị đơn hàng</th>
+                <th className="px-2 py-3 font-medium">Giảm giá</th>
+                <th className="px-2 py-3 font-medium">Phí nền tảng</th>
+                <th className="px-2 py-3 font-medium">Giờ đặt</th>
+                <th className="px-2 py-3 font-medium">Trạng thái đơn hàng</th>
+                <th className="px-2 py-3 font-medium">Thu nhập đơn</th>
+                <th className="px-2 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {orderListLoading ? (
+                <tr>
+                  <td className="px-2 py-4 text-[#888]" colSpan={9}>
+                    Đang tải danh sách đơn...
+                  </td>
+                </tr>
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td className="px-2 py-4 text-[#888]" colSpan={9}>
+                    Không có dữ liệu phù hợp.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => {
+                  const status = order.trang_thai_don_hang as OrderStatus;
+                  return (
+                    <tr key={order.id} className="border-b border-[#f0f0f0]">
+                      <td className="px-2 py-3 font-medium text-black">{order.ma_don_hang}</td>
+                      <td className="px-2 py-3 text-black">{order.ten_khach_hang}</td>
+                      <td className="px-2 py-3 text-[#f0a050]">{fmt(order.gia_tri_don_hang)}</td>
+                      <td className="px-2 py-3 text-[#d32f2f]">-{fmt(order.giam_gia)}</td>
+                      <td className="px-2 py-3 text-black">{fmt(order.phi_nen_tang)}</td>
+                      <td className="px-2 py-3 text-black">{formatDateTime(order.thoi_gian_dat)}</td>
+                      <td className={`px-2 py-3 font-semibold ${STATUS_COLORS[status] ?? 'text-black'}`}>
+                        {order.trang_thai_don_hang}
+                      </td>
+                      <td className="px-2 py-3 text-black">{fmt(order.thu_nhap_tu_don_hang)}</td>
+                      <td className="px-2 py-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleViewDetail(order.ma_don_hang);
+                          }}
+                          disabled={detailLoading && selectedOrderCode === order.ma_don_hang}
+                          className="rounded-[6px] bg-[#2e7d32] px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-[#256b28] disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {detailLoading && selectedOrderCode === order.ma_don_hang
+                            ? 'Đang tải...'
+                            : 'Xem chi tiết'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }

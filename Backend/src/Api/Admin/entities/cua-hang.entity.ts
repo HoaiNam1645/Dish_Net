@@ -20,9 +20,21 @@ export class CuaHangEntity {
   @Column({ type: "text", nullable: true })
   anh_dai_dien: string | null;
 
+  @Column({ type: "varchar", length: 20, nullable: true })
+  so_dien_thoai_lien_he: string | null;
+
   @Column({ type: "text" })
   dia_chi_kinh_doanh: string;
 
+  @Column({ type: "time", nullable: true })
+  gio_mo_cua: string | null;
+
+  @Column({ type: "time", nullable: true })
+  gio_dong_cua: string | null;
+
   @Column({ type: "varchar", length: 20, default: "cho_duyet" })
   trang_thai_hoat_dong: string;
+
+  @Column({ type: "decimal", precision: 4, scale: 2, default: 0 })
+  diem_danh_gia: number;
 }

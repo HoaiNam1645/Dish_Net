@@ -1,5 +1,7 @@
 'use client';
 
+import { emitStoreOverviewRefreshEvent } from './storeEvents';
+
 const BASE = '/api/store/don-hang';
 
 type ApiEnvelope<T> = {
@@ -197,7 +199,10 @@ export const storeOrderApi = {
         method: 'PATCH',
         body: JSON.stringify({ thoi_gian_du_kien_chuan_bi: thoiGianDuKien }),
       },
-    );
+    ).then((res) => {
+      emitStoreOverviewRefreshEvent();
+      return res;
+    });
   },
 
   tuChoiDonHang(maDonHang: string, lyDo: string) {
@@ -207,14 +212,20 @@ export const storeOrderApi = {
         method: 'PATCH',
         body: JSON.stringify({ ly_do: lyDo }),
       },
-    );
+    ).then((res) => {
+      emitStoreOverviewRefreshEvent();
+      return res;
+    });
   },
 
   giaoDonHang(maDonHang: string) {
     return request<{ message: string; trang_thai_moi: string }>(
       `${BASE}/${maDonHang}/giao`,
       { method: 'PATCH' },
-    );
+    ).then((res) => {
+      emitStoreOverviewRefreshEvent();
+      return res;
+    });
   },
 
   giaHanDonHang(maDonHang: string, soPhutGiaHan: string) {
@@ -231,7 +242,10 @@ export const storeOrderApi = {
     return request<{ message: string; trang_thai_moi: string; so_tien_hoan: number }>(
       `${BASE}/${maDonHang}/hoan-tien`,
       { method: 'PATCH', body: JSON.stringify({}) },
-    );
+    ).then((res) => {
+      emitStoreOverviewRefreshEvent();
+      return res;
+    });
   },
 
   tuChoiHoanTien(maDonHang: string, lyDoTuChoi: string) {
@@ -241,7 +255,10 @@ export const storeOrderApi = {
         method: 'PATCH',
         body: JSON.stringify({ ly_do_tu_choi: lyDoTuChoi }),
       },
-    );
+    ).then((res) => {
+      emitStoreOverviewRefreshEvent();
+      return res;
+    });
   },
 };
 
