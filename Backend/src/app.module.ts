@@ -10,6 +10,7 @@ import { getTypeOrmConfig } from "./database/typeorm.config";
 import { AuthModule } from "./Api/Auth/auth.module";
 import { AdminModule } from "./Api/Admin/admin.module";
 import { StoreModule } from "./Api/Store/store.module";
+import { UserModule } from "./Api/User/user.module";
 import { EmailModule } from "./shared/email/email.module";
 
 @Module({
@@ -20,6 +21,7 @@ import { EmailModule } from "./shared/email/email.module";
     AuthModule,
     AdminModule,
     StoreModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [

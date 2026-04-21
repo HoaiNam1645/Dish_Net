@@ -1,12 +1,19 @@
-import { getExploreStoreById } from '@/features/explore/data';
-import { getHomePageData } from '@/features/home/data';
+import { getExplorePageData } from '@/features/explore/data';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
+import { userContentApi } from '@/shared/userContentApi';
 
 export type StoreDetailMenuItem = {
     id: string;
+    categoryId: string;
     name: string;
     note: string;
     price: string;
     image: string;
+};
+
+export type StoreDetailMenuCategory = {
+    id: string;
+    label: string;
 };
 
 export type StoreDetailReviewCard = {
@@ -42,104 +49,230 @@ export type StoreDetailData = {
     soldCount: string;
     reviewCount: string;
     commentCount: string;
+    menuCategories: StoreDetailMenuCategory[];
     menuItems: StoreDetailMenuItem[];
     reviewCards: StoreDetailReviewCard[];
     communityImages: string[];
     comments: StoreDetailComment[];
 };
 
-const communityImageSet = [
-    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1583032015879-e5022cb87c3b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1526318896980-cf78c088247c?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=900&q=80',
-];
+function normalizeText(value: string) {
+    return value
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .trim();
+}
+
+function formatCurrency(value: number) {
+    return `${value.toLocaleString('vi-VN')}đ`;
+}
+
+function formatDate(value: string) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('vi-VN');
+}
 
 export async function getStoreDetailById(id: string): Promise<StoreDetailData | null> {
-    const store = getExploreStoreById(id);
+    const exploreData = await getExplorePageData();
+    const allStores = [
+        ...exploreData.nearby,
+        ...exploreData.recommendations,
+        ...exploreData.topReviewerPicks,
+    ];
+    const store = allStores.find((item) => String(item.id) === String(id));
+    if (!store) {
+        return null;
+    }
 
-    if (!store) return null;
+    const fallbackImage =
+        store.image || figmaFallbackAssets.storeImage || figmaFallbackAssets.feedDishImage;
 
-    const homeData = await getHomePageData();
-    const menuItems = homeData.menu.items.slice(0, 10).map((item) => ({
-        id: item.id,
-        name: item.name,
-        note: 'Đã được đặt lần',
-        price: item.price,
-        image: item.image,
+    const cuaHangPayload: any = await userContentApi.timKiem({
+        tu_khoa: store.title,
+        loai: 'cua_hang',
+        so_luong: 20,
+        trang: 1,
+    });
+
+    const cuaHangRows = Array.isArray(cuaHangPayload?.ket_qua?.cua_hang?.du_lieu)
+        ? cuaHangPayload.ket_qua.cua_hang.du_lieu
+        : [];
+
+    const numericId = Number(id);
+    let matchedStore =
+        cuaHangRows.find((item: any) => Number(item?.id) === numericId) ||
+        cuaHangRows.find(
+            (item: any) =>
+                normalizeText(String(item?.ten_cua_hang ?? '')) === normalizeText(store.title),
+        ) ||
+        null;
+
+    let resolvedStoreId =
+        matchedStore?.id != null ? Number(matchedStore.id) : null;
+
+    const monPayload: any = await userContentApi.timKiem({
+        tu_khoa: String(matchedStore?.ten_cua_hang ?? store.title),
+        loai: 'mon_an',
+        so_luong: 80,
+        trang: 1,
+    });
+
+    const monRowsRaw = Array.isArray(monPayload?.ket_qua?.mon_an?.du_lieu)
+        ? monPayload.ket_qua.mon_an.du_lieu
+        : [];
+
+    if (resolvedStoreId == null && Number.isFinite(numericId)) {
+        const hasAsStoreId = monRowsRaw.some((item: any) => Number(item?.id_cua_hang) === numericId);
+        if (hasAsStoreId) {
+            resolvedStoreId = numericId;
+        }
+    }
+
+    if (resolvedStoreId == null && Number.isFinite(numericId)) {
+        const matchedDish = monRowsRaw.find((item: any) => Number(item?.id) === numericId);
+        if (matchedDish?.id_cua_hang != null) {
+            resolvedStoreId = Number(matchedDish.id_cua_hang);
+        }
+    }
+
+    const resolvedStoreCard =
+        resolvedStoreId != null
+            ? allStores.find((item) => Number(item.id) === resolvedStoreId) ?? store
+            : store;
+
+    if (!matchedStore && resolvedStoreCard.title && resolvedStoreCard.title !== store.title) {
+        const fallbackStorePayload: any = await userContentApi.timKiem({
+            tu_khoa: String(resolvedStoreCard.title),
+            loai: 'cua_hang',
+            so_luong: 20,
+            trang: 1,
+        });
+        const fallbackStoreRows = Array.isArray(fallbackStorePayload?.ket_qua?.cua_hang?.du_lieu)
+            ? fallbackStorePayload.ket_qua.cua_hang.du_lieu
+            : [];
+        matchedStore =
+            fallbackStoreRows.find(
+                (item: any) => resolvedStoreId != null && Number(item?.id) === resolvedStoreId,
+            ) ||
+            fallbackStoreRows.find(
+                (item: any) =>
+                    normalizeText(String(item?.ten_cua_hang ?? '')) ===
+                    normalizeText(resolvedStoreCard.title),
+            ) ||
+            matchedStore;
+    }
+
+    const monRows =
+        resolvedStoreId != null
+            ? monRowsRaw.filter((item: any) => Number(item?.id_cua_hang) === resolvedStoreId)
+            : monRowsRaw;
+
+    const menuCategories: StoreDetailMenuCategory[] = [
+        {
+            id: 'menu',
+            label: 'Món ăn',
+        },
+    ];
+
+    const menuItems: StoreDetailMenuItem[] = monRows.slice(0, 24).map((item: any) => ({
+        id: String(item.id),
+        categoryId: 'menu',
+        name: String(item.ten_mon ?? 'Món ăn'),
+        note: String(item.mo_ta ?? ''),
+        price: formatCurrency(Number(item.gia_ban ?? 0)),
+        image: String(item.hinh_anh ?? fallbackImage),
     }));
 
+    const dishIds = Array.from(
+        new Set<number>(
+            monRows
+                .slice(0, 4)
+                .map((item: any) => Number(item.id))
+                .filter((x: number) => Number.isFinite(x) && x > 0),
+        ),
+    );
+    const reviewPayloads: any[] = await Promise.all(
+        dishIds.map((dishId) =>
+            userContentApi.layDanhGiaMonAn(dishId, { trang: 1, so_luong: 6 }).catch(() => null),
+        ),
+    );
+
+    const reviewCards: StoreDetailReviewCard[] = [];
+    const comments: StoreDetailComment[] = [];
+
+    reviewPayloads.forEach((payload, payloadIndex) => {
+        const monInfo = payload?.mon_an;
+        const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+        rows.forEach((review: any, reviewIndex: number) => {
+            const gallery = Array.isArray(review?.tep_dinh_kem)
+                ? review.tep_dinh_kem
+                : [];
+            const heroImage =
+                gallery[0] ||
+                monInfo?.hinh_anh ||
+                monRows[payloadIndex]?.hinh_anh ||
+                fallbackImage;
+
+            reviewCards.push({
+                id: String(review?.id ?? `${payloadIndex}-${reviewIndex}`),
+                author: String(review?.ten_nguoi_danh_gia ?? 'Người dùng'),
+                date: formatDate(String(review?.ngay_danh_gia ?? '')),
+                excerpt: String(review?.noi_dung ?? ''),
+                heroImage,
+                gallery: gallery.length > 0 ? gallery : [heroImage],
+            });
+
+            comments.push({
+                id: String(review?.id ?? `${payloadIndex}-${reviewIndex}`),
+                author: String(review?.ten_nguoi_danh_gia ?? 'Người dùng'),
+                source: String(monInfo?.ten_mon ?? 'DishNet'),
+                date: formatDate(String(review?.ngay_danh_gia ?? '')),
+                rating: `${Number(review?.so_sao ?? 0)}/5`,
+                title: 'Đánh giá món ăn',
+                body: String(review?.noi_dung ?? ''),
+                gallery,
+            });
+        });
+    });
+
+    const prices = monRows
+        .map((item: any) => Number(item?.gia_ban ?? 0))
+        .filter((item: number) => Number.isFinite(item) && item > 0);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+
+    const soldCount = monRows.reduce(
+        (sum: number, item: any) => sum + Number(item?.so_luong_da_ban ?? 0),
+        0,
+    );
+
+    const coverImage =
+        matchedStore?.anh_dai_dien ||
+        menuItems[0]?.image ||
+        fallbackImage;
+
     return {
-        id: store.id,
-        title: store.title,
-        subtitle: 'Nhà hàng - Món Huế - Gia đình, Hội nhóm',
-        coverImage: store.image,
-        views: '1.0k lượt xem',
-        address: store.address,
-        hours: '07:00 - 22:00',
-        priceRange: '35.000đ - 55.000đ',
-        score: (store.rating ?? '4.8').split(' ')[0].replace(',', '.'),
-        soldCount: '1K',
-        reviewCount: '10',
-        commentCount: '200',
+        id: String(resolvedStoreId ?? store.id),
+        title: String(matchedStore?.ten_cua_hang ?? resolvedStoreCard.title ?? store.title),
+        subtitle: 'Cửa hàng trên DishNet',
+        coverImage,
+        views: resolvedStoreCard.meta || store.meta || '---',
+        address: String(matchedStore?.dia_chi ?? resolvedStoreCard.address ?? store.address ?? ''),
+        hours: '',
+        priceRange:
+            minPrice > 0 && maxPrice > 0
+                ? `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`
+                : '',
+        score: Number(matchedStore?.diem_danh_gia ?? store.rating ?? 0).toFixed(1),
+        soldCount: soldCount.toLocaleString('vi-VN'),
+        reviewCount: String(reviewCards.length),
+        commentCount: String(comments.length),
+        menuCategories,
         menuItems,
-        reviewCards: [
-            {
-                id: 'review-card-1',
-                author: '@vy.fooodieee',
-                date: '22 thg 02, 2026',
-                excerpt:
-                    'Sau lần ăn thử tại quán, mình cảm nhận phần nước dùng rất đậm đà, topping đầy đặn và lên món nhanh. Không gian sạch sẽ, hợp cho bữa trưa hoặc đi nhóm nhỏ.',
-                heroImage: homeData.feedPosts[0].images[0],
-                gallery: [homeData.feedPosts[0].images[0], homeData.feedPosts[0].images[1], communityImageSet[0], communityImageSet[1]],
-            },
-            {
-                id: 'review-card-2',
-                author: '@thi.odieee',
-                date: '22 thg 02, 2026',
-                excerpt:
-                    'Đánh giá nhanh: vị trí tiện, chất lượng món ổn định, tốc độ phục vụ khá nhanh và trải nghiệm tổng thể dễ quay lại lần nữa.',
-                heroImage: homeData.feedPosts[1].images[0],
-                gallery: [homeData.feedPosts[1].images[0], homeData.feedPosts[1].images[1], communityImageSet[2], communityImageSet[3]],
-            },
-        ],
-        communityImages: communityImageSet,
-        comments: [
-            {
-                id: 'comment-1',
-                author: 'Vannguyen',
-                source: 'via Android',
-                date: '26/8/2020 20:27',
-                rating: '4.8',
-                title: 'Dịch vụ giao hàng của quán rất chu đáo',
-                body:
-                    'Mình ăn ở quán khá nhiều lần nhưng hôm nay mới thử đặt ship trên website. Từ lúc quán confirm đơn đến lúc nhận đồ chỉ khoảng 20 phút. Nước và bún trần vẫn còn nóng, rau sống được để riêng nên rất hợp lý.',
-            },
-            {
-                id: 'comment-2',
-                author: 'Phuong Tran',
-                source: 'via MobileWeb',
-                date: '6/1/2020 15:13',
-                rating: '4.5',
-                title: 'Rất thích không khí và cách phục vụ',
-                body:
-                    'Giữa phố cổ khá chật chội mình không nghĩ có một nhà hàng đẹp và rộng như vậy. Món ăn ngon, không gian thoáng và nhân viên tư vấn món rất ổn.',
-            },
-            {
-                id: 'comment-3',
-                author: 'Foodee_c2vxbctc',
-                source: 'via iPhone',
-                date: '21/12/2017 7:49',
-                rating: '4.9',
-                title: 'Quán rất đẹp khá sạch sẽ',
-                body:
-                    'Đồ ăn không quá cầu kỳ nhưng vị ổn định. Mình gọi bún bò, cơm cá bóng lau kho tộ và chè bắp, tổng thể đều tròn vị. Điểm cộng là lên món khá nhanh và bày biện đẹp.',
-                gallery: communityImageSet.slice(2, 8),
-            },
-        ],
+        reviewCards: reviewCards.slice(0, 8),
+        communityImages: menuItems.slice(0, 8).map((item) => item.image),
+        comments: comments.slice(0, 12),
     };
 }

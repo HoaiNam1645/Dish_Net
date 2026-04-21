@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/shared/AuthContext';
 import CartModal from '@/components/Cart/CartModal';
-import { ensureMockCart, getMockCartUpdatedEventName, getSelectedItemCount, readMockCart } from '@/components/Cart/mockCart';
+import { USER_CART_REFRESH_EVENT } from '@/shared/cartEvents';
+import { userCommerceApi } from '@/shared/userCommerceApi';
 
 const messageParticipants = [
     { id: 'vy', label: 'Vy', bg: 'bg-[#f6e6d2]', text: 'text-[#7a4b19]' },
@@ -23,19 +24,24 @@ export default function UserQuickActions() {
     const shouldShow = dangNhap && nguoiDung?.vai_tro === 'nguoi_dung';
 
     useEffect(() => {
-        const syncCart = () => {
-            setSelectedCount(getSelectedItemCount(readMockCart()));
+        const syncCart = async () => {
+            try {
+                const payload: any = await userCommerceApi.layGioHang();
+                setSelectedCount(Number(payload?.tong_mon_da_chon ?? 0));
+            } catch {
+                setSelectedCount(0);
+            }
         };
 
-        ensureMockCart();
-        syncCart();
+        void syncCart();
 
-        window.addEventListener(getMockCartUpdatedEventName(), syncCart);
-        window.addEventListener('storage', syncCart);
+        const onRefresh = () => {
+            void syncCart();
+        };
+        window.addEventListener(USER_CART_REFRESH_EVENT, onRefresh);
 
         return () => {
-            window.removeEventListener(getMockCartUpdatedEventName(), syncCart);
-            window.removeEventListener('storage', syncCart);
+            window.removeEventListener(USER_CART_REFRESH_EVENT, onRefresh);
         };
     }, []);
 

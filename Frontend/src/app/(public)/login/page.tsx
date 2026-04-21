@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { FormEvent, Suspense, type ReactNode, useMemo, useState } from 'react';
 import { useAuth } from '@/shared/AuthContext';
 import { authApi } from '@/shared/authApi';
 
@@ -90,7 +90,7 @@ const vaiTroConfig: Record<string, { title: string; subtitle: string; descriptio
     },
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectTo = searchParams.get('redirect');
@@ -271,5 +271,13 @@ export default function LoginPage() {
                 </div>
             )}
         </>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginPageContent />
+        </Suspense>
     );
 }

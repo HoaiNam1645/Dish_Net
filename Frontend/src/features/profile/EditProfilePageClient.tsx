@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
+import { userContentApi } from '@/shared/userContentApi';
 
 function Toggle({
     checked,
@@ -64,24 +65,58 @@ export default function EditProfilePageClient({
     const [accountName, setAccountName] = useState(profile.handle || profile.name);
     const [gender, setGender] = useState(profile.gender);
     const [birthday, setBirthday] = useState(profile.birthday);
-    const [bio, setBio] = useState('');
+    const [bio, setBio] = useState(profile.bio || '');
     const [showGender, setShowGender] = useState(false);
     const [showBirthday, setShowBirthday] = useState(false);
     const [showBadge, setShowBadge] = useState(profile.showBadge);
     const [showTrustScore, setShowTrustScore] = useState(profile.showTrustScore);
     const [isPrivate, setIsPrivate] = useState(profile.isPrivate);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(profile.avatar);
+    const [avatarUploadUrl, setAvatarUploadUrl] = useState<string | null>(null);
 
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
-    const handleSave = () => {
+    const toIsoDate = (value: string) => {
+        const v = value.trim();
+        if (!v) return undefined;
+        const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v);
+        if (dmy) {
+            const [, d, m, y] = dmy;
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+        const dt = new Date(v);
+        if (!Number.isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+        return undefined;
+    };
+
+    const handleSave = async () => {
         setIsSaving(true);
-        window.setTimeout(() => {
+        try {
+            await userContentApi.chinhSuaTrangCaNhan({
+                ten_dang_nhap: accountName.trim() || undefined,
+                gioi_tinh: gender.toLowerCase().includes('nam')
+                    ? 'nam'
+                    : gender.toLowerCase().includes('nu')
+                        ? 'nu'
+                        : 'khac',
+                ngay_sinh: toIsoDate(birthday),
+                tieu_su: bio.trim() || undefined,
+                anh_dai_dien: avatarUploadUrl ?? undefined,
+                cho_hien_thi_huy_hieu: showBadge,
+                cho_hien_thi_diem_uy_tin: showTrustScore,
+                la_tai_khoan_rieng_tu: isPrivate,
+            });
             setIsSaving(false);
             setSaved(true);
             window.setTimeout(() => setSaved(false), 1800);
-        }, 800);
+        } catch {
+            setIsSaving(false);
+            setSaved(false);
+            window.alert('Lưu thất bại, vui lòng kiểm tra dữ liệu và thử lại.');
+        }
     };
 
     const remainingBio = Math.max(0, 80 - bio.length);
@@ -108,17 +143,45 @@ export default function EditProfilePageClient({
                     <div className="rounded-[16px] bg-[#f6f8fb] px-4 py-4">
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex h-[58px] w-[58px] items-center justify-center overflow-hidden rounded-[16px] bg-[#f6f1ca]">
-                                <img src={profile.avatar} alt={profile.name} className="h-[44px] w-[44px] rounded-[12px] object-cover" />
+                                <img src={avatarPreview} alt={profile.name} className="h-[44px] w-[44px] rounded-[12px] object-cover" />
                             </div>
                             <button
                                 type="button"
                                 onClick={() => avatarInputRef.current?.click()}
+                                disabled={isUploadingAvatar}
                                 className="rounded-[10px] bg-[#2f8f22] px-5 py-2.5 text-[14px] font-bold text-white transition hover:bg-[#27771d]"
                                 id="btn-change-avatar"
                             >
-                                Đổi ảnh
+                                {isUploadingAvatar ? 'Đang tải...' : 'Đổi ảnh'}
                             </button>
-                            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" id="input-avatar" />
+                            <input
+                                ref={avatarInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id="input-avatar"
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (!file) return;
+                                    setAvatarPreview(URL.createObjectURL(file));
+                                    setIsUploadingAvatar(true);
+                                    userContentApi
+                                        .uploadAnhDaiDien(file)
+                                        .then((payload) => {
+                                            const uploadedUrl = payload?.url;
+                                            if (uploadedUrl) {
+                                                setAvatarUploadUrl(uploadedUrl);
+                                                setAvatarPreview(uploadedUrl);
+                                            }
+                                        })
+                                        .catch(() => {
+                                            window.alert('Upload ảnh thất bại. Vui lòng thử lại.');
+                                        })
+                                        .finally(() => {
+                                            setIsUploadingAvatar(false);
+                                        });
+                                }}
+                            />
                         </div>
                     </div>
 
@@ -222,8 +285,8 @@ export default function EditProfilePageClient({
                                 disabled={isSaving}
                                 className={`flex h-12 min-w-[82px] items-center justify-center rounded-[8px] px-5 text-[15px] font-semibold transition ${
                                     saved
-                                        ? 'bg-[#e9f7e7] text-[#2f8f22]'
-                                        : 'bg-[#ebebeb] text-[#a1a1a1] hover:bg-[#e1e1e1]'
+                                        ? 'bg-[#1f7a16] text-white'
+                                        : 'bg-[#2f8f22] text-white hover:bg-[#27771d]'
                                 } disabled:cursor-not-allowed`}
                                 id="btn-save-profile"
                             >

@@ -12,6 +12,7 @@ import {
   fmt,
   mapDbStatusToUi,
 } from '@/shared/storeMenuApi';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -28,12 +29,14 @@ const STATUS_COLORS: Record<ItemStatus, string> = {
 
 const DB_STATUS_OPTIONS: ItemStatus[] = ['dang_ban', 'het_mon', 'tam_ngung_ban'];
 
-const SORT_OPTIONS = [
+const SORT_OPTIONS: Array<{ value: MenuSortOption; label: string }> = [
   { value: 'moi_nhat', label: 'Mới nhất' },
   { value: 'ban_chay', label: 'Bán chạy' },
   { value: 'gia_cao', label: 'Giá cao → thấp' },
   { value: 'gia_thap', label: 'Giá thấp → cao' },
 ];
+
+const menuFallbackImage = figmaFallbackAssets.menuItemImage;
 
 /* ═══════════════════════════════════════════
    EDIT ITEM MODAL
@@ -97,7 +100,7 @@ function EditItemModal({
         </div>
         <div className="px-6 pb-6 pt-4">
           <div className="flex items-center gap-4 rounded-[10px] border border-[#e8e8e8] p-3">
-            <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/64'} alt={item.ten_mon} className="h-16 w-16 rounded-[8px] object-cover" />
+            <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-16 w-16 rounded-[8px] object-cover" />
             <span className="flex-1 text-[15px] font-medium text-black">{name || '...'}</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4">
@@ -204,7 +207,7 @@ function DeleteItemModal({ item, onClose, onDelete }: { item: MonAnItem; onClose
         </div>
         <div className="px-6 pb-6 pt-4">
           <div className="flex items-center gap-4 rounded-[10px] border border-[#e8e8e8] p-4">
-            <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/56'} alt={item.ten_mon} className="h-14 w-14 rounded-[8px] object-cover" />
+            <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-14 w-14 rounded-[8px] object-cover" />
             <div>
               <p className="text-[15px] font-semibold text-black">{item.ten_mon}</p>
               <p className="text-[13px] text-[#f0a050]">{fmt(item.gia_ban)}</p>
@@ -420,7 +423,7 @@ function SoldOutModal({ hetMon, onClose }: { hetMon: TopMonItem[]; onClose: () =
                   <td className="py-3 text-black">{i + 1}</td>
                   <td className="py-3">
                     <div className="flex items-center gap-3">
-                      <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/40'} alt={item.ten_mon} className="h-10 w-10 rounded-[6px] object-cover" />
+                      <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-10 w-10 rounded-[6px] object-cover" />
                       <div>
                         <p className="text-[13px] font-medium text-black">{item.ten_mon}</p>
                         <p className="text-[12px] text-[#f0a050]">{fmt(item.gia_ban)}</p>
@@ -578,7 +581,7 @@ export default function MenuTab() {
               {topItems.map((item, i) => (
                 <div key={item.id} className="flex items-center gap-4">
                   <span className="text-[16px] font-bold text-[#555]">{i + 1} :</span>
-                  <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/64'} alt={item.ten_mon} className="h-12 w-16 rounded-[6px] object-cover" />
+                  <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-12 w-16 rounded-[6px] object-cover" />
                   <div className="flex-1">
                     <p className="text-[14px] font-medium text-black">{item.ten_mon}</p>
                     <p className="text-[12px] text-[#f0a050]">{fmt(item.gia_ban)}</p>
@@ -605,7 +608,7 @@ export default function MenuTab() {
               hetMonItems.slice(0, 3).map((item, i) => (
                 <div key={item.id} className="flex items-center gap-4">
                   <span className="text-[14px] font-bold text-[#555]">{i + 1}</span>
-                  <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/48'} alt={item.ten_mon} className="h-10 w-12 rounded-[6px] object-cover" />
+                  <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-10 w-12 rounded-[6px] object-cover" />
                   <div className="flex-1">
                     <p className="text-[13px] font-medium text-black">{item.ten_mon}</p>
                     <p className="text-[11px] text-[#f0a050]">{fmt(item.gia_ban)}</p>
@@ -704,7 +707,7 @@ export default function MenuTab() {
                     <td className="px-2 py-3 font-medium text-black">{item.ma_mon || '—'}</td>
                     <td className="px-2 py-3">
                       <div className="flex items-center gap-3">
-                        <img src={item.hinh_anh_dai_dien || 'https://via.placeholder.com/32'} alt={item.ten_mon} className="h-8 w-8 rounded-[4px] object-cover" />
+                        <img src={item.hinh_anh_dai_dien || menuFallbackImage} alt={item.ten_mon} className="h-8 w-8 rounded-[4px] object-cover" />
                         <span className="text-[13px] text-black">{item.ten_mon}</span>
                       </div>
                     </td>

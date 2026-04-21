@@ -1,11 +1,13 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
+import { userCommerceApi } from '@/shared/userCommerceApi';
 
 type StoreStep = 'form' | 'contract' | 'payment' | 'pending';
+type StoreRequestStatus = 'cho_duyet' | 'da_duyet' | 'da_tu_choi';
 
 const CATEGORY_OPTIONS = [
     'Đồ chay',
@@ -19,6 +21,18 @@ const CATEGORY_OPTIONS = [
     'Bún & Phở',
     'Hải sản',
 ];
+
+const STORE_ACTIVATION_BANK_INFO = {
+    accountNumber:
+        process.env.NEXT_PUBLIC_STORE_ACTIVATION_ACCOUNT_NUMBER?.trim() ||
+        '190368668688',
+    bankName:
+        process.env.NEXT_PUBLIC_STORE_ACTIVATION_BANK_NAME?.trim() || 'Techcombank',
+    accountHolder:
+        process.env.NEXT_PUBLIC_STORE_ACTIVATION_ACCOUNT_HOLDER?.trim() || 'CONG TY TNHH DISHNET',
+    transferContentPrefix:
+        process.env.NEXT_PUBLIC_STORE_ACTIVATION_TRANSFER_PREFIX?.trim() || 'MOQUAN',
+};
 
 /* ═══════════════════════════════════════════
    HELPER: Label Field
@@ -128,11 +142,17 @@ const CONTRACT_CLAUSES = [
    ═══════════════════════════════════════════════════════════════ */
 export default function OpenStoreFlow({
     profile,
+    existingRequestStatus,
+    existingRejectReason,
 }: {
     profile: UserProfile;
     onBack: () => void;
+    existingRequestStatus?: StoreRequestStatus | null;
+    existingRejectReason?: string | null;
 }) {
-    const [step, setStep] = useState<StoreStep>('form');
+    const [step, setStep] = useState<StoreStep>(
+        existingRequestStatus === 'cho_duyet' ? 'pending' : 'form',
+    );
 
     /* ── Form state ── */
     const [ownerName, setOwnerName] = useState('');
@@ -151,7 +171,27 @@ export default function OpenStoreFlow({
     const [termQuality, setTermQuality] = useState(false);
     const [cccdVerified, setCccdVerified] = useState(false);
     const [menuImages, setMenuImages] = useState<string[]>([]);
+    const [menuImageNames, setMenuImageNames] = useState<string[]>([]);
     const [agreedContract, setAgreedContract] = useState(false);
+    const [cccdFileNames, setCccdFileNames] = useState<string[]>([]);
+    const [paymentProofNames, setPaymentProofNames] = useState<string[]>([]);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const copyText = async (value: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+        } catch {
+            // no-op: tránh làm gián đoạn luồng đăng ký nếu clipboard bị chặn.
+        }
+    };
+
+    useEffect(() => {
+        if (existingRequestStatus === 'cho_duyet') {
+            setStep('pending');
+        }
+    }, [existingRequestStatus]);
 
     const menuInputRef = useRef<HTMLInputElement>(null);
     const cccdInputRef = useRef<HTMLInputElement>(null);
@@ -161,7 +201,9 @@ export default function OpenStoreFlow({
         const files = e.target.files;
         if (!files) return;
         const urls = Array.from(files).map((f) => URL.createObjectURL(f));
+        const names = Array.from(files).map((f) => f.name);
         setMenuImages((prev) => [...prev, ...urls]);
+        setMenuImageNames((prev) => [...prev, ...names]);
     };
 
     const todayStr = (() => {
@@ -177,6 +219,11 @@ export default function OpenStoreFlow({
             <div>
                 {/* ── Thông tin cơ bản ── */}
                 <h2 className="text-[22px] font-bold text-black">Thông tin cơ bản</h2>
+                {existingRequestStatus === 'da_tu_choi' && existingRejectReason ? (
+                    <p className="mt-3 rounded-[8px] border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                        Lý do từ chối gần nhất: {existingRejectReason}
+                    </p>
+                ) : null}
                 <div className="mt-5 space-y-4">
                     <LabelField label="Chủ sở hữu" value={ownerName} onChange={setOwnerName} placeholder="Họ và tên theo CCCD" id="store-owner" />
                     <LabelField label="Số CCCD" value={cccd} onChange={setCccd} placeholder="Số CCCD" id="store-cccd" />
@@ -287,7 +334,19 @@ export default function OpenStoreFlow({
                                 </svg>
                             </button>
                         )}
-                        <input ref={cccdInputRef} type="file" accept="image/*" multiple className="hidden" onChange={() => setCccdVerified(true)} />
+                        <input
+                            ref={cccdInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(event) => {
+                                const files = event.target.files;
+                                if (!files) return;
+                                setCccdVerified(files.length > 0);
+                                setCccdFileNames(Array.from(files).map((file) => file.name));
+                            }}
+                        />
                     </div>
 
                     {/* Ảnh Menu */}
@@ -328,13 +387,46 @@ export default function OpenStoreFlow({
                 <div className="mt-8 flex justify-center">
                     <button
                         type="button"
-                        onClick={() => setStep('contract')}
+                        onClick={() => {
+                            if (
+                                !ownerName.trim() ||
+                                !cccd.trim() ||
+                                !storePhone.trim() ||
+                                !storeAddress.trim() ||
+                                !storeName.trim() ||
+                                !storeContactPhone.trim() ||
+                                !category.trim() ||
+                                !hoursFrom.trim() ||
+                                !hoursTo.trim() ||
+                                !businessAddress.trim()
+                            ) {
+                                setFormError('Vui lòng điền đầy đủ thông tin bắt buộc.');
+                                return;
+                            }
+                            if (!termShipping || !termFee || !termQuality) {
+                                setFormError('Vui lòng xác nhận đầy đủ các điều khoản.');
+                                return;
+                            }
+                            if (!cccdVerified || cccdFileNames.length < 2) {
+                                setFormError('Vui lòng tải ảnh CCCD mặt trước và mặt sau.');
+                                return;
+                            }
+                            if (menuImageNames.length === 0) {
+                                setFormError('Vui lòng tải lên ít nhất 1 ảnh menu hoặc món ăn.');
+                                return;
+                            }
+                            setFormError(null);
+                            setStep('contract');
+                        }}
                         className="min-w-[160px] rounded-[10px] bg-[#2e7d32] px-10 py-3 text-[16px] font-bold text-white transition hover:bg-[#256b28]"
                         id="btn-submit-store"
                     >
                         Gửi
                     </button>
                 </div>
+                {formError ? (
+                    <p className="mt-3 text-center text-sm text-red-500">{formError}</p>
+                ) : null}
             </div>
         );
     }
@@ -531,17 +623,41 @@ export default function OpenStoreFlow({
                         <div className="mt-5 space-y-2 text-[12px] text-[#555]">
                             <h4 className="font-bold text-black">Thông tin chuyển khoản thủ công</h4>
                             <p className="flex items-center justify-between">
-                                <span>• Số tài khoản :</span>
-                                <button className="text-[#999] hover:text-black">📋</button>
+                                <span>• Số tài khoản: {STORE_ACTIVATION_BANK_INFO.accountNumber}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void copyText(STORE_ACTIVATION_BANK_INFO.accountNumber)}
+                                    className="text-[#999] hover:text-black"
+                                >
+                                    📋
+                                </button>
                             </p>
                             <p className="flex items-center justify-between">
-                                <span>• Ngân hàng :</span>
-                                <button className="text-[#999] hover:text-black">📋</button>
+                                <span>• Ngân hàng: {STORE_ACTIVATION_BANK_INFO.bankName}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void copyText(STORE_ACTIVATION_BANK_INFO.bankName)}
+                                    className="text-[#999] hover:text-black"
+                                >
+                                    📋
+                                </button>
                             </p>
-                            <p>• Chủ tài khoản :</p>
+                            <p>• Chủ tài khoản: {STORE_ACTIVATION_BANK_INFO.accountHolder}</p>
                             <p className="flex items-center justify-between">
-                                <span>• Nội dung chuyển khoản: Tên_DNPRO.</span>
-                                <button className="text-[#999] hover:text-black">📋</button>
+                                <span>
+                                    • Nội dung chuyển khoản: {STORE_ACTIVATION_BANK_INFO.transferContentPrefix}_{profile.handle}.
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        void copyText(
+                                            `${STORE_ACTIVATION_BANK_INFO.transferContentPrefix}_${profile.handle}`,
+                                        )
+                                    }
+                                    className="text-[#999] hover:text-black"
+                                >
+                                    📋
+                                </button>
                             </p>
                         </div>
                     </div>
@@ -558,19 +674,87 @@ export default function OpenStoreFlow({
                         >
                             Chọn ảnh
                         </button>
-                        <input ref={paymentProofRef} type="file" accept="image/*" className="hidden" />
+                        <input
+                            ref={paymentProofRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(event) => {
+                                const files = event.target.files;
+                                if (!files) return;
+                                setPaymentProofNames(
+                                    Array.from(files).map((file) => file.name),
+                                );
+                            }}
+                        />
                     </div>
 
                     <div className="mt-6 flex justify-center">
                         <button
                             type="button"
-                            onClick={() => setStep('pending')}
+                            onClick={async () => {
+                                if (isSubmitting) return;
+                                if (paymentProofNames.length === 0) {
+                                    setSubmitError(
+                                        'Vui lòng tải lên minh chứng thanh toán trước khi gửi.',
+                                    );
+                                    return;
+                                }
+                                setSubmitError(null);
+                                setIsSubmitting(true);
+                                try {
+                                    await userCommerceApi.dangKyMoCuaHang({
+                                        chu_so_huu: ownerName.trim(),
+                                        so_cccd: cccd.trim(),
+                                        so_dien_thoai: storePhone.trim(),
+                                        dia_chi: storeAddress.trim(),
+                                        ten_cua_hang: storeName.trim(),
+                                        so_dien_thoai_lien_he: storeContactPhone.trim(),
+                                        danh_muc_kinh_doanh: category.trim(),
+                                        gio_mo_cua: hoursFrom.trim(),
+                                        gio_dong_cua: hoursTo.trim(),
+                                        dia_chi_kinh_doanh: businessAddress.trim(),
+                                        dong_y_dieu_khoan: true,
+                                        anh_cccd: cccdFileNames.map(
+                                            (name) =>
+                                                `https://cdn.dishnet.local/cccd/${encodeURIComponent(
+                                                    name,
+                                                )}`,
+                                        ),
+                                        anh_menu: menuImageNames.map(
+                                            (name) =>
+                                                `https://cdn.dishnet.local/menu/${encodeURIComponent(
+                                                    name,
+                                                )}`,
+                                        ),
+                                        minh_chung_thanh_toan: paymentProofNames.map(
+                                            (name) =>
+                                                `https://cdn.dishnet.local/payment/${encodeURIComponent(
+                                                    name,
+                                                )}`,
+                                        ),
+                                    });
+                                    setStep('pending');
+                                } catch (error) {
+                                    setSubmitError(
+                                        error instanceof Error
+                                            ? error.message
+                                            : 'Không gửi được đăng ký mở cửa hàng',
+                                    );
+                                } finally {
+                                    setIsSubmitting(false);
+                                }
+                            }}
                             className="min-w-[300px] rounded-[10px] bg-[#2e7d32] py-3.5 text-center text-[18px] font-bold text-white transition hover:bg-[#256b28]"
                             id="btn-submit-payment"
                         >
-                            GỬI
+                            {isSubmitting ? 'ĐANG GỬI...' : 'GỬI'}
                         </button>
                     </div>
+                    {submitError ? (
+                        <p className="mt-3 text-center text-sm text-red-500">{submitError}</p>
+                    ) : null}
                 </div>
             </div>
         );
@@ -583,10 +767,10 @@ export default function OpenStoreFlow({
         <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
             <span className="text-[48px]">⏳</span>
             <h2 className="mt-4 text-[20px] font-bold uppercase text-black">
-                THANH TOÁN THÀNH CÔNG - HỒ SƠ ĐANG CHỜ DUYỆT
+                HỒ SƠ MỞ CỬA HÀNG ĐANG CHỜ DUYỆT
             </h2>
             <p className="mt-3 max-w-[500px] text-[15px] leading-7 text-[#555]">
-                Chúng tôi đã nhận được phí kích hoạt. Chuyên viên của DishNet đang kiểm tra thông tin gian hàng của bạn.
+                Chuyên viên của DishNet đang kiểm tra thông tin gian hàng của bạn. Kết quả sẽ được gửi qua thông báo hệ thống và email.
             </p>
         </div>
     );

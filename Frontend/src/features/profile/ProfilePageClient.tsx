@@ -947,19 +947,31 @@ export default function ProfilePageClient({
 
                 {activeTab === 'posts' ? (
                     <div>
-                        {visiblePosts.map((post) => (
-                            <PostCard key={post.id} post={post} profile={profile} />
-                        ))}
+                        {visiblePosts.length > 0 ? (
+                            visiblePosts.map((post) => (
+                                <PostCard key={post.id} post={post} profile={profile} />
+                            ))
+                        ) : (
+                            <div className="border-t border-[#d9d9d9] px-4 py-12 text-center text-[14px] text-[#787878] sm:px-6">
+                                Chưa có bài viết nào để hiển thị.
+                            </div>
+                        )}
                     </div>
                 ) : null}
 
                 {activeTab === 'videos' ? (
                     <div className="border-t border-[#d9d9d9] px-4 pb-5 pt-4 sm:px-6">
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {visibleVideos.map((video) => (
-                                <VideoCard key={video.id} item={video} />
-                            ))}
-                        </div>
+                        {visibleVideos.length > 0 ? (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {visibleVideos.map((video) => (
+                                    <VideoCard key={video.id} item={video} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-8 text-center text-[14px] text-[#787878]">
+                                Chưa có video nào để hiển thị.
+                            </div>
+                        )}
                     </div>
                 ) : null}
 

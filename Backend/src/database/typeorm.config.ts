@@ -12,12 +12,22 @@ import { CuaHangEntity } from "../Api/Admin/entities/cua-hang.entity";
 import { MonAnEntity } from "../Api/Admin/entities/mon-an.entity";
 import { BaiVietEntity } from "../Api/Admin/entities/bai-viet.entity";
 import { BinhLuanEntity } from "../Api/Admin/entities/binh-luan.entity";
+import { TuongTacEntity } from "../Api/Admin/entities/tuong-tac.entity";
 import { KhuyenMaiEntity } from "../Api/Admin/entities/khuyen-mai.entity";
 import { DanhMucMonEntity } from "../Api/Admin/entities/danh-muc-mon.entity";
 import { ToppingEntity } from "../Api/Admin/entities/topping.entity";
 import { DonHangEntity } from "../Api/Admin/entities/don-hang.entity";
 import { DonHangChiTietEntity } from "../Api/Admin/entities/don-hang-chi-tiet.entity";
 import { LichSuDonHangEntity } from "../Api/Admin/entities/lich-su-don-hang.entity";
+import { DanhGiaEntity } from "../Api/Store/entities/danh-gia.entity";
+import { DanhGiaDaLuuEntity } from "../Api/User/entities/danh-gia-da-luu.entity";
+import { QuanHeNguoiDungEntity } from "../Api/User/entities/quan-he-nguoi-dung.entity";
+import { CuocTroChuyenEntity } from "../Api/User/entities/cuoc-tro-chuyen.entity";
+import { TinNhanEntity } from "../Api/User/entities/tin-nhan.entity";
+import { GioHangChiTietEntity } from "../Api/User/entities/gio-hang-chi-tiet.entity";
+import { ThanhToanEntity } from "../Api/User/entities/thanh-toan.entity";
+import { DonHangKhuyenMaiEntity } from "../Api/User/entities/don-hang-khuyen-mai.entity";
+import { PhienThanhToanEntity } from "../Api/User/entities/phien-thanh-toan.entity";
 import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import type { DataSourceOptions } from "typeorm";
 
@@ -43,12 +53,22 @@ export function getTypeOrmConfig(): TypeOrmModuleOptions & DataSourceOptions {
       MonAnEntity,
       BaiVietEntity,
       BinhLuanEntity,
+      TuongTacEntity,
       KhuyenMaiEntity,
       DanhMucMonEntity,
       ToppingEntity,
       DonHangEntity,
       DonHangChiTietEntity,
       LichSuDonHangEntity,
+      DanhGiaEntity,
+      DanhGiaDaLuuEntity,
+      QuanHeNguoiDungEntity,
+      CuocTroChuyenEntity,
+      TinNhanEntity,
+      GioHangChiTietEntity,
+      ThanhToanEntity,
+      DonHangKhuyenMaiEntity,
+      PhienThanhToanEntity,
     ],
     migrations: [join(__dirname, "migrations", "*{.ts,.js}")],
     synchronize: false,

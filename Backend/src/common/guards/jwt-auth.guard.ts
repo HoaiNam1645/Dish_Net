@@ -30,12 +30,26 @@ export class JwtAuthGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (isPublic) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = request.cookies?.[AUTH_COOKIE_NAME];
+
+    if (isPublic) {
+      if (token) {
+        try {
+          const payload = await this.jwtService.verifyAsync(token, {
+            secret: process.env.JWT_SECRET ?? "dishnet-secret",
+          });
+          request.user = {
+            sub: Number(payload.sub),
+            email: payload.email,
+            vai_tro: payload.vai_tro,
+          };
+        } catch {
+          // Public endpoint: ignore invalid token and continue as guest.
+        }
+      }
+      return true;
+    }
 
     if (!token) {
       throw new UnauthorizedException("Ban chua dang nhap");

@@ -52,8 +52,7 @@ export async function seedDonHang(context: SeederContext) {
     await donHangRepo.delete(existingIds);
   }
 
-  await monAnRepo.delete([702]);
-  await cuaHangRepo.delete([602]);
+  // Không xóa cứng bản ghi 602/702 để tránh vỡ FK khi dữ liệu seed mở rộng đã tồn tại.
 
   const homNay = new Date();
   const atTimeToday = (hours: number, minutes: number) => {
@@ -70,34 +69,41 @@ export async function seedDonHang(context: SeederContext) {
   const addMinutes = (date: Date, minutes: number) =>
     new Date(date.getTime() + minutes * 60_000);
 
-  const cuaHang2 = await cuaHangRepo.save({
-    id: 602,
-    id_chu_so_huu: getUserId(context, "multi@dishnet.vn")!,
-    ten_cua_hang: "Cơm Tấm Sài Gòn",
-    slug: "com-tam-sai-gon-seed",
-    mo_ta: "Quán cơm tấm chuyên phục vụ bữa trưa và tối.",
-    anh_dai_dien:
-      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80",
-    dia_chi_kinh_doanh: "88 Nguyễn Tri Phương, Quận 10, TP.HCM",
-    trang_thai_hoat_dong: "hoat_dong",
-  });
+  await cuaHangRepo.upsert(
+    {
+      id: 602,
+      id_chu_so_huu: getUserId(context, "multi@dishnet.vn")!,
+      ten_cua_hang: "Cơm Tấm Sài Gòn",
+      slug: "com-tam-sai-gon-seed",
+      mo_ta: "Quán cơm tấm chuyên phục vụ bữa trưa và tối.",
+      anh_dai_dien:
+        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80",
+      dia_chi_kinh_doanh: "88 Nguyễn Tri Phương, Quận 10, TP.HCM",
+      trang_thai_hoat_dong: "hoat_dong",
+    },
+    ["id"],
+  );
+  const cuaHang2 = await cuaHangRepo.findOneOrFail({ where: { id: 602 } });
 
   await cuaHangRepo.update(cuaHang2.id, {
     anh_dai_dien:
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80",
   });
 
-  await monAnRepo.save({
-    id: 702,
-    id_cua_hang: cuaHang2.id,
-    ma_mon: "CT001",
-    ten_mon: "Cơm tấm sườn bì chả",
-    mo_ta: "Phần cơm tấm đầy đủ sườn, bì, chả.",
-    hinh_anh_dai_dien:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=640&q=80",
-    gia_ban: 65000,
-    trang_thai_ban: "dang_ban",
-  });
+  await monAnRepo.upsert(
+    {
+      id: 702,
+      id_cua_hang: cuaHang2.id,
+      ma_mon: "CT001",
+      ten_mon: "Cơm tấm sườn bì chả",
+      mo_ta: "Phần cơm tấm đầy đủ sườn, bì, chả.",
+      hinh_anh_dai_dien:
+        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=640&q=80",
+      gia_ban: 65000,
+      trang_thai_ban: "dang_ban",
+    },
+    ["id"],
+  );
 
   const pb25RevenueBlueprints = [
     {

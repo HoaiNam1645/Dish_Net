@@ -21,8 +21,18 @@ function isApiEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
+  const path = `${API_BASE}${url}`;
+  const requestUrl =
+    typeof window === 'undefined'
+      ? new URL(
+          path,
+          process.env.NEXT_PUBLIC_APP_ORIGIN ?? 'http://127.0.0.1:4000',
+        ).toString()
+      : path;
+
+  const res = await fetch(requestUrl, {
     ...options,
+    cache: typeof window === 'undefined' ? 'no-store' : options?.cache,
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,

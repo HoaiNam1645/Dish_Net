@@ -2,7 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+
+import { userContentApi } from '@/shared/userContentApi';
 
 import type { FoodCommentCard, FoodReviewCard, RankingFoodDetailData } from './data';
 
@@ -32,7 +33,15 @@ function TagPill({ label, tone }: { label: string; tone: 'gold' | 'red' }) {
     );
 }
 
-function ReviewCard({ review }: { review: FoodReviewCard }) {
+function ReviewCard({
+    review,
+    onSave,
+    onOpenDetail,
+}: {
+    review: FoodReviewCard;
+    onSave: (id: string) => void;
+    onOpenDetail: (id: string) => void;
+}) {
     return (
         <article className="rounded-[6px] border border-[#dfdfdf] bg-white p-4 shadow-[0_4px_14px_rgba(0,0,0,0.08)]">
             <div className="flex items-start justify-between gap-4">
@@ -42,7 +51,7 @@ function ReviewCard({ review }: { review: FoodReviewCard }) {
                         <div className="flex flex-wrap items-center gap-3">
                             <h3 className="text-[16px] font-bold text-black">{review.author}</h3>
                             <span className="rounded-full bg-[#fdecc9] px-4 py-1.5 text-[13px] font-bold text-[#26210f]">⭐ TOP REVIEWER</span>
-                            <button type="button" className="rounded-full bg-[#2f9925] px-4 py-2 text-[13px] font-bold text-white">Follow +</button>
+                            <span className="rounded-full bg-[#eef2f7] px-4 py-2 text-[13px] font-semibold text-[#6b7280]">Theo dõi từ trang reviewer</span>
                         </div>
                         <p className="mt-1 text-[13px] text-[#555555]">{review.date}</p>
                     </div>
@@ -70,9 +79,9 @@ function ReviewCard({ review }: { review: FoodReviewCard }) {
                 {review.gallery.slice(0, 2).map((image, index) => (
                     <img key={`${review.id}-top-${index}`} src={image} alt="" className="h-[74px] w-full rounded-[12px] object-cover" />
                 ))}
-                <button type="button" className="row-span-2 rounded-[16px] bg-[#e56262] text-[13px] font-bold text-white">
-                    Xem thêm
-                </button>
+                <span className="row-span-2 flex items-center justify-center rounded-[16px] bg-[#f0f1f5] text-[12px] font-semibold text-[#697489]">
+                    Ảnh
+                </span>
                 {review.gallery.slice(2, 4).map((image, index) => (
                     <img key={`${review.id}-bottom-${index}`} src={image} alt="" className="h-[74px] w-full rounded-[12px] object-cover" />
                 ))}
@@ -89,14 +98,19 @@ function ReviewCard({ review }: { review: FoodReviewCard }) {
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-[#ececec] pt-4 text-[15px] text-[#4e4e4e]">
                 <div className="flex flex-wrap items-center gap-6">
-                    <button type="button">♡ Yêu thích</button>
-                    <button type="button">◔ Bình luận</button>
+                    <span>♡ Yêu thích {review.stats.likes}</span>
+                    <span>◔ Bình luận {review.stats.comments}</span>
                     <span className="text-[13px]">↺ {review.stats.shares}</span>
                     <span className="text-[13px]">➤ {review.stats.sends}</span>
                 </div>
-                <button type="button" className="rounded-full border border-[#44a13a] px-6 py-2 text-[14px] font-bold text-[#2f8f27]">
-                    Đặt món
-                </button>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => onOpenDetail(review.id)} className="rounded-full border border-[#1f6feb] px-4 py-2 text-[13px] font-bold text-[#1f6feb]">
+                        Xem chi tiết
+                    </button>
+                    <button type="button" onClick={() => onSave(review.id)} className="rounded-full border border-[#404040] px-6 py-2 text-[14px] font-bold text-[#575757]">
+                        Lưu đánh giá
+                    </button>
+                </div>
             </div>
         </article>
     );
@@ -132,9 +146,9 @@ function CommentCard({ comment }: { comment: FoodCommentCard }) {
             </div>
 
             <div className="mt-6 flex items-center gap-8 text-[14px] text-[#909090]">
-                <button type="button">♥ Thích</button>
-                <button type="button">💬 Thảo luận</button>
-                <button type="button">⚠ Khiếu nại</button>
+                <span>♥ Thích</span>
+                <span>💬 Thảo luận</span>
+                <span>⚠ Khiếu nại</span>
             </div>
         </article>
     );
@@ -142,6 +156,11 @@ function CommentCard({ comment }: { comment: FoodCommentCard }) {
 
 export default function RankingFoodDetailPageClient({ food }: { food: RankingFoodDetailData }) {
     const [activeSection, setActiveSection] = useState<'reviews' | 'comments'>('reviews');
+    const [actionMessage, setActionMessage] = useState<string | null>(null);
+    const [visibleReviewCount, setVisibleReviewCount] = useState(8);
+    const [savedReviews, setSavedReviews] = useState<Array<{ id: number; ten_mon: string; ten_nguoi_danh_gia: string }>>([]);
+    const [detailData, setDetailData] = useState<any | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
 
     useEffect(() => {
         const sectionIds: Array<'reviews' | 'comments'> = ['reviews', 'comments'];
@@ -174,9 +193,36 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
         };
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+        const run = async () => {
+            try {
+                const payload: any = await userContentApi.layDanhGiaDaLuu({ trang: 1, so_luong: 8 });
+                if (!mounted) return;
+                const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+                setSavedReviews(
+                    rows.map((item: any) => ({
+                        id: Number(item.id),
+                        ten_mon: String(item?.mon_an?.ten_mon ?? 'Món ăn'),
+                        ten_nguoi_danh_gia: String(item?.ten_nguoi_danh_gia ?? 'Người dùng'),
+                    })),
+                );
+            } catch {
+                if (mounted) setSavedReviews([]);
+            }
+        };
+        void run();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
     return (
         <div className="bg-[#f1f1ee] py-8">
             <section className="mx-auto flex w-full max-w-[1500px] flex-col gap-10 px-5 lg:px-8">
+                {actionMessage ? (
+                    <div className="rounded-[10px] bg-[#eaf8eb] px-5 py-3 text-[#285e19]">{actionMessage}</div>
+                ) : null}
                 <article className="rounded-[20px] bg-white p-6 shadow-[0_6px_18px_rgba(0,0,0,0.12)] lg:p-8">
                     <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)_150px] lg:items-start">
                         <img src={food.coverImage} alt={food.title} className="h-[250px] w-full rounded-[12px] object-cover" />
@@ -239,6 +285,40 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
 
                     <div className="space-y-8">
                         <section id="reviews" className="scroll-mt-28 space-y-8">
+                            {savedReviews.length > 0 ? (
+                                <div className="rounded-[12px] border border-[#dce4d8] bg-white px-4 py-3">
+                                    <div className="text-[15px] font-semibold text-[#1f2937]">
+                                        Đánh giá đã lưu của tôi
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {savedReviews.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={async () => {
+                                                    setDetailLoading(true);
+                                                    try {
+                                                        const detail: any = await userContentApi.layChiTietDanhGia(item.id);
+                                                        setDetailData(detail);
+                                                    } catch (e) {
+                                                        setActionMessage(
+                                                            e instanceof Error
+                                                                ? e.message
+                                                                : 'Không tải được chi tiết đánh giá',
+                                                        );
+                                                    } finally {
+                                                        setDetailLoading(false);
+                                                    }
+                                                }}
+                                                className="rounded-full border border-[#b6c3b1] px-3 py-1 text-[12px] text-[#3f4f3d] hover:bg-[#f7faf6]"
+                                            >
+                                                {item.ten_mon} - {item.ten_nguoi_danh_gia}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+
                             <div className="flex flex-wrap items-center gap-3 bg-[#e7e9e2] p-4">
                                 <button type="button" className="flex min-w-[230px] items-center justify-between bg-white px-5 py-3 text-[15px] text-[#666666]">
                                     <span>Đánh giá</span>
@@ -252,15 +332,58 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
                             </div>
 
                             <div className="grid gap-6 xl:grid-cols-2">
-                                {food.reviews.map((review) => (
-                                    <ReviewCard key={review.id} review={review} />
+                                {food.reviews.slice(0, visibleReviewCount).map((review) => (
+                                    <ReviewCard
+                                        key={review.id}
+                                        review={review}
+                                        onOpenDetail={async (id) => {
+                                            const reviewId = Number(id);
+                                            if (!Number.isFinite(reviewId)) return;
+                                            setDetailLoading(true);
+                                            try {
+                                                const detail: any =
+                                                    await userContentApi.layChiTietDanhGia(reviewId);
+                                                setDetailData(detail);
+                                            } catch (e) {
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không tải được chi tiết đánh giá',
+                                                );
+                                            } finally {
+                                                setDetailLoading(false);
+                                            }
+                                        }}
+                                        onSave={(id) => {
+                                            const reviewId = Number(id);
+                                            if (!Number.isFinite(reviewId)) return;
+                                            void userContentApi
+                                                .toggleLuuDanhGia(reviewId)
+                                                .then((res: any) => {
+                                                    setActionMessage(res?.da_luu ? 'Đã lưu đánh giá' : 'Đã bỏ lưu đánh giá');
+                                                })
+                                                .catch((e) => {
+                                                    setActionMessage(e instanceof Error ? e.message : 'Không thể lưu đánh giá');
+                                                });
+                                        }}
+                                    />
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-center gap-2 py-2">
-                                <Link href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d4d4d4] bg-white text-[#6a6a6a]">1</Link>
-                                <Link href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d4d4d4] bg-white text-[#6a6a6a]">2</Link>
-                                <Link href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d4d4d4] bg-white text-[#6a6a6a]">3</Link>
+                            {visibleReviewCount < food.reviews.length ? (
+                                <div className="flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setVisibleReviewCount((current) => current + 8)}
+                                        className="rounded-[12px] border border-[#b8bec8] bg-white px-8 py-3 text-[14px] font-semibold text-[#374151] transition hover:bg-[#f8fafc]"
+                                    >
+                                        Xem thêm
+                                    </button>
+                                </div>
+                            ) : null}
+
+                            <div className="py-2 text-center text-sm text-[#6f7786]">
+                                Hiển thị {Math.min(visibleReviewCount, food.reviews.length)}/{food.reviews.length} bài review từ dữ liệu hệ thống.
                             </div>
                         </section>
 
@@ -272,6 +395,43 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
                     </div>
                 </div>
             </section>
+            {detailData ? (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 px-4">
+                    <div className="w-full max-w-[760px] rounded-[16px] bg-white p-5 shadow-[0_16px_46px_rgba(0,0,0,0.22)]">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h4 className="text-[20px] font-bold text-black">Chi tiết đánh giá</h4>
+                                <p className="mt-1 text-[13px] text-[#6b7280]">
+                                    {detailLoading ? 'Đang tải...' : detailData?.mon_an?.ten_mon ?? ''}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setDetailData(null)}
+                                className="text-[26px] leading-none text-[#6b7280]"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="mt-4 rounded-[12px] border border-[#e5e7eb] p-4">
+                            <div className="text-[15px] font-semibold text-black">
+                                {detailData?.ten_nguoi_danh_gia ?? 'Người dùng'}
+                            </div>
+                            <div className="mt-1 text-[12px] text-[#6b7280]">
+                                {detailData?.ngay_danh_gia
+                                    ? new Date(detailData.ngay_danh_gia).toLocaleString('vi-VN')
+                                    : ''}
+                            </div>
+                            <div className="mt-2 text-[14px] text-[#d97706]">
+                                {'★'.repeat(Math.max(0, Math.min(5, Number(detailData?.so_sao ?? 0))))}
+                            </div>
+                            <p className="mt-3 text-[14px] leading-7 text-[#374151]">
+                                {detailData?.noi_dung ?? ''}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }

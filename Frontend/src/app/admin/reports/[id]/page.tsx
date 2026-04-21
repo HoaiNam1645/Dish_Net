@@ -49,6 +49,7 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
   const [report, setReport] = useState<ChiTietBaoCaoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [resolution, setResolution] = useState(resolutionOptions[0]);
   const [violationLevel, setViolationLevel] = useState(violationOptions[0]);
@@ -65,7 +66,9 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
         setCheckedActions(data.ket_qua_xu_ly.hanh_dong_ap_dung);
         setSendWarning(data.ket_qua_xu_ly.gui_canh_bao);
       } catch (fetchError: unknown) {
-        toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết báo cáo'));
+        const message = getErrorMessage(fetchError, 'Không thể tải chi tiết báo cáo');
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }

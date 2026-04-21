@@ -15,7 +15,15 @@ function isApiEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const requestUrl =
+    typeof window === 'undefined'
+      ? new URL(
+          url,
+          process.env.NEXT_PUBLIC_APP_ORIGIN ?? 'http://127.0.0.1:4000',
+        ).toString()
+      : url;
+
+  const res = await fetch(requestUrl, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...options,

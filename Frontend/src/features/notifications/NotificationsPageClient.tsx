@@ -40,24 +40,30 @@ export default function NotificationsPageClient({
                 <div className="mt-8 text-[32px] font-bold text-[#232323]">Trước đó</div>
 
                 <div className="mt-6 space-y-2">
-                    {notifications.map((item) => (
-                        <article
-                            key={item.id}
-                            className="flex items-center gap-5 rounded-[22px] px-2 py-4 transition hover:bg-[#f8faf7]"
-                        >
-                            <div className="relative shrink-0">
-                                <img src={item.avatar} alt="" className="h-24 w-24 rounded-full object-cover" />
-                                <NotificationTypeBadge type={item.type} />
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                                <p className="text-[23px] leading-10 text-[#171717]">{item.message}</p>
-                                <p className="mt-2 text-[19px] font-semibold text-[#1d71e8]">{item.time}</p>
-                            </div>
-
-                            <span className="mr-6 h-6 w-6 rounded-full bg-[#1d71e8]" />
+                    {notifications.length === 0 ? (
+                        <article className="rounded-[22px] border border-[#e5ebe1] bg-[#f8faf7] px-6 py-10 text-center text-[20px] text-[#5f655f]">
+                            Bạn chưa có thông báo mới.
                         </article>
-                    ))}
+                    ) : (
+                        notifications.map((item) => (
+                            <article
+                                key={item.id}
+                                className="flex items-center gap-5 rounded-[22px] px-2 py-4 transition hover:bg-[#f8faf7]"
+                            >
+                                <div className="relative shrink-0">
+                                    <img src={item.avatar} alt="" className="h-24 w-24 rounded-full object-cover" />
+                                    <NotificationTypeBadge type={item.type} />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[23px] leading-10 text-[#171717]">{item.message}</p>
+                                    <p className="mt-2 text-[19px] font-semibold text-[#1d71e8]">{item.time}</p>
+                                </div>
+
+                                <span className={`mr-6 h-6 w-6 rounded-full ${item.isRead ? 'bg-[#c4ccd4]' : 'bg-[#1d71e8]'}`} />
+                            </article>
+                        ))
+                    )}
                 </div>
             </section>
         </div>

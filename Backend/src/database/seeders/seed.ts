@@ -13,6 +13,9 @@ import { seedDonHang } from "./don-hang.seed";
 import { seedCuaHang } from "./cua-hang.seed";
 import { seedDanhMucMon } from "./danh-muc-mon.seed";
 import { seedMonAn } from "./mon-an.seed";
+import { seedUserCommerce } from "./user-commerce.seed";
+import { seedAuthSocial } from "./auth-social.seed";
+import { seedScaleData } from "./scale-data.seed";
 
 async function run() {
   await AppDataSource.initialize();
@@ -34,6 +37,9 @@ async function run() {
     await seedDonHang(context);
     // seedKhuyenMai phải chạy SAU seedCuaHang để có context.storeByEmail
     await seedKhuyenMai(context);
+    await seedUserCommerce(context);
+    await seedAuthSocial(context);
+    await seedScaleData(context);
 
     console.log("Seed thanh cong:");
     console.log("  - admin@dishnet.vn / " + defaultPassword);

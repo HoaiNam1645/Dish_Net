@@ -1,316 +1,113 @@
 import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
+import { userContentApi } from '@/shared/userContentApi';
 
 export type ExploreCategory = {
-    id: string;
-    title: string;
-    image: string;
+  id: string;
+  title: string;
+  image: string;
 };
 
 export type ExploreStoreCard = {
-    id: string;
-    categoryId: string;
-    title: string;
-    address: string;
-    meta: string;
-    status: string;
-    image: string;
-    rating?: string;
-    distance?: string;
-    featuredItem?: string;
-    price?: string;
+  id: string;
+  categoryId: string;
+  title: string;
+  address: string;
+  meta: string;
+  status: string;
+  image: string;
+  rating?: string;
+  distance?: string;
+  featuredItem?: string;
+  price?: string;
 };
 
 export type ExplorePageData = {
-    categories: ExploreCategory[];
-    nearby: ExploreStoreCard[];
-    recommendations: ExploreStoreCard[];
-    topReviewerPicks: ExploreStoreCard[];
+  categories: ExploreCategory[];
+  nearby: ExploreStoreCard[];
+  recommendations: ExploreStoreCard[];
+  topReviewerPicks: ExploreStoreCard[];
 };
 
-const exploreCategoryImages = {
-    drinks: figmaFallbackAssets.dishCollage,
-    fastFood: figmaFallbackAssets.menuItemImage,
-    asianEuro: figmaFallbackAssets.feedDishImage,
-    rice: figmaFallbackAssets.storeImage,
-} as const;
-
-const exploreStoreImages = [
-    figmaFallbackAssets.storeImage,
-    figmaFallbackAssets.menuItemImage,
-    figmaFallbackAssets.feedDishImage,
-    figmaFallbackAssets.heroBanner,
-    figmaFallbackAssets.dishCollage,
+const imgFallbacks = [
+  figmaFallbackAssets.storeImage,
+  figmaFallbackAssets.menuItemImage,
+  figmaFallbackAssets.feedDishImage,
+  figmaFallbackAssets.heroBanner,
+  figmaFallbackAssets.dishCollage,
 ] as const;
 
-export const explorePageData: ExplorePageData = {
-    categories: [
-        { id: 'drinks', title: 'Đồ uống', image: exploreCategoryImages.drinks },
-        { id: 'fast-food', title: 'Thức Ăn Nhanh', image: exploreCategoryImages.fastFood },
-        { id: 'asian-euro', title: 'Món Á - Âu', image: exploreCategoryImages.asianEuro },
-        { id: 'rice', title: 'Cơm', image: exploreCategoryImages.rice },
-    ],
-    nearby: [
-        {
-            id: 'nearby-1',
-            categoryId: 'rice',
-            title: 'Cơm Tấm 182 - Lê Thánh Tôn',
-            address: '182 Lê Thánh Tôn, Phường Bến Thành, Quận 1',
-            meta: '4,9 (37)',
-            status: 'PROMO',
-            image: exploreStoreImages[0],
-            rating: '4,9 (37)',
-            featuredItem: 'Cơm tấm sườn bì chả',
-            price: '60.000đ',
-        },
-        {
-            id: 'nearby-2',
-            categoryId: 'fast-food',
-            title: 'Bánh Mì Mẹ Ỉn - Lê Thánh Tôn',
-            address: '136/13 Đường Lê Thánh Tôn, Bến Thành',
-            meta: '',
-            status: 'Đóng cửa',
-            image: exploreStoreImages[1],
-            featuredItem: 'Bánh mì chảo',
-            price: '52.000đ',
-        },
-        {
-            id: 'nearby-3',
-            categoryId: 'drinks',
-            title: 'Lucky - Juice & Tea - Lê Thánh Tôn',
-            address: '136G1 Lê Thánh Tôn, Phường Bến Thành',
-            meta: '',
-            status: 'PROMO',
-            image: exploreStoreImages[2],
-            featuredItem: 'Trà tắc',
-            price: '39.000đ',
-        },
-        {
-            id: 'nearby-4',
-            categoryId: 'rice',
-            title: 'Cơm Tấm, Bún Thịt Nướng & Sinh Tố Sài Gòn Quán',
-            address: '104 Lê Thánh Tôn, Phường Bến Thành, Quận 1',
-            meta: '',
-            status: 'Đóng cửa',
-            image: exploreStoreImages[3],
-            featuredItem: 'Cơm tấm đặc biệt',
-            price: '59.000đ',
-        },
-        {
-            id: 'nearby-5',
-            categoryId: 'drinks',
-            title: 'Louis Top Juice - Nước Ép - Trà & Sữa Hạt',
-            address: '252 Nguyễn Thái Bình, Phường Bến Thành',
-            meta: '4,9 (13)',
-            status: 'PROMO',
-            image: exploreStoreImages[4],
-            rating: '4,9 (13)',
-            featuredItem: 'Nước ép cần tây',
-            price: '45.000đ',
-        },
-        {
-            id: 'nearby-6',
-            categoryId: 'asian-euro',
-            title: 'Hủ Tiếu Nam Vang, Mì & Nui Bò Hải Sản Anh Tuấn',
-            address: '80 Lê Công Kiều, Phường Nguyễn Thái Bình',
-            meta: '4,3 (14)',
-            status: 'PROMO',
-            image: exploreStoreImages[0],
-            rating: '4,3 (14)',
-            featuredItem: 'Hủ tiếu hải sản',
-            price: '55.000đ',
-        },
-        {
-            id: 'nearby-7',
-            categoryId: 'drinks',
-            title: 'TAKA CHA - Trà Sữa & Chè Sầu Riêng',
-            address: '66/1 Huỳnh Thúc Kháng, Phường Bến Thành',
-            meta: '4,9 (999+)',
-            status: 'Đóng cửa',
-            image: exploreStoreImages[1],
-            rating: '4,9 (999+)',
-            featuredItem: 'Trà sữa trân châu',
-            price: '48.000đ',
-        },
-        {
-            id: 'nearby-8',
-            categoryId: 'asian-euro',
-            title: 'Nhà Hàng Unatoto - Cơm Lươn Nhật Bản',
-            address: '56 Trương Định, Phường Bến Thành, Quận 1',
-            meta: '4,8 (27)',
-            status: 'Đóng cửa trong 27 phút nữa',
-            image: exploreStoreImages[2],
-            rating: '4,8 (27)',
-            featuredItem: 'Cơm lươn nhật',
-            price: '69.000đ',
-        },
-    ],
-    recommendations: [
-        {
-            id: 'rec-1',
-            categoryId: 'drinks',
-            title: 'Katinat - Phan Bội Châu',
-            address: '56-58 Đường Phan Bội Châu, Bến Thành',
-            meta: '4,9 (999+)',
-            status: 'PROMO',
-            image: exploreStoreImages[4],
-            rating: '4,9 (999+)',
-            featuredItem: 'Trà sữa signature',
-            price: '58.000đ',
-        },
-        {
-            id: 'rec-2',
-            categoryId: 'drinks',
-            title: 'Phê La - Chợ Bến Thành',
-            address: '1-3 Phan Chu Trinh, Phường Bến Thành',
-            meta: '4,9 (822)',
-            status: 'Đóng cửa',
-            image: exploreStoreImages[0],
-            rating: '4,9 (822)',
-            featuredItem: 'Phê sữa kem muối',
-            price: '52.000đ',
-        },
-        {
-            id: 'rec-3',
-            categoryId: 'drinks',
-            title: 'Highlands Coffee - 71 Lý Tự Trọng',
-            address: '71 Lý Tự Trọng, Bến Thành, Quận 1',
-            meta: '4,9 (165)',
-            status: 'PROMO',
-            image: exploreStoreImages[1],
-            rating: '4,9 (165)',
-            featuredItem: 'Freeze trà xanh',
-            price: '55.000đ',
-        },
-        {
-            id: 'rec-4',
-            categoryId: 'fast-food',
-            title: "Gà Rán & Burger McDonald's - Trần Hưng Đạo",
-            address: '2-2A Trần Hưng Đạo, Phường Bến Thành',
-            meta: '4,8 (240)',
-            status: 'Đóng cửa trong 57 phút nữa',
-            image: exploreStoreImages[2],
-            rating: '4,8 (240)',
-            featuredItem: 'Burger gà cay',
-            price: '64.000đ',
-        },
-    ],
-    topReviewerPicks: [
-        {
-            id: 'top-1',
-            categoryId: 'asian-euro',
-            title: 'Phở Chang - Phở Gia Truyền 13 Lò Đúc Hà Nội',
-            address: '1 Bùi Thị Xuân, Phường Bến Thành, Hồ Chí Minh',
-            meta: '0.3 km  5 (11)',
-            status: 'PROMO',
-            image: exploreStoreImages[3],
-            distance: '0.3 km',
-            rating: '5 (11)',
-            featuredItem: 'Phở tái lăn',
-            price: '65.000đ',
-        },
-        {
-            id: 'top-2',
-            categoryId: 'asian-euro',
-            title: 'Giang Quán - Hủ Tiếu, Bún & Mì Tươi',
-            address: '85 Cách Mạng Tháng Tám, Phường Bến Thành',
-            meta: '0.2 km',
-            status: 'PROMO',
-            image: exploreStoreImages[4],
-            distance: '0.2 km',
-            featuredItem: 'Hủ tiếu khô',
-            price: '48.000đ',
-        },
-        {
-            id: 'top-3',
-            categoryId: 'asian-euro',
-            title: 'Bánh Cuốn 232 - Lý Tự Trọng',
-            address: '232 Lý Tự Trọng, Phường Bến Thành, Quận 1',
-            meta: '0.2 km',
-            status: 'PROMO',
-            image: exploreStoreImages[0],
-            distance: '0.2 km',
-            featuredItem: 'Bánh cuốn chả',
-            price: '42.000đ',
-        },
-        {
-            id: 'top-4',
-            categoryId: 'fast-food',
-            title: 'Bánh Mì Huỳnh Hoa - 26 Lê Thị Riêng',
-            address: '26 Lê Thị Riêng, Phường Bến Thành, Quận 1',
-            meta: '0.2 km  4,9 (999+)',
-            status: 'Mở cửa vào 06:00 ngày 01/03',
-            image: exploreStoreImages[1],
-            distance: '0.2 km',
-            rating: '4,9 (999+)',
-            featuredItem: 'Bánh mì đặc biệt',
-            price: '59.000đ',
-        },
-        {
-            id: 'top-5',
-            categoryId: 'asian-euro',
-            title: 'Bún Bò Gánh - Nguyễn Du',
-            address: '114 Nguyễn Du, Phường Bến Thành, Hồ Chí Minh',
-            meta: '0.3 km',
-            status: 'PROMO',
-            image: exploreStoreImages[2],
-            distance: '0.3 km',
-            featuredItem: 'Bún bò đặc biệt',
-            price: '54.000đ',
-        },
-        {
-            id: 'top-6',
-            categoryId: 'drinks',
-            title: 'Highlands Coffee - AB Tower',
-            address: '76A Lê Lai, Phường Bến Thành, Quận 1',
-            meta: '0.4 km  4,6 (125)',
-            status: 'Mở cửa vào 07:00 ngày 01/03',
-            image: exploreStoreImages[3],
-            distance: '0.4 km',
-            rating: '4,6 (125)',
-            featuredItem: 'Freeze caramel',
-            price: '49.000đ',
-        },
-        {
-            id: 'top-7',
-            categoryId: 'drinks',
-            title: 'Phúc Long - Phạm Hồng Thái',
-            address: '42 Phạm Hồng Thái, Phường Bến Thành',
-            meta: '0.4 km  4,9 (999+)',
-            status: 'Mở cửa vào 07:00 ngày 01/03',
-            image: exploreStoreImages[4],
-            distance: '0.4 km',
-            rating: '4,9 (999+)',
-            featuredItem: 'Trà ô long sữa',
-            price: '52.000đ',
-        },
-        {
-            id: 'top-8',
-            categoryId: 'drinks',
-            title: 'Robusta & Matcha Loves Milk by Boom - Lê Lợi',
-            address: '90 Lê Lai, Phường Bến Thành, Hồ Chí Minh',
-            meta: '0.3 km  4,8 (36)',
-            status: 'PROMO',
-            image: exploreStoreImages[0],
-            distance: '0.3 km',
-            rating: '4,8 (36)',
-            featuredItem: 'Matcha latte',
-            price: '56.000đ',
-        },
-    ],
-};
-
-export function getAllExploreStores(): ExploreStoreCard[] {
-    return [
-        ...explorePageData.nearby,
-        ...explorePageData.recommendations,
-        ...explorePageData.topReviewerPicks,
-    ];
+function formatPrice(v?: number) {
+  if (!v && v !== 0) return undefined;
+  return `${v.toLocaleString('vi-VN')}đ`;
 }
 
-export function getExploreStoreById(id: string): ExploreStoreCard | null {
-    return getAllExploreStores().find((store) => store.id === id) ?? null;
+function pickImage(v?: string | null, idx = 0) {
+  return v || imgFallbacks[idx % imgFallbacks.length];
 }
 
-export function getExploreStoreIds(): string[] {
-    return getAllExploreStores().map((store) => store.id);
+export async function getExplorePageData(query?: { dia_chi_giao?: string; khu_vuc?: string }) {
+  const payload: any = await userContentApi.layTrangKhamPha({
+    dia_chi_giao: query?.dia_chi_giao,
+    khu_vuc: query?.khu_vuc,
+  });
+
+  const categories = Array.isArray(payload?.bo_suu_tap_theo_danh_muc)
+    ? payload.bo_suu_tap_theo_danh_muc.map((item: any, index: number) => ({
+        id: String(item.id_danh_muc),
+        title: String(item.ten_danh_muc ?? 'Danh mục'),
+        image: pickImage(item.mon_an?.[0]?.hinh_anh, index),
+      }))
+    : [];
+
+  const nearby = Array.isArray(payload?.quan_an_gan_ban)
+    ? payload.quan_an_gan_ban.map((item: any, index: number) => ({
+        id: String(item.id),
+        categoryId: 'nearby',
+        title: String(item.ten_quan ?? 'Cửa hàng'),
+        address: String(item.dia_chi ?? ''),
+        meta: `★ ${Number(item.diem_danh_gia || 0).toFixed(1)}`,
+        status: 'PROMO',
+        image: pickImage(item.hinh_anh_mon, index),
+        rating: `${Number(item.diem_danh_gia || 0).toFixed(1)}`,
+      }))
+    : [];
+
+  const recommendations = Array.isArray(payload?.mon_goi_y_cho_ban)
+    ? payload.mon_goi_y_cho_ban.map((item: any, index: number) => ({
+        id: String(item.id_cua_hang ?? item.id ?? index + 1),
+        categoryId: 'goi-y',
+        title: String(item.ten_mon ?? 'Món gợi ý'),
+        address: 'Món gợi ý cho bạn',
+        meta: `★ ${Number(item.diem_danh_gia || 0).toFixed(1)}`,
+        status: 'PROMO',
+        image: pickImage(item.hinh_anh, index + 1),
+        rating: `${Number(item.diem_danh_gia || 0).toFixed(1)}`,
+        featuredItem: item.ten_mon,
+        price: formatPrice(Number(item.gia_ban || 0)),
+      }))
+    : [];
+
+  const topReviewerPicks = (Array.isArray(payload?.bo_suu_tap_theo_danh_muc) ? payload.bo_suu_tap_theo_danh_muc : [])
+    .flatMap((cat: any) =>
+      (Array.isArray(cat?.mon_an) ? cat.mon_an : []).map((dish: any, index: number) => ({
+        id: String(dish.id_cua_hang ?? dish.id ?? index + 1),
+        categoryId: String(cat.id_danh_muc),
+        title: String(dish.ten_mon ?? 'Món ăn'),
+        address: String(cat.ten_danh_muc ?? 'Danh mục'),
+        meta: `★ ${Number(dish.diem_danh_gia || 0).toFixed(1)}`,
+        status: 'PROMO',
+        image: pickImage(dish.hinh_anh, index + 2),
+        rating: `${Number(dish.diem_danh_gia || 0).toFixed(1)}`,
+        featuredItem: dish.ten_mon,
+        price: formatPrice(Number(dish.gia_ban || 0)),
+      })),
+    )
+    .slice(0, 12);
+
+  return {
+    categories,
+    nearby,
+    recommendations,
+    topReviewerPicks,
+  } as ExplorePageData;
 }

@@ -6,9 +6,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/shared/AuthContext';
-import { notificationItems } from '@/features/notifications/data';
+import type { NotificationItem } from '@/features/notifications/data';
+import { userCommerceApi } from '@/shared/userCommerceApi';
 
-function NotificationIcon({ type }: { type: (typeof notificationItems)[number]['type'] }) {
+function NotificationIcon({ type }: { type: NotificationItem['type'] }) {
     const config = {
         like: { bg: 'bg-[#1f7ae0]', label: 'TG' },
         support: { bg: 'bg-[#1f7ae0]', label: 'HT' },
@@ -36,6 +37,7 @@ export default function Header() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const { nguoiDung, dangNhap, dangTai, dangXuat } = useAuth();
     const [recentSearches, setRecentSearches] = useState([
         'Bún bò', 'Mỳ Quảng', 'Khu AAA', 'Cơm ngon bếp việt', 'Cơm ngon hà thành', 'chay express',
@@ -53,6 +55,44 @@ export default function Header() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (!isNotificationsOpen || !dangNhap) return;
+
+        let mounted = true;
+        void userCommerceApi
+            .layThongBao({ trang: 1, so_luong: 20 })
+            .then((payload: any) => {
+                if (!mounted) return;
+                const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+                const mapped: NotificationItem[] = rows.map((item: any, index: number) => ({
+                    id: String(item.id ?? `header-noti-${index}`),
+                    avatar: String(
+                        item?.nguoi_nhan?.anh_dai_dien ??
+                            'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+                    ),
+                    type:
+                        String(item.loai_thong_bao ?? '').includes('tuong_tac')
+                            ? 'like'
+                            : String(item.loai_thong_bao ?? '').includes('binh_luan')
+                              ? 'comment'
+                              : String(item.loai_thong_bao ?? '').includes('theo_doi')
+                                ? 'follow'
+                                : 'support',
+                    message: String(item.tieu_de || item.noi_dung || 'Bạn có thông báo mới'),
+                    time: item.ngay_tao ? new Date(item.ngay_tao).toLocaleString('vi-VN') : 'Vừa xong',
+                    isRead: Boolean(item.da_doc),
+                }));
+                setNotifications(mapped);
+            })
+            .catch(() => {
+                if (mounted) setNotifications([]);
+            });
+
+        return () => {
+            mounted = false;
+        };
+    }, [dangNhap, isNotificationsOpen]);
 
     const submitSearch = (query: string) => {
         const trimmedQuery = query.trim();
@@ -169,7 +209,7 @@ export default function Header() {
                                     </div>
                                     <div className="px-6 text-[19px] font-bold text-[#232323]">Trước đó</div>
                                     <div className="max-h-[380px] space-y-1 overflow-y-auto px-3 py-3">
-                                        {notificationItems.slice(0, 3).map((item) => (
+                                        {notifications.slice(0, 3).map((item) => (
                                             <article key={item.id} className="flex items-center gap-3 rounded-[16px] px-3 py-3 transition hover:bg-[#f8faf7]">
                                                 <div className="relative shrink-0">
                                                     <img src={item.avatar} alt="" className="h-16 w-16 rounded-full object-cover" />
@@ -179,9 +219,12 @@ export default function Header() {
                                                     <p className="text-[16px] leading-7 text-[#191919]">{item.message}</p>
                                                     <p className="mt-1 text-[14px] font-semibold text-[#2f6f25]">{item.time}</p>
                                                 </div>
-                                                <span className="mr-1 h-4 w-4 rounded-full bg-[#2f8f22]" />
+                                                <span className={`mr-1 h-4 w-4 rounded-full ${item.isRead ? 'bg-[#bfc8b9]' : 'bg-[#2f8f22]'}`} />
                                             </article>
                                         ))}
+                                        {notifications.length === 0 ? (
+                                            <div className="px-3 py-5 text-center text-sm text-[#70816d]">Chưa có thông báo mới</div>
+                                        ) : null}
                                     </div>
                                 </div>
                             ) : null}

@@ -1,52 +1,57 @@
+import { userCommerceApi } from '@/shared/userCommerceApi';
+
 export type NotificationItem = {
     id: string;
     avatar: string;
     type: 'like' | 'support' | 'follow' | 'comment';
     message: string;
     time: string;
+    isRead?: boolean;
 };
 
-export const notificationItems: NotificationItem[] = [
-    {
-        id: 'notification-1',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
-        type: 'like',
-        message: 'Chichi và 2 người khác đã thích bài viết của bạn',
-        time: '4 giờ trước',
-    },
-    {
-        id: 'notification-2',
-        avatar: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=200&q=80',
-        type: 'support',
-        message: 'Phản hồi về yêu cầu hỗ trợ của bạn. Xem ngay',
-        time: '3 giờ trước',
-    },
-    {
-        id: 'notification-3',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-        type: 'follow',
-        message: 'Choco đã theo dõi bạn',
-        time: '2 giờ trước',
-    },
-    {
-        id: 'notification-4',
-        avatar: 'https://images.unsplash.com/photo-1542204625-de293a2f8ff2?auto=format&fit=crop&w=200&q=80',
-        type: 'support',
-        message: 'Phản hồi về yêu cầu hỗ trợ của bạn. Xem ngay',
-        time: '3 giờ trước',
-    },
-    {
-        id: 'notification-5',
-        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
-        type: 'comment',
-        message: 'Choco đã bình luận về bài viết của bạn',
-        time: '2 tuần',
-    },
-    {
-        id: 'notification-6',
-        avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
-        type: 'comment',
-        message: 'Choco đã bình luận về bài viết của bạn',
-        time: '2 tuần',
-    },
-];
+const fallbackAvatar =
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80';
+
+function mapType(loai?: string): NotificationItem['type'] {
+    if (!loai) return 'support';
+    if (loai.includes('tuong_tac')) return 'like';
+    if (loai.includes('binh_luan')) return 'comment';
+    if (loai.includes('theo_doi')) return 'follow';
+    return 'support';
+}
+
+function formatRelativeTime(input?: string | Date | null) {
+    if (!input) return 'Vừa xong';
+    const date = new Date(input);
+    if (Number.isNaN(date.getTime())) return 'Vừa xong';
+    const diffMs = Date.now() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    const diffWeeks = Math.floor(diffDays / 7);
+    return `${diffWeeks} tuần trước`;
+}
+
+export async function getNotificationItems(): Promise<NotificationItem[]> {
+    try {
+        const payload: any = await userCommerceApi.layThongBao({ trang: 1, so_luong: 50 });
+        const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+
+        return rows.map((item: any, index: number) => ({
+            id: String(item.id ?? `notification-${index}`),
+            avatar: String(item?.nguoi_nhan?.anh_dai_dien ?? fallbackAvatar),
+            type: mapType(String(item.loai_thong_bao ?? '')),
+            message: String(item.tieu_de || item.noi_dung || 'Bạn có thông báo mới'),
+            time: formatRelativeTime(item.ngay_tao),
+            isRead: Boolean(item.da_doc),
+        }));
+    } catch {
+        return [];
+    }
+}
+
+export const notificationItems: NotificationItem[] = [];

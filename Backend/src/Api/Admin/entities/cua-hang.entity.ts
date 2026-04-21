@@ -26,15 +26,39 @@ export class CuaHangEntity {
   @Column({ type: "text" })
   dia_chi_kinh_doanh: string;
 
+  @Column({ type: "varchar", length: 120, nullable: true })
+  khu_vuc: string | null;
+
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  vi_do: number | null;
+
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  kinh_do: number | null;
+
   @Column({ type: "time", nullable: true })
   gio_mo_cua: string | null;
 
   @Column({ type: "time", nullable: true })
   gio_dong_cua: string | null;
 
+  @Column({ type: "tinyint", width: 1, default: 0 })
+  tu_nhan_giao_hang: boolean;
+
+  @Column({ type: "decimal", precision: 14, scale: 2, default: 0 })
+  phi_van_chuyen_mac_dinh: number;
+
   @Column({ type: "varchar", length: 20, default: "cho_duyet" })
   trang_thai_hoat_dong: string;
 
   @Column({ type: "decimal", precision: 4, scale: 2, default: 0 })
   diem_danh_gia: number;
+
+  @Column({ type: "bigint", default: 0 })
+  tong_don_hang: number;
+
+  @Column({ type: "bigint", default: 0 })
+  tong_luot_xem: number;
+
+  @Column({ type: "bigint", default: 0 })
+  tong_luot_thich: number;
 }

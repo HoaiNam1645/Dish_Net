@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { useAuth } from '@/shared/AuthContext';
+import { userContentApi } from '@/shared/userContentApi';
 
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
@@ -180,11 +181,19 @@ function FeedPostCard({
     onComment,
     onOrder,
     onOpenMenu,
+    onFollow,
+    onLike,
+    onShare,
+    onReport,
 }: {
     post: FeedPost;
     onComment: () => void;
     onOrder: () => void;
     onOpenMenu: () => void;
+    onFollow: () => void;
+    onLike: () => void;
+    onShare: () => void;
+    onReport: () => void;
 }) {
     return (
         <article className="rounded-[18px] bg-white p-6 shadow-[0_10px_36px_rgba(0,0,0,0.08)]">
@@ -208,7 +217,7 @@ function FeedPostCard({
                         <img src={homeUiAssets.starIcon} alt="Điểm số" className="h-4 w-4 object-contain" />
                         {post.rating}
                     </span>
-                    <button className="rounded-full bg-[#258f22] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#1f771d]">
+                    <button onClick={onFollow} className="rounded-full bg-[#258f22] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#1f771d]">
                         {post.followLabel}
                     </button>
                 </div>
@@ -246,13 +255,19 @@ function FeedPostCard({
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#d9ded7] pt-4">
                 <div className="flex items-center gap-8 text-sm font-bold text-[#6d6969]">
-                    <button className="inline-flex items-center gap-2 transition hover:text-[#285e19]">
+                    <button onClick={onLike} className="inline-flex items-center gap-2 transition hover:text-[#285e19]">
                         <img src={homeUiAssets.likeIcon} alt="" className="h-8 w-8 object-contain" />
                         Yêu thích
                     </button>
                     <button onClick={onComment} className="inline-flex items-center gap-2 transition hover:text-[#285e19]">
                         <img src={homeUiAssets.commentIcon} alt="" className="h-8 w-8 object-contain" />
                         Bình luận
+                    </button>
+                    <button onClick={onShare} className="inline-flex items-center gap-2 transition hover:text-[#285e19]">
+                        Chia sẻ
+                    </button>
+                    <button onClick={onReport} className="inline-flex items-center gap-2 transition hover:text-[#c62828]">
+                        Báo cáo
                     </button>
                 </div>
 
@@ -283,9 +298,11 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
     const [commentComposerOpen, setCommentComposerOpen] = useState(false);
     const [activeCommentStore, setActiveCommentStore] = useState('Nét Huế - Hàng Bông');
+    const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
     const [activeGalleryCard, setActiveGalleryCard] = useState<SpotlightCard | null>(null);
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
+    const [actionMessage, setActionMessage] = useState<string | null>(null);
     const { dangNhap: isAuthenticated } = useAuth();
 
     const rankingItems = data.rankings[rankingMode];
@@ -300,6 +317,9 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
         <>
             <div className="bg-[#fafaf9] pb-14">
                 <section className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+                    {actionMessage ? (
+                        <div className="rounded-[10px] bg-[#eaf8eb] px-4 py-3 text-sm text-[#285e19]">{actionMessage}</div>
+                    ) : null}
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,0.9fr)]">
                         <article className="relative overflow-hidden rounded-[24px] bg-[#285e19] shadow-[0_18px_50px_rgba(40,94,25,0.18)]">
                             <img src={data.hero.backgroundImage} alt={data.hero.title} className="absolute inset-0 h-full w-full object-cover" />
@@ -394,13 +414,54 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
 
                     <section className="grid gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
                         <div className="space-y-8">
-                            {data.feedPosts.map((post) => (
-                                <FeedPostCard
-                                    key={post.id}
-                                    post={post}
-                                    onComment={() => setIsCommentModalOpen(true)}
-                                    onOpenMenu={() => setIsMenuModalOpen(true)}
-                                    onOrder={() => setIsOrderModalOpen(true)}
+                                {data.feedPosts.map((post) => (
+                                    <FeedPostCard
+                                        key={post.id}
+                                        post={post}
+                                        onComment={() => {
+                                            setActiveCommentStore(post.storeName || post.author || 'Bài viết');
+                                            setActiveCommentPostId(Number(post.id) || null);
+                                            setCommentComposerOpen(false);
+                                            setIsCommentModalOpen(true);
+                                        }}
+                                        onOpenMenu={() => setIsMenuModalOpen(true)}
+                                        onOrder={() => setIsOrderModalOpen(true)}
+                                    onFollow={() => {
+                                        const targetId = Number(post.authorId || 0);
+                                        if (!Number.isFinite(targetId) || targetId <= 0) {
+                                            setActionMessage('Chưa có dữ liệu người dùng để theo dõi');
+                                            return;
+                                        }
+                                        void userContentApi.toggleTheoDoiNguoiDung(targetId)
+                                            .then((res: any) => setActionMessage(res?.da_theo_doi ? 'Đã theo dõi người dùng' : 'Đã bỏ theo dõi người dùng'))
+                                            .catch((e) => setActionMessage(e instanceof Error ? e.message : 'Không thể theo dõi người dùng'));
+                                    }}
+                                    onLike={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi.toggleThichBaiViet(id)
+                                            .then((res: any) => setActionMessage(res?.da_tuong_tac ? 'Đã thích bài viết' : 'Đã bỏ thích bài viết'))
+                                            .catch((e) => setActionMessage(e instanceof Error ? e.message : 'Không thể thích bài viết'));
+                                    }}
+                                    onShare={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi.chiaSeBaiViet(id)
+                                            .then(() => setActionMessage('Đã chia sẻ bài viết'))
+                                            .catch((e) => setActionMessage(e instanceof Error ? e.message : 'Không thể chia sẻ bài viết'));
+                                    }}
+                                    onReport={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        const reason = window.prompt('Nhập lý do báo cáo bài viết');
+                                        if (!reason?.trim()) return;
+                                        void userContentApi.baoCaoBaiViet(id, {
+                                            loai_vi_pham: 'noi_dung_vi_pham',
+                                            noi_dung_bao_cao: reason.trim(),
+                                        })
+                                            .then(() => setActionMessage('Đã gửi báo cáo bài viết'))
+                                            .catch((e) => setActionMessage(e instanceof Error ? e.message : 'Không thể báo cáo bài viết'));
+                                    }}
                                 />
                             ))}
                         </div>
@@ -416,6 +477,9 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                     }}
                                     onOpenComment={() => {
                                         setActiveCommentStore(card.title);
+                                        setActiveCommentPostId(
+                                            Number(data.feedPosts[0]?.id || 0) || null,
+                                        );
                                         setCommentComposerOpen(true);
                                         setIsCommentModalOpen(true);
                                     }}
@@ -592,9 +656,11 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                     setIsCommentModalOpen(false);
                     setCommentComposerOpen(false);
                     setActiveCommentStore('Nét Huế - Hàng Bông');
+                    setActiveCommentPostId(null);
                 }}
                 storeName={activeCommentStore}
                 startComposerOpen={commentComposerOpen}
+                postId={activeCommentPostId}
             />
         </>
     );

@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { userCommerceApi } from '@/shared/userCommerceApi';
 
 /* ───────── types ───────── */
 type RequestStatus = 'pending' | 'resolved';
 
 interface SupportRequest {
     id: string;
+    apiId: number;
     topic: string;
     content: string;
     contact: string;
     date: string;
     status: RequestStatus;
     response?: string;
+    attachments?: string[];
 }
 
 /* ───────── constants ───────── */
@@ -59,45 +62,6 @@ const CATEGORY_CARDS = [
     },
 ];
 
-const mockRequests: SupportRequest[] = [
-    {
-        id: 'SR001',
-        topic: 'Kiểm tra tình trạng đơn hàng',
-        content: 'Đơn hàng của tôi chưa được giao',
-        contact: '01235412561',
-        date: '24 - 02 - 2026',
-        status: 'pending',
-    },
-    {
-        id: 'SR002',
-        topic: 'Thanh toán thất bại',
-        content: 'Tôi đã thanh toán nhưng đơn chưa xác nhận',
-        contact: '01235412561',
-        date: '22 - 02 - 2026',
-        status: 'resolved',
-        response:
-            'Yêu cầu hoàn tiền của bạn đã được xử lý thành công.\nSố tiền 143.000đ sẽ được hoàn về ví trong vòng 24h.\n\nNếu sau thời gian trên bạn chưa nhận được tiền, vui lòng liên hệ lại.',
-    },
-    {
-        id: 'SR003',
-        topic: 'Không nhận được hoa hồng',
-        content: 'Tôi đã giới thiệu 5 người nhưng chưa nhận được hoa hồng nào',
-        contact: 'user@email.com',
-        date: '20 - 02 - 2026',
-        status: 'resolved',
-        response:
-            'Chúng tôi đã kiểm tra và xác nhận hoa hồng đã được cộng vào ví của bạn. Vui lòng kiểm tra lại.',
-    },
-    {
-        id: 'SR004',
-        topic: 'Đơn hàng bị lỗi / bị hủy',
-        content: 'Đơn hàng tự động bị hủy sau khi đặt',
-        contact: '01235412561',
-        date: '18 - 02 - 2026',
-        status: 'pending',
-    },
-];
-
 const MAX_CONTENT_LENGTH = 1000;
 
 /* ───────── view types ───────── */
@@ -112,27 +76,82 @@ type ViewState =
    ═══════════════════════════════════════════ */
 export default function UserSupportPage() {
     const [view, setView] = useState<ViewState>({ type: 'main' });
-    const [requests, setRequests] = useState<SupportRequest[]>(mockRequests);
+    const [requests, setRequests] = useState<SupportRequest[]>([]);
     const [searchHelp, setSearchHelp] = useState('');
+    const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+    const [requestsError, setRequestsError] = useState<string | null>(null);
+
+    const mapListItemToRequest = useCallback((item: any): SupportRequest => {
+        const guiLuc = item?.thoi_gian_gui ? new Date(item.thoi_gian_gui) : null;
+        return {
+            id: item?.ma_yeu_cau ? String(item.ma_yeu_cau) : `HT-${item?.id ?? Date.now()}`,
+            apiId: Number(item?.id ?? 0),
+            topic: item?.chu_de ?? 'Yêu cầu hỗ trợ',
+            content: item?.noi_dung_tom_tat ?? '',
+            contact: '',
+            date: guiLuc
+                ? guiLuc.toLocaleDateString('vi-VN')
+                : '',
+            status: item?.trang_thai === 'da_giai_quyet' ? 'resolved' : 'pending',
+        };
+    }, []);
+
+    const tachNoiDungVaLienHe = useCallback((noiDungRaw?: string) => {
+        if (!noiDungRaw) {
+            return { contact: '', content: '' };
+        }
+        const normalized = String(noiDungRaw);
+        const marker = 'Thong tin lien he:';
+        if (!normalized.startsWith(marker)) {
+            return { contact: '', content: normalized.trim() };
+        }
+
+        const [firstLine = '', ...restLines] = normalized.split('\n');
+        return {
+            contact: firstLine.replace(marker, '').trim(),
+            content: restLines.join('\n').trim(),
+        };
+    }, []);
+
+    const loadRequests = useCallback(async () => {
+        setIsLoadingRequests(true);
+        setRequestsError(null);
+        try {
+            const data: any = await userCommerceApi.layDanhSachHoTro({ so_luong: 100 });
+            const mapped = Array.isArray(data?.du_lieu)
+                ? data.du_lieu.map(mapListItemToRequest)
+                : [];
+            setRequests(mapped);
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : 'Không tải được danh sách yêu cầu hỗ trợ';
+            setRequestsError(message);
+        } finally {
+            setIsLoadingRequests(false);
+        }
+    }, [mapListItemToRequest]);
+
+    useEffect(() => {
+        void loadRequests();
+    }, [loadRequests]);
 
     const handleSubmitRequest = useCallback(
-        (data: { topic: string; content: string; contact: string; files: File[] }) => {
-            const newRequest: SupportRequest = {
-                id: `SR${String(requests.length + 1).padStart(3, '0')}`,
-                topic: data.topic,
-                content: data.content,
-                contact: data.contact,
-                date: new Date().toLocaleDateString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                }),
-                status: 'pending',
-            };
-            setRequests((prev) => [newRequest, ...prev]);
+        async (data: { topic: string; content: string; contact: string; files: File[] }) => {
+            const tep_dinh_kem = data.files.map(
+                (file) =>
+                    `https://cdn.dishnet.local/support/${encodeURIComponent(file.name)}`,
+            );
+
+            await userCommerceApi.taoHoTro({
+                chu_de: data.topic,
+                noi_dung: data.content,
+                thong_tin_lien_he: data.contact,
+                tep_dinh_kem,
+            });
+            await loadRequests();
             setView({ type: 'main' });
         },
-        [requests.length],
+        [loadRequests],
     );
 
     return (
@@ -292,6 +311,16 @@ export default function UserSupportPage() {
                         >
                             Danh sách các yêu cầu đã gửi
                         </button>
+                        {isLoadingRequests && (
+                            <p className="mt-2 text-center text-sm text-text-gray">
+                                Đang tải dữ liệu hỗ trợ...
+                            </p>
+                        )}
+                        {requestsError && (
+                            <p className="mt-2 text-center text-sm text-red-500">
+                                {requestsError}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -308,7 +337,44 @@ export default function UserSupportPage() {
                 <RequestListModal
                     requests={requests}
                     onClose={() => setView({ type: 'main' })}
-                    onViewDetail={(req) => setView({ type: 'detail', request: req })}
+                    onViewDetail={async (req) => {
+                        try {
+                            const detail: any = await userCommerceApi.layChiTietHoTro(
+                                req.apiId,
+                            );
+                            const parsed = tachNoiDungVaLienHe(detail?.noi_dung_yeu_cau);
+                            const guiLuc = detail?.thoi_gian_gui
+                                ? new Date(detail.thoi_gian_gui)
+                                : null;
+                            const detailRequest: SupportRequest = {
+                                id: detail?.ma_yeu_cau
+                                    ? String(detail.ma_yeu_cau)
+                                    : req.id,
+                                apiId: Number(detail?.id ?? req.apiId),
+                                topic: detail?.chu_de ?? req.topic,
+                                content: parsed.content || req.content,
+                                contact: parsed.contact || req.contact,
+                                date: guiLuc
+                                    ? guiLuc.toLocaleDateString('vi-VN')
+                                    : req.date,
+                                status:
+                                    detail?.trang_thai === 'da_giai_quyet'
+                                        ? 'resolved'
+                                        : 'pending',
+                                response:
+                                    detail?.thong_tin_phan_hoi?.noi_dung_phan_hoi ??
+                                    req.response,
+                                attachments: Array.isArray(detail?.tep_dinh_kem)
+                                    ? detail.tep_dinh_kem
+                                          .map((item: any) => item?.url)
+                                          .filter((item: unknown) => typeof item === 'string')
+                                    : [],
+                            };
+                            setView({ type: 'detail', request: detailRequest });
+                        } catch {
+                            setView({ type: 'detail', request: req });
+                        }
+                    }}
                 />
             )}
 
@@ -330,13 +396,15 @@ function SendRequestModal({
     onSubmit,
 }: {
     onClose: () => void;
-    onSubmit: (data: { topic: string; content: string; contact: string; files: File[] }) => void;
+    onSubmit: (data: { topic: string; content: string; contact: string; files: File[] }) => Promise<void>;
 }) {
     const [topic, setTopic] = useState('');
     const [content, setContent] = useState('');
     const [contact, setContact] = useState('');
     const [files, setFiles] = useState<File[]>([]);
     const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isValid = topic.trim() && content.trim() && contact.trim();
@@ -513,7 +581,7 @@ function SendRequestModal({
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
-                                accept="image/*,.pdf"
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                                 onChange={handleFileChange}
                                 className="hidden"
                                 id="file-input"
@@ -577,18 +645,32 @@ function SendRequestModal({
                                 Hủy
                             </button>
                             <button
-                                onClick={() => {
-                                    if (isValid) {
-                                        onSubmit({ topic, content, contact, files });
+                                onClick={async () => {
+                                    if (!isValid || isSubmitting) return;
+                                    setSubmitError(null);
+                                    setIsSubmitting(true);
+                                    try {
+                                        await onSubmit({ topic, content, contact, files });
+                                    } catch (error) {
+                                        setSubmitError(
+                                            error instanceof Error
+                                                ? error.message
+                                                : 'Không gửi được yêu cầu hỗ trợ',
+                                        );
+                                    } finally {
+                                        setIsSubmitting(false);
                                     }
                                 }}
-                                disabled={!isValid}
+                                disabled={!isValid || isSubmitting}
                                 className="rounded-[10px] border border-[#258F22] bg-[#258F22] px-8 py-3 text-base font-semibold text-white transition-colors hover:bg-[#1f7a1d] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300"
                                 id="btn-submit-form"
                             >
-                                Gửi yêu cầu
+                                {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
                             </button>
                         </div>
+                        {submitError && (
+                            <p className="text-center text-sm text-red-500">{submitError}</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -828,21 +910,37 @@ function RequestDetailModal({
                             <label className="mb-2 block text-base font-semibold text-black">
                                 Tệp đính kèm
                             </label>
-                            <div className="flex items-center gap-2 rounded-[10px] border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-text-gray">
-                                <svg
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                                </svg>
-                                Chọn tệp
-                            </div>
+                            {request.attachments && request.attachments.length > 0 ? (
+                                <div className="space-y-2">
+                                    {request.attachments.map((fileUrl, index) => (
+                                        <a
+                                            key={`${fileUrl}-${index}`}
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-2 rounded-[10px] border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-blue-600 hover:text-blue-700"
+                                        >
+                                            <svg
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                            </svg>
+                                            Tệp đính kèm {index + 1}
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-[10px] border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-text-gray">
+                                    Không có tệp đính kèm
+                                </div>
+                            )}
                         </div>
 
                         {/* Thông tin liên hệ */}

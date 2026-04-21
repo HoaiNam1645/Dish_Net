@@ -1,334 +1,253 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 
-import CommentModal from '@/features/home/CommentModal';
-import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
+import { userContentApi } from '@/shared/userContentApi';
 
-const storeCover = figmaFallbackAssets.storeImage;
-const ratingBadge = figmaFallbackAssets.ratingBadge;
-const reviewerAvatar = figmaFallbackAssets.reviewerAvatarA;
-const reviewGallery = figmaFallbackAssets.feedDishImage;
-const likeIcon = figmaFallbackAssets.likeIcon;
-const commentIcon = figmaFallbackAssets.commentIcon;
-const topReviewerIcon = figmaFallbackAssets.topReviewerIcon;
-const menuDish = figmaFallbackAssets.menuItemImage;
+type SearchData = {
+  thong_bao?: string;
+  phan_trang?: { trang?: number; so_luong?: number };
+  ket_qua: {
+    mon_an: { du_lieu: any[]; tong_so: number };
+    cua_hang: { du_lieu: any[]; tong_so: number };
+    bai_viet: { du_lieu: any[]; tong_so: number };
+    nguoi_dung: { du_lieu: any[]; tong_so: number };
+  };
+};
 
-const storeCards = Array.from({ length: 2 }, (_, index) => ({
-    id: `store-${index}`,
-    title: 'Bún Bò Gốc Đa',
-    area: 'Khu AAAAA',
-    address: '4 Ngõ Gạch, Quận Hoàn Kiếm, Hà Nội',
-    excerpt: 'Mình ăn ở quán khá nhiều lần nhưng hôm nay mới thử đặt ship trên website...',
-}));
-
-const menuGroups = Array.from({ length: 2 }, (_, index) => ({
-    id: `menu-group-${index}`,
-    storeName: 'Cơm gà, Bún, Phở - An Ký',
-    rating: '4.7 (120)',
-    dishes: [
-        { id: `${index}-1`, name: 'Bún Bò Giò', price: '35.000 đ' },
-        { id: `${index}-2`, name: 'Bún Bò Giò', price: '35.000 đ' },
-        { id: `${index}-3`, name: 'Bún Bò Giò', price: '35.000 đ' },
-    ],
-}));
-
-function Toggle({
-    checked,
-    onChange,
-}: {
-    checked: boolean;
-    onChange: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onChange}
-            aria-pressed={checked}
-            className={`relative inline-flex h-5 w-9 rounded-full transition ${checked ? 'bg-[#5ca24d]' : 'bg-[#9aa09a]'}`}
-        >
-            <span
-                className={`absolute top-[2px] h-4 w-4 rounded-full bg-white transition ${checked ? 'left-[18px]' : 'left-[2px]'}`}
-            />
-        </button>
-    );
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-pressed={checked}
+      className={`relative inline-flex h-5 w-9 rounded-full transition ${checked ? 'bg-[#5ca24d]' : 'bg-[#9aa09a]'}`}
+    >
+      <span
+        className={`absolute top-[2px] h-4 w-4 rounded-full bg-white transition ${checked ? 'left-[18px]' : 'left-[2px]'}`}
+      />
+    </button>
+  );
 }
 
-export default function SearchResultsClient({
-    query,
-}: {
-    query: string;
-}) {
-    const [filters, setFilters] = useState({
-        food: true,
-        store: true,
-        review: true,
-        user: true,
-        nearby: false,
-        hot: false,
-        bestSelling: false,
-        mostReviewed: false,
-    });
-    const [districtMode, setDistrictMode] = useState(false);
-    const [locationInput, setLocationInput] = useState('');
-    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+function formatPrice(v?: number) {
+  if (!v && v !== 0) return '---';
+  return `${v.toLocaleString('vi-VN')}đ`;
+}
 
-    const visibleStoreCards = useMemo(() => {
-        if (!filters.store) return [];
-        if (filters.nearby && !locationInput.trim()) return storeCards.slice(0, 1);
-        return storeCards;
-    }, [filters.nearby, filters.store, locationInput]);
+export default function SearchResultsClient({ query }: { query: string }) {
+  const [filters, setFilters] = useState({
+    food: true,
+    store: true,
+    review: true,
+    user: true,
+    nearby: false,
+    hot: false,
+    bestSelling: false,
+    mostReviewed: false,
+  });
+  const [districtMode, setDistrictMode] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<SearchData | null>(null);
 
-    const visibleMenuGroups = useMemo(() => {
-        if (!filters.food) return [];
-        if (filters.hot) return menuGroups.slice(0, 1);
-        return menuGroups;
-    }, [filters.food, filters.hot]);
+  const loai = useMemo(() => {
+    if (filters.food && !filters.store && !filters.review && !filters.user) return 'mon_an';
+    if (!filters.food && filters.store && !filters.review && !filters.user) return 'cua_hang';
+    if (!filters.food && !filters.store && filters.review && !filters.user) return 'bai_viet';
+    if (!filters.food && !filters.store && !filters.review && filters.user) return 'nguoi_dung';
+    return 'tat_ca';
+  }, [filters.food, filters.store, filters.review, filters.user]);
 
-    const showReviewSection = filters.review;
-    const showUserHint = filters.user;
+  const doPhoBien = useMemo(() => {
+    if (filters.mostReviewed) return 'duoc_review_nhieu';
+    if (filters.bestSelling) return 'nhieu_luot_mua';
+    if (filters.hot) return 'dang_hot';
+    return undefined;
+  }, [filters.bestSelling, filters.hot, filters.mostReviewed]);
 
-    return (
-        <div className="bg-[#fafaf9]">
-            <section className="grid w-full gap-10 px-4 pb-8 pt-0 sm:px-6 sm:pt-0 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-0 lg:pt-0">
-                <aside className="bg-white pb-8 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-                    <div className="px-8 py-6">
-                        <h1 className="text-[32px] font-bold text-[#2c312b]">Kết quả tìm kiếm</h1>
-                    </div>
+  const boLocKhuVuc = useMemo(() => {
+    if (filters.nearby) return 'gan_ban';
+    if (locationInput) return districtMode ? 'quan_huyen' : 'dia_diem';
+    return undefined;
+  }, [districtMode, filters.nearby, locationInput]);
 
-                    <div className="space-y-8 px-6 py-6">
-                        <div>
-                            <div className="mb-4 flex items-center gap-3 rounded-[6px] bg-[#eef7ed] px-4 py-4">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3ab54a] text-white">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M12 3a9 9 0 1 0 9 9" />
-                                        <path d="m9 12 2 2 4-4" />
-                                    </svg>
-                                </span>
-                                <h2 className="text-[18px] font-bold text-[#679d55]">Tất cả</h2>
-                            </div>
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const payload = (await userContentApi.timKiem({
+          tu_khoa: query,
+          loai: loai as any,
+          dia_diem: locationInput || undefined,
+          khu_vuc: locationInput || undefined,
+          bo_loc_khu_vuc: boLocKhuVuc as any,
+          do_pho_bien: doPhoBien as any,
+          trang: page,
+          so_luong: 12,
+        })) as SearchData;
+        if (!mounted) return;
+        setData(payload);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e instanceof Error ? e.message : 'Không tải được kết quả tìm kiếm');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [query, loai, locationInput, boLocKhuVuc, doPhoBien, page]);
 
-                            <div className="space-y-4 px-4">
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Món ăn</span>
-                                    <Toggle checked={filters.food} onChange={() => setFilters((current) => ({ ...current, food: !current.food }))} />
-                                </div>
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Cửa hàng</span>
-                                    <Toggle checked={filters.store} onChange={() => setFilters((current) => ({ ...current, store: !current.store }))} />
-                                </div>
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Bài viết/ Review</span>
-                                    <Toggle checked={filters.review} onChange={() => setFilters((current) => ({ ...current, review: !current.review }))} />
-                                </div>
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Người dùng</span>
-                                    <Toggle checked={filters.user} onChange={() => setFilters((current) => ({ ...current, user: !current.user }))} />
-                                </div>
-                            </div>
-                        </div>
+  const monAn = data?.ket_qua.mon_an.du_lieu ?? [];
+  const cuaHang = data?.ket_qua.cua_hang.du_lieu ?? [];
+  const baiViet = data?.ket_qua.bai_viet.du_lieu ?? [];
+  const nguoiDung = data?.ket_qua.nguoi_dung.du_lieu ?? [];
 
-                        <div>
-                            <div className="mb-4 flex items-center gap-3 rounded-[6px] bg-[#eef7ed] px-4 py-4">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3ab54a] text-white">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M12 3a9 9 0 1 0 9 9" />
-                                        <path d="m9 12 2 2 4-4" />
-                                    </svg>
-                                </span>
-                                <h2 className="text-[18px] font-bold text-[#679d55]">Khu vực</h2>
-                            </div>
+  return (
+    <div className="bg-[#fafaf9]">
+      <section className="grid w-full gap-10 px-4 pb-8 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-0">
+        <aside className="bg-white pb-8 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+          <div className="px-8 py-6">
+            <h1 className="text-[32px] font-bold text-[#2c312b]">Kết quả tìm kiếm</h1>
+          </div>
 
-                            <div className="space-y-4 px-4">
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Gần bạn</span>
-                                    <Toggle checked={filters.nearby} onChange={() => setFilters((current) => ({ ...current, nearby: !current.nearby }))} />
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setDistrictMode((current) => !current)}
-                                    className="flex w-full items-center justify-between gap-4 text-left text-[18px] text-[#30362f]"
-                                >
-                                    <span>Theo quận/ khu vực</span>
-                                    <span className={`text-[#7b837b] transition ${districtMode ? 'rotate-180' : ''}`}>⌄</span>
-                                </button>
-                            </div>
+          <div className="space-y-8 px-6 py-6">
+            <div>
+              <h2 className="mb-4 text-[18px] font-bold text-[#679d55]">Tất cả</h2>
+              <div className="space-y-4 px-2">
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Món ăn</span><Toggle checked={filters.food} onChange={() => setFilters((c) => ({ ...c, food: !c.food }))} /></div>
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Cửa hàng</span><Toggle checked={filters.store} onChange={() => setFilters((c) => ({ ...c, store: !c.store }))} /></div>
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Bài viết/Review</span><Toggle checked={filters.review} onChange={() => setFilters((c) => ({ ...c, review: !c.review }))} /></div>
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Người dùng</span><Toggle checked={filters.user} onChange={() => setFilters((c) => ({ ...c, user: !c.user }))} /></div>
+              </div>
+            </div>
 
-                            {districtMode && (
-                                <div className="px-4 pt-4">
-                                    <input
-                                        value={locationInput}
-                                        onChange={(event) => setLocationInput(event.target.value)}
-                                        placeholder="Nhập địa điểm"
-                                        className="w-full rounded-full border border-[#d4d5d4] bg-white px-5 py-3 text-[18px] text-[#525252] placeholder:text-[#8d8d8d]"
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div>
-                            <div className="mb-4 flex items-center gap-3 rounded-[6px] bg-[#eef7ed] px-4 py-4">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3ab54a] text-white">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M12 3a9 9 0 1 0 9 9" />
-                                        <path d="m9 12 2 2 4-4" />
-                                    </svg>
-                                </span>
-                                <h2 className="text-[18px] font-bold text-[#679d55]">Độ phổ biến</h2>
-                            </div>
-
-                            <div className="space-y-4 px-4">
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Đang hot</span>
-                                    <Toggle checked={filters.hot} onChange={() => setFilters((current) => ({ ...current, hot: !current.hot }))} />
-                                </div>
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Nhiều lượt mua</span>
-                                    <Toggle checked={filters.bestSelling} onChange={() => setFilters((current) => ({ ...current, bestSelling: !current.bestSelling }))} />
-                                </div>
-                                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]">
-                                    <span>Được review nhiều</span>
-                                    <Toggle checked={filters.mostReviewed} onChange={() => setFilters((current) => ({ ...current, mostReviewed: !current.mostReviewed }))} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
-
-                <div className="space-y-10 lg:ml-[calc((100vw-1440px)/2+2rem)] lg:max-w-[1040px] lg:pr-8">
-                    {showReviewSection && (
-                        <article className="rounded-[8px] bg-white p-8 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-start gap-4">
-                                    <img src={reviewerAvatar} alt="@vy.fooodieee" className="h-16 w-16 rounded-full object-cover" />
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <h2 className="text-[22px] font-bold text-black">@vy.fooodieee</h2>
-                                            <span className="inline-flex items-center gap-2 rounded-full bg-[#faeacd] px-4 py-1 text-xs font-bold text-black">
-                                                <img src={topReviewerIcon} alt="" className="h-4 w-4 object-contain" />
-                                                TOP REVIEWER
-                                            </span>
-                                        </div>
-                                        <p className="mt-1 text-sm text-[#6c6c6c]">22 thg 02, 2026</p>
-                                    </div>
-                                </div>
-                                <button className="rounded-full bg-[#258f22] px-6 py-2 text-sm font-bold text-white">Follow +</button>
-                            </div>
-
-                            <div className="my-6 h-px bg-[#d9ded7]" />
-
-                            <p className="text-[17px] leading-8 text-black">
-                                Sau lần ăn thử tại Nét Huế, mình cảm nhận quán {query} này rất đáng để thử. Nước dùng đậm đà, thơm mùi sả,
-                                topping đầy đặn với thịt bò, chả Huế, gân bò mềm ngon và cả tiết bò tươi. Giá hơi nhỉnh một chút nhưng hoàn toàn tương xứng với chất lượng.
-                            </p>
-                            <p className="mt-4 text-[17px] leading-8 text-black">
-                                Quán phục vụ khá nhanh, gọi món tầm 5–7 phút là có. Không gian tuy không quá rộng nhưng sạch sẽ, ấm cúng. Mình nghĩ đây sẽ là lựa chọn ổn cho bữa trưa.
-                            </p>
-
-                            <div className="mt-6 grid gap-4 md:grid-cols-2">
-                                <img src={reviewGallery} alt="Review món ăn" className="h-[240px] w-full rounded-[16px] object-cover" />
-                                <img src={reviewGallery} alt="Review món ăn thứ hai" className="h-[240px] w-full rounded-[16px] object-cover" />
-                            </div>
-
-                            <div className="mt-5 flex flex-wrap items-center gap-3">
-                                <span className="rounded-full bg-[#faeacd] px-4 py-2 text-sm font-bold text-[#f59e0b]">Ngon</span>
-                                <span className="rounded-full bg-[#fad3cd] px-4 py-2 text-sm font-bold text-[#f50b0b]">Nên thử</span>
-                                <span className="rounded-full bg-[#faeacd] px-4 py-2 text-sm font-bold text-[#f59e0b]">Đậm vị</span>
-                            </div>
-
-                            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#d9ded7] pt-4">
-                                <div className="flex items-center gap-8 text-sm font-bold text-[#6d6969]">
-                                    <span className="inline-flex items-center gap-2"><img src={likeIcon} alt="" className="h-8 w-8 object-contain" />Yêu thích</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCommentModalOpen(true)}
-                                        className="inline-flex items-center gap-2"
-                                    >
-                                        <img src={commentIcon} alt="" className="h-8 w-8 object-contain" />
-                                        Bình luận
-                                    </button>
-                                </div>
-                                <button className="rounded-full border border-[#258f22] bg-[#dcebdc] px-8 py-2 text-sm font-bold text-[#285e19]">Đặt món</button>
-                            </div>
-                        </article>
-                    )}
-
-                    {showUserHint && (
-                        <div className="rounded-[8px] border border-[#dcebdc] bg-[#eef7ed] px-6 py-4 text-[16px] text-[#4c6b43]">
-                            Kết quả người dùng liên quan tới <span className="font-bold">{query}</span> đang được bật.
-                        </div>
-                    )}
-
-                    {visibleStoreCards.length > 0 && (
-                        <section className="space-y-4">
-                            <div className="grid gap-6 lg:grid-cols-2">
-                                {visibleStoreCards.map((card) => (
-                                    <article key={card.id} className="overflow-hidden rounded-[8px] bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
-                                        <img src={storeCover} alt={card.title} className="h-[164px] w-full object-cover" />
-                                        <div className="space-y-3 p-4">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div>
-                                                    <h3 className="text-lg font-semibold text-black">{card.title}</h3>
-                                                    <p className="mt-1 text-xs text-[#595959]">{card.address}</p>
-                                                </div>
-                                                <img src={ratingBadge} alt="Đánh giá" className="h-7 w-20 object-contain" />
-                                            </div>
-                                            <div className="border-y border-[#e6e6e6] py-3">
-                                                <p className="text-sm font-medium text-black">{card.area}</p>
-                                                <p className="mt-1 text-xs text-[#656565]">{card.excerpt}</p>
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs text-[#717171]">
-                                                <span>11</span>
-                                                <span>58</span>
-                                                <button className="rounded bg-[#ededed] px-3 py-1 text-[#9a9a9a]">Lưu</button>
-                                            </div>
-                                        </div>
-                                    </article>
-                                ))}
-                            </div>
-                            <div className="rounded-[3px] bg-[#eaf8eb] py-3 text-center text-[22px] text-[#285e19]">Xem Thêm →</div>
-                        </section>
-                    )}
-
-                    {visibleMenuGroups.map((group) => (
-                        <section key={group.id} className="rounded-[8px] bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <img src={menuDish} alt={group.storeName} className="h-[84px] w-[126px] rounded-[8px] object-cover" />
-                                    <div>
-                                        <h3 className="text-[28px] font-medium text-black">{group.storeName}</h3>
-                                        <div className="mt-2 h-px w-full bg-[#575757]" />
-                                    </div>
-                                </div>
-                                <div className="text-[22px] font-bold text-[#f0a500]">{group.rating}</div>
-                            </div>
-
-                            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                                {group.dishes.map((dish) => (
-                                    <article key={dish.id} className="text-center">
-                                        <img src={menuDish} alt={dish.name} className="h-[165px] w-full rounded-[10px] object-cover" />
-                                        <h4 className="mt-3 text-[18px] text-black">{dish.name}</h4>
-                                        <p className="mt-1 text-[20px] font-bold text-[#d71414]">{dish.price}</p>
-                                    </article>
-                                ))}
-                            </div>
-
-                            <div className="mt-5 flex justify-end">
-                                <button className="rounded bg-[#fce8e8] px-8 py-3 text-sm text-[#d71414]">Xem Thêm →</button>
-                            </div>
-                        </section>
-                    ))}
-
-                    {!showReviewSection && visibleStoreCards.length === 0 && visibleMenuGroups.length === 0 && !showUserHint && (
-                        <div className="rounded-[8px] bg-white px-8 py-12 text-center text-[18px] text-[#6b7280] shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-                            Không có kết quả phù hợp với bộ lọc hiện tại.
-                        </div>
-                    )}
+            <div>
+              <h2 className="mb-4 text-[18px] font-bold text-[#679d55]">Khu vực</h2>
+              <div className="space-y-4 px-2">
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Gần bạn</span><Toggle checked={filters.nearby} onChange={() => setFilters((c) => ({ ...c, nearby: !c.nearby }))} /></div>
+                <button type="button" onClick={() => setDistrictMode((c) => !c)} className="flex w-full items-center justify-between gap-4 text-left text-[18px] text-[#30362f]">
+                  <span>Theo quận/ khu vực</span>
+                  <span className={`text-[#7b837b] transition ${districtMode ? 'rotate-180' : ''}`}>⌄</span>
+                </button>
+              </div>
+              {districtMode ? (
+                <div className="px-2 pt-4">
+                  <input value={locationInput} onChange={(event) => setLocationInput(event.target.value)} placeholder="Nhập địa điểm" className="w-full rounded-full border border-[#d4d5d4] bg-white px-5 py-3 text-[16px]" />
                 </div>
-            </section>
+              ) : null}
+            </div>
 
-            <CommentModal isOpen={isCommentModalOpen} onClose={() => setIsCommentModalOpen(false)} />
+            <div>
+              <h2 className="mb-4 text-[18px] font-bold text-[#679d55]">Độ phổ biến</h2>
+              <div className="space-y-4 px-2">
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Đang hot</span><Toggle checked={filters.hot} onChange={() => setFilters((c) => ({ ...c, hot: !c.hot, bestSelling: false, mostReviewed: false }))} /></div>
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Nhiều lượt mua</span><Toggle checked={filters.bestSelling} onChange={() => setFilters((c) => ({ ...c, bestSelling: !c.bestSelling, hot: false, mostReviewed: false }))} /></div>
+                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Được review nhiều</span><Toggle checked={filters.mostReviewed} onChange={() => setFilters((c) => ({ ...c, mostReviewed: !c.mostReviewed, hot: false, bestSelling: false }))} /></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div className="space-y-8 lg:ml-[calc((100vw-1440px)/2+2rem)] lg:max-w-[1040px] lg:pr-8">
+          {loading ? <div className="rounded bg-white p-8 text-center text-[#777]">Đang tìm kiếm...</div> : null}
+          {error ? <div className="rounded bg-white p-8 text-center text-red-500">{error}</div> : null}
+
+          {!loading && !error && data?.thong_bao ? (
+            <div className="rounded bg-white p-8 text-center text-[#777]">{data.thong_bao}</div>
+          ) : null}
+
+          {monAn.length > 0 ? (
+            <section className="rounded bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+              <h2 className="mb-4 text-xl font-bold">Món ăn</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {monAn.map((item: any) => (
+                  <Link key={item.id} href={`/ranking/food/${item.id}`} className="rounded border p-3 hover:border-[#2f8f22]">
+                    <img src={item.hinh_anh || ''} alt={item.ten_mon} className="h-[130px] w-full rounded object-cover" />
+                    <h3 className="mt-2 font-semibold">{item.ten_mon}</h3>
+                    <p className="text-sm text-[#666]">★ {Number(item.diem_danh_gia || 0).toFixed(1)} • {item.tong_danh_gia} đánh giá</p>
+                    <p className="text-[#d71414] font-bold">{formatPrice(item.gia_ban)}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {cuaHang.length > 0 ? (
+            <section className="rounded bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+              <h2 className="mb-4 text-xl font-bold">Cửa hàng</h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {cuaHang.map((item: any) => (
+                  <Link key={item.id} href={`/explore/store/${item.id}`} className="rounded border p-4 hover:border-[#2f8f22]">
+                    <div className="flex gap-3">
+                      <img src={item.anh_dai_dien || ''} alt={item.ten_cua_hang} className="h-20 w-20 rounded object-cover" />
+                      <div>
+                        <h3 className="font-semibold">{item.ten_cua_hang}</h3>
+                        <p className="text-sm text-[#666]">{item.dia_chi || item.khu_vuc || '---'}</p>
+                        <p className="text-sm text-[#666]">★ {Number(item.diem_danh_gia || 0).toFixed(1)} • {item.tong_don_hang} đơn</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {baiViet.length > 0 ? (
+            <section className="rounded bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+              <h2 className="mb-4 text-xl font-bold">Bài viết / Review</h2>
+              <div className="space-y-4">
+                {baiViet.map((item: any) => (
+                  <article key={item.id} className="rounded border p-4">
+                    <p className="line-clamp-3 text-[15px]">{item.noi_dung}</p>
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-[#666]">
+                      <span>♡ {item.tong_luot_thich}</span>
+                      <span>💬 {item.tong_luot_binh_luan}</span>
+                      <span>↺ {item.tong_luot_chia_se}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {nguoiDung.length > 0 ? (
+            <section className="rounded bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+              <h2 className="mb-4 text-xl font-bold">Người dùng</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {nguoiDung.map((item: any) => (
+                  <Link key={item.id} href={`/ranking/reviewer/${item.id}`} className="rounded border p-3 hover:border-[#2f8f22]">
+                    <div className="flex items-center gap-3">
+                      <img src={item.anh_dai_dien || ''} alt={item.ten_hien_thi} className="h-12 w-12 rounded-full object-cover" />
+                      <div>
+                        <p className="font-semibold">{item.ten_hien_thi}</p>
+                        <p className="text-sm text-[#666]">@{item.ten_dang_nhap} • uy tín {Number(item.diem_uy_tin || 0).toFixed(1)}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {!loading && !error ? (
+            <div className="flex justify-center gap-3 pb-2">
+              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded border px-4 py-2">Trước</button>
+              <span className="inline-flex items-center px-3 text-sm">Trang {page}</span>
+              <button type="button" onClick={() => setPage((p) => p + 1)} className="rounded border px-4 py-2">Xem thêm</button>
+            </div>
+          ) : null}
         </div>
-    );
+      </section>
+    </div>
+  );
 }

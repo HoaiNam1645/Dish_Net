@@ -5,9 +5,12 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { EmailService } from "../../shared/email/email.service";
 import { NguoiDungEntity } from "../Auth/entities/nguoi-dung.entity";
+import { CuaHangEntity } from "./entities/cua-hang.entity";
 import { NhatKyHeThongEntity } from "./entities/nhat-ky-he-thong.entity";
 import { TepDinhKemEntity } from "./entities/tep-dinh-kem.entity";
+import { ThongBaoEntity } from "./entities/thong-bao.entity";
 import { YeuCauNangCapEntity } from "./entities/yeu-cau-nang-cap.entity";
 
 type DanhSachQuery = {
@@ -34,8 +37,7 @@ export class AdminReviewService {
     private readonly tepDinhKemRepo: Repository<TepDinhKemEntity>,
     @InjectRepository(NhatKyHeThongEntity)
     private readonly nhatKyRepo: Repository<NhatKyHeThongEntity>,
-    @InjectRepository(NguoiDungEntity)
-    private readonly nguoiDungRepo: Repository<NguoiDungEntity>,
+    private readonly emailService: EmailService,
   ) {}
 
   async layDanhSach(query: DanhSachQuery) {
@@ -200,10 +202,21 @@ export class AdminReviewService {
     ghiChu?: string,
     diaChiIp?: string | null,
   ) {
+    let duLieuEmail:
+      | {
+          den: string;
+          tenNguoiDung: string;
+          tenCuaHang: string;
+          trangThai: "da_duyet";
+        }
+      | undefined;
+
     await this.yeuCauRepo.manager.transaction(async (manager) => {
       const yeuCauRepo = manager.getRepository(YeuCauNangCapEntity);
       const nguoiDungRepo = manager.getRepository(NguoiDungEntity);
       const nhatKyRepo = manager.getRepository(NhatKyHeThongEntity);
+      const cuaHangRepo = manager.getRepository(CuaHangEntity);
+      const thongBaoRepo = manager.getRepository(ThongBaoEntity);
 
       const yc = await yeuCauRepo.findOne({
         where: { id },
@@ -224,6 +237,26 @@ export class AdminReviewService {
 
       if (yc.loai_yeu_cau === "mo_cua_hang") {
         yc.nguoi_gui.la_chu_cua_hang = true;
+        await this.taoHoacCapNhatCuaHangTuYeuCau(yc, cuaHangRepo);
+
+        await thongBaoRepo.save({
+          id_nguoi_nhan: Number(yc.id_nguoi_gui),
+          loai_thong_bao: "he_thong",
+          loai_doi_tuong: "yeu_cau_nang_cap",
+          id_doi_tuong: Number(yc.id),
+          tieu_de: "Yêu cầu mở cửa hàng đã được phê duyệt",
+          noi_dung: `Yêu cầu mở cửa hàng "${yc.ten_cua_hang_de_xuat ?? "Cửa hàng"}" đã được phê duyệt. Bạn có thể bắt đầu quản lý và kinh doanh trên DishNet.`,
+          da_doc: false,
+          thoi_gian_doc: null,
+          ngay_tao: new Date(),
+        });
+
+        duLieuEmail = {
+          den: yc.nguoi_gui.email,
+          tenNguoiDung: yc.nguoi_gui.ten_hien_thi,
+          tenCuaHang: yc.ten_cua_hang_de_xuat ?? "Cửa hàng của bạn",
+          trangThai: "da_duyet",
+        };
       }
 
       if (yc.loai_yeu_cau === "kiem_tien_noi_dung") {
@@ -249,6 +282,10 @@ export class AdminReviewService {
       });
     });
 
+    if (duLieuEmail) {
+      await this.guiEmailKetQuaMoCuaHang(duLieuEmail);
+    }
+
     return { message: "Phe duyet yeu cau thanh cong" };
   }
 
@@ -262,11 +299,25 @@ export class AdminReviewService {
       throw new BadRequestException("Ly do tu choi khong duoc de trong");
     }
 
+    let duLieuEmail:
+      | {
+          den: string;
+          tenNguoiDung: string;
+          tenCuaHang: string;
+          trangThai: "da_tu_choi";
+          lyDo: string;
+        }
+      | undefined;
+
     await this.yeuCauRepo.manager.transaction(async (manager) => {
       const yeuCauRepo = manager.getRepository(YeuCauNangCapEntity);
       const nhatKyRepo = manager.getRepository(NhatKyHeThongEntity);
+      const thongBaoRepo = manager.getRepository(ThongBaoEntity);
 
-      const yc = await yeuCauRepo.findOne({ where: { id } });
+      const yc = await yeuCauRepo.findOne({
+        where: { id },
+        relations: { nguoi_gui: true },
+      });
       if (!yc) {
         throw new NotFoundException("Yeu cau khong ton tai");
       }
@@ -284,6 +335,28 @@ export class AdminReviewService {
       yc.thoi_gian_xu_ly = new Date();
       yc.ly_do_tu_choi = lyDo.trim();
 
+      if (yc.loai_yeu_cau === "mo_cua_hang") {
+        await thongBaoRepo.save({
+          id_nguoi_nhan: Number(yc.id_nguoi_gui),
+          loai_thong_bao: "he_thong",
+          loai_doi_tuong: "yeu_cau_nang_cap",
+          id_doi_tuong: Number(yc.id),
+          tieu_de: "Yêu cầu mở cửa hàng bị từ chối",
+          noi_dung: `Yêu cầu mở cửa hàng "${yc.ten_cua_hang_de_xuat ?? "Cửa hàng"}" chưa được duyệt. Lý do: ${lyDo.trim()}`,
+          da_doc: false,
+          thoi_gian_doc: null,
+          ngay_tao: new Date(),
+        });
+
+        duLieuEmail = {
+          den: yc.nguoi_gui.email,
+          tenNguoiDung: yc.nguoi_gui.ten_hien_thi,
+          tenCuaHang: yc.ten_cua_hang_de_xuat ?? "Cửa hàng của bạn",
+          trangThai: "da_tu_choi",
+          lyDo: lyDo.trim(),
+        };
+      }
+
       await yeuCauRepo.save(yc);
       await nhatKyRepo.save({
         id_nguoi_thuc_hien: actor.id,
@@ -297,7 +370,119 @@ export class AdminReviewService {
       });
     });
 
+    if (duLieuEmail) {
+      await this.guiEmailKetQuaMoCuaHang(duLieuEmail);
+    }
+
     return { message: "Tu choi yeu cau thanh cong" };
+  }
+
+  private async taoHoacCapNhatCuaHangTuYeuCau(
+    yc: YeuCauNangCapEntity,
+    cuaHangRepo: Repository<CuaHangEntity>,
+  ) {
+    const tenCuaHang = yc.ten_cua_hang_de_xuat?.trim() || `Cua hang ${yc.id}`;
+    const duLieuCapNhat = {
+      ten_cua_hang: tenCuaHang,
+      mo_ta: yc.ly_do_yeu_cau?.trim() || null,
+      so_dien_thoai_lien_he: yc.so_dien_thoai_lien_he?.trim() || null,
+      dia_chi_kinh_doanh: yc.dia_chi_kinh_doanh?.trim() || "Chua cap nhat",
+      gio_mo_cua: yc.gio_mo_cua || null,
+      gio_dong_cua: yc.gio_dong_cua || null,
+      trang_thai_hoat_dong: "hoat_dong",
+      tu_nhan_giao_hang: true,
+    };
+
+    const cuaHangHienTai = await cuaHangRepo.findOne({
+      where: { id_chu_so_huu: Number(yc.id_nguoi_gui) },
+    });
+
+    if (cuaHangHienTai) {
+      const canCapNhatSlug =
+        !cuaHangHienTai.slug || !cuaHangHienTai.slug.trim().length;
+      if (canCapNhatSlug) {
+        cuaHangHienTai.slug = await this.taoSlugKhongTrung(
+          tenCuaHang,
+          cuaHangRepo,
+          Number(cuaHangHienTai.id),
+        );
+      }
+      Object.assign(cuaHangHienTai, duLieuCapNhat);
+      await cuaHangRepo.save(cuaHangHienTai);
+      return;
+    }
+
+    const slug = await this.taoSlugKhongTrung(tenCuaHang, cuaHangRepo);
+    await cuaHangRepo.save({
+      id_chu_so_huu: Number(yc.id_nguoi_gui),
+      slug,
+      ...duLieuCapNhat,
+    });
+  }
+
+  private taoSlugCoBan(value: string) {
+    const slug = value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[đĐ]/g, "d")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    return slug || "cua-hang";
+  }
+
+  private async taoSlugKhongTrung(
+    tenCuaHang: string,
+    cuaHangRepo: Repository<CuaHangEntity>,
+    boQuaId?: number,
+  ) {
+    const base = this.taoSlugCoBan(tenCuaHang);
+
+    for (let i = 0; i < 500; i += 1) {
+      const slug = i === 0 ? base : `${base}-${i}`;
+      const existing = await cuaHangRepo.findOne({ where: { slug } });
+      if (!existing) return slug;
+      if (boQuaId != null && Number(existing.id) === Number(boQuaId)) {
+        return slug;
+      }
+    }
+
+    return `${base}-${Date.now()}`;
+  }
+
+  private async guiEmailKetQuaMoCuaHang(data: {
+    den: string;
+    tenNguoiDung: string;
+    tenCuaHang: string;
+    trangThai: "da_duyet" | "da_tu_choi";
+    lyDo?: string;
+  }) {
+    if (data.trangThai === "da_duyet") {
+      await this.emailService.guiEmail({
+        den: data.den,
+        tieuDe: "[DishNet] Yêu cầu mở cửa hàng đã được phê duyệt",
+        noiDungText: `Xin chào ${data.tenNguoiDung}, yêu cầu mở cửa hàng "${data.tenCuaHang}" của bạn đã được phê duyệt.`,
+        noiDungHtml: `
+          <p>Xin chào <strong>${data.tenNguoiDung}</strong>,</p>
+          <p>Yêu cầu mở cửa hàng <strong>${data.tenCuaHang}</strong> của bạn đã được phê duyệt.</p>
+          <p>Bạn có thể đăng nhập DishNet để bắt đầu quản lý cửa hàng.</p>
+        `,
+      });
+      return;
+    }
+
+    await this.emailService.guiEmail({
+      den: data.den,
+      tieuDe: "[DishNet] Yêu cầu mở cửa hàng chưa được phê duyệt",
+      noiDungText: `Xin chào ${data.tenNguoiDung}, yêu cầu mở cửa hàng "${data.tenCuaHang}" chưa được phê duyệt. Lý do: ${data.lyDo ?? "Không có"}.`,
+      noiDungHtml: `
+        <p>Xin chào <strong>${data.tenNguoiDung}</strong>,</p>
+        <p>Yêu cầu mở cửa hàng <strong>${data.tenCuaHang}</strong> chưa được phê duyệt.</p>
+        <p>Lý do: ${data.lyDo ?? "Không có"}.</p>
+        <p>Bạn có thể cập nhật thông tin và gửi lại yêu cầu.</p>
+      `,
+    });
   }
 
   private layNhanNguoiThucHien(item: NhatKyHeThongEntity) {

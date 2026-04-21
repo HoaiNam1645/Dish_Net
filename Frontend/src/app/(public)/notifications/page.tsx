@@ -1,6 +1,7 @@
 import NotificationsPageClient from '@/features/notifications/NotificationsPageClient';
-import { notificationItems } from '@/features/notifications/data';
+import { getNotificationItems } from '@/features/notifications/data';
 
-export default function NotificationsPage() {
-    return <NotificationsPageClient notifications={notificationItems} />;
+export default async function NotificationsPage() {
+    const notifications = await getNotificationItems();
+    return <NotificationsPageClient notifications={notifications} />;
 }

@@ -78,6 +78,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
   const toast = useToast();
   const [request, setRequest] = useState<ChiTietYeuCauResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
@@ -88,8 +89,11 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
       try {
         const data = await adminReviewApi.layChiTiet(Number(id));
         setRequest(data);
+        setError(null);
       } catch (fetchError: unknown) {
-        toast.error(getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu'));
+        const message = getErrorMessage(fetchError, 'Không thể tải chi tiết yêu cầu');
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }

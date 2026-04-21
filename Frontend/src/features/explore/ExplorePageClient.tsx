@@ -153,25 +153,38 @@ function SectionWithButton({
     accent,
     items,
     emphasizeStatus,
+    visibleCount,
+    onViewMore,
 }: {
     title: string;
     accent?: string;
     items: ExploreStoreCard[];
     emphasizeStatus?: boolean;
+    visibleCount: number;
+    onViewMore: () => void;
 }) {
+    const visibleItems = items.slice(0, visibleCount);
+    const hasMore = visibleItems.length < items.length;
+
     return (
         <section className="space-y-8">
             <SectionHeading title={title} accent={accent} />
             <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-                {items.map((item) => (
-                    <StoreCard key={item.id} store={item} emphasizeStatus={emphasizeStatus} />
+                {visibleItems.map((item, index) => (
+                    <StoreCard key={`${item.id}-${index}`} store={item} emphasizeStatus={emphasizeStatus} />
                 ))}
             </div>
-            <div className="flex justify-center">
-                <button className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]">
-                    Xem thêm
-                </button>
-            </div>
+            {hasMore ? (
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={onViewMore}
+                        className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]"
+                    >
+                        Xem thêm
+                    </button>
+                </div>
+            ) : null}
         </section>
     );
 }
@@ -185,6 +198,11 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
     const [recentFoodSearches, setRecentFoodSearches] = useState(['mì trộn']);
     const [activeSearchResult, setActiveSearchResult] = useState<string | null>(null);
     const [isLoginRequiredOpen, setIsLoginRequiredOpen] = useState(false);
+    const [visibleNearbyCount, setVisibleNearbyCount] = useState(8);
+    const [visibleRecommendationCount, setVisibleRecommendationCount] = useState(8);
+    const [visibleTopReviewerCount, setVisibleTopReviewerCount] = useState(8);
+    const [visibleCategoryCount, setVisibleCategoryCount] = useState(8);
+    const [visibleSearchCount, setVisibleSearchCount] = useState(8);
     const addressRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -280,9 +298,19 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
         setSearchKeyword(trimmedValue);
         setActiveSearchResult(trimmedValue);
         setActiveCategoryId(null);
+        setVisibleSearchCount(8);
         setRecentFoodSearches((current) => [trimmedValue, ...current.filter((item) => item !== trimmedValue)].slice(0, 6));
         setIsFoodSearchOpen(false);
     };
+
+    useEffect(() => {
+        setVisibleCategoryCount(8);
+    }, [activeCategoryId]);
+
+    const visibleSearchResults = searchResults.slice(0, visibleSearchCount);
+    const hasMoreSearchResults = visibleSearchResults.length < searchResults.length;
+    const visibleCategoryResults = categoryResults.slice(0, visibleCategoryCount);
+    const hasMoreCategoryResults = visibleCategoryResults.length < categoryResults.length;
 
     return (
         <div className="bg-white">
@@ -392,7 +420,7 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
 
                         {hasSearchResults ? (
                             <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-                                {searchResults.map((item, index) => (
+                                {visibleSearchResults.map((item, index) => (
                                     <StoreCard
                                         key={`${item.id}-${index}`}
                                         store={item}
@@ -406,9 +434,13 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                             </div>
                         )}
 
-                        {hasSearchResults ? (
+                        {hasMoreSearchResults ? (
                             <div className="flex justify-center">
-                                <button className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]">
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleSearchCount((value) => value + 8)}
+                                    className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]"
+                                >
                                     Xem thêm
                                 </button>
                             </div>
@@ -429,15 +461,21 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                             </button>
                         </div>
                         <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-                            {categoryResults.map((item) => (
-                                <StoreCard key={item.id} store={item} emphasizeStatus />
+                            {visibleCategoryResults.map((item, index) => (
+                                <StoreCard key={`${item.id}-${index}`} store={item} emphasizeStatus />
                             ))}
                         </div>
-                        <div className="flex justify-center">
-                            <button className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]">
-                                Xem thêm
-                            </button>
-                        </div>
+                        {hasMoreCategoryResults ? (
+                            <div className="flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleCategoryCount((value) => value + 8)}
+                                    className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]"
+                                >
+                                    Xem thêm
+                                </button>
+                            </div>
+                        ) : null}
                     </section>
                 ) : (
                     <>
@@ -455,17 +493,33 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                             </div>
                         </section>
 
-                        <SectionWithButton title="Quán ngon quanh đây" items={data.nearby} />
+                        <SectionWithButton
+                            title="Quán ngon quanh đây"
+                            items={data.nearby}
+                            visibleCount={visibleNearbyCount}
+                            onViewMore={() => setVisibleNearbyCount((value) => value + 8)}
+                        />
 
                         <div className="h-16" />
 
                         <section className="space-y-8">
                             <SectionHeading title="Có thể bạn sẽ thích" />
                             <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-                                {data.recommendations.map((item) => (
-                                    <StoreCard key={item.id} store={item} />
+                                {data.recommendations.slice(0, visibleRecommendationCount).map((item, index) => (
+                                    <StoreCard key={`${item.id}-${index}`} store={item} />
                                 ))}
                             </div>
+                            {visibleRecommendationCount < data.recommendations.length ? (
+                                <div className="flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setVisibleRecommendationCount((value) => value + 8)}
+                                        className="min-w-[280px] rounded-[16px] border border-[#3b82f6] px-10 py-4 text-[22px] font-semibold text-[#2f71ff] transition hover:bg-[#f5f9ff]"
+                                    >
+                                        Xem thêm
+                                    </button>
+                                </div>
+                            ) : null}
                         </section>
 
                         <div className="h-16" />
@@ -475,6 +529,8 @@ export default function ExplorePageClient({ data }: { data: ExplorePageData }) {
                             accent="TOP REVIEWER"
                             items={data.topReviewerPicks}
                             emphasizeStatus
+                            visibleCount={visibleTopReviewerCount}
+                            onViewMore={() => setVisibleTopReviewerCount((value) => value + 8)}
                         />
                     </>
                 )}

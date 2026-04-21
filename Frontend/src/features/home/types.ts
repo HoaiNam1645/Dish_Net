@@ -18,6 +18,8 @@ export interface HeroSection {
 
 export interface SpotlightCard {
     id: string;
+    postId?: number;
+    storeId?: number;
     title: string;
     area: string;
     address: string;
@@ -29,6 +31,9 @@ export interface SpotlightCard {
 
 export interface FeedPost {
     id: string;
+    authorId?: number;
+    storeId?: number;
+    storeName?: string;
     author: string;
     authorAvatar: string;
     date: string;

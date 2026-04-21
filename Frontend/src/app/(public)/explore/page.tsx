@@ -1,6 +1,7 @@
 import ExplorePageClient from '@/features/explore/ExplorePageClient';
-import { explorePageData } from '@/features/explore/data';
+import { getExplorePageData } from '@/features/explore/data';
 
-export default function ExplorePage() {
-    return <ExplorePageClient data={explorePageData} />;
+export default async function ExplorePage() {
+  const data = await getExplorePageData();
+  return <ExplorePageClient data={data} />;
 }

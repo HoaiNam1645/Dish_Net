@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import AdminTable, { type Column } from '@/components/Admin/AdminTable';
 import Pagination from '@/components/Admin/Pagination';
 import {
@@ -49,7 +49,7 @@ function getTypeLabel(type: ActivityItem['loai']) {
   }
 }
 
-export default function AdminActivitiesPage() {
+function AdminActivitiesPageContent() {
   const searchParams = useSearchParams();
   const initialFilter = (searchParams.get('bo_loc_thoi_gian') as DashboardDateFilter | null) ?? 'today';
   const [activeFilter, setActiveFilter] = useState<DashboardDateFilter>(initialFilter);
@@ -188,5 +188,13 @@ export default function AdminActivitiesPage() {
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </AdminTable>
     </div>
+  );
+}
+
+export default function AdminActivitiesPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminActivitiesPageContent />
+    </Suspense>
   );
 }
