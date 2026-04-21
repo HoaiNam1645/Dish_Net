@@ -135,6 +135,8 @@ export const userContentApi = {
     gioi_tinh?: 'nam' | 'nu' | 'khac';
     ngay_sinh?: string;
     tieu_su?: string;
+    so_dien_thoai?: string;
+    dia_chi?: string;
     cho_hien_thi_huy_hieu?: boolean;
     cho_hien_thi_diem_uy_tin?: boolean;
     la_tai_khoan_rieng_tu?: boolean;

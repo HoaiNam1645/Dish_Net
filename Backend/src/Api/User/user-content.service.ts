@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { MonAnEntity } from '../Admin/entities/mon-an.entity';
 import { DanhMucMonEntity } from '../Admin/entities/danh-muc-mon.entity';
 import { DonHangEntity } from '../Admin/entities/don-hang.entity';
@@ -120,6 +120,58 @@ export class UserContentService {
     }
 
     return { gia_sau_giam: giaMon, so_tien_giam: 0 };
+  }
+
+  private async buildBaiVietGocMap(
+    items: Array<{ id_bai_viet_goc?: number | null }>,
+  ) {
+    const originalIds = [
+      ...new Set(
+        items
+          .map((item) => Number(item.id_bai_viet_goc ?? 0))
+          .filter((id) => Number.isFinite(id) && id > 0),
+      ),
+    ];
+
+    if (originalIds.length === 0) {
+      return new Map<number, unknown>();
+    }
+
+    const originalPosts = await this.baiVietRepo.findBy(
+      originalIds.map((id) => ({ id })),
+    );
+    const originalAuthorIds = [
+      ...new Set(originalPosts.map((post) => Number(post.id_nguoi_dang))),
+    ];
+    const [authors, mediaByOriginalPost] = await Promise.all([
+      originalAuthorIds.length > 0
+        ? this.nguoiDungRepo.findBy(originalAuthorIds.map((id) => ({ id })))
+        : Promise.resolve([]),
+      this.mapMediaByObject('bai_viet', originalIds),
+    ]);
+
+    const authorById = new Map<number, NguoiDungEntity>();
+    authors.forEach((author) => authorById.set(Number(author.id), author));
+
+    const originalMap = new Map<number, unknown>();
+    originalPosts.forEach((post) => {
+      const author = authorById.get(Number(post.id_nguoi_dang));
+      originalMap.set(Number(post.id), {
+        id: Number(post.id),
+        loai_bai_viet: post.loai_bai_viet,
+        noi_dung: post.noi_dung,
+        so_sao: post.so_sao != null ? Number(post.so_sao) : null,
+        ngay_dang: post.ngay_dang,
+        thong_tin_nguoi_dang: {
+          id: author ? Number(author.id) : Number(post.id_nguoi_dang),
+          ten_hien_thi: author?.ten_hien_thi ?? 'Người dùng',
+          anh_dai_dien: author?.anh_dai_dien ?? null,
+        },
+        tep_dinh_kem: mediaByOriginalPost.get(Number(post.id)) ?? [],
+      });
+    });
+
+    return originalMap;
   }
 
   async timKiem(query: TimKiemQueryDto) {
@@ -469,6 +521,7 @@ export class UserContentService {
 
     const postIds = items.map((item) => Number(item.id));
     const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
+    const originalMap = await this.buildBaiVietGocMap(items as Array<{ id_bai_viet_goc?: number | null }>);
 
     return {
       du_lieu: items.map((item) => ({
@@ -482,6 +535,12 @@ export class UserContentService {
         tong_luot_luu: Number(item.tong_luot_luu),
         ngay_dang: item.ngay_dang,
         tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+        id_bai_viet_goc:
+          item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
+        bai_viet_goc:
+          item.id_bai_viet_goc != null
+            ? (originalMap.get(Number(item.id_bai_viet_goc)) ?? null)
+            : null,
       })),
       tong_so: tongSo,
     };
@@ -900,6 +959,7 @@ export class UserContentService {
     const [items, tongSo] = await qb.getManyAndCount();
     const postIds = items.map((item) => Number(item.id));
     const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
+    const originalMap = await this.buildBaiVietGocMap(items as Array<{ id_bai_viet_goc?: number | null }>);
 
     return {
       tab,
@@ -912,6 +972,12 @@ export class UserContentService {
         tong_luot_chia_se: Number(item.tong_luot_chia_se),
         ngay_dang: item.ngay_dang,
         tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+        id_bai_viet_goc:
+          item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
+        bai_viet_goc:
+          item.id_bai_viet_goc != null
+            ? (originalMap.get(Number(item.id_bai_viet_goc)) ?? null)
+            : null,
       })),
       tong_so: tongSo,
       trang: currentPage,
@@ -933,6 +999,8 @@ export class UserContentService {
       anh_dai_dien: user.anh_dai_dien,
       ten_tai_khoan: user.ten_dang_nhap,
       ten_hien_thi: user.ten_hien_thi,
+      so_dien_thoai: user.so_dien_thoai,
+      dia_chi: user.dia_chi,
       gioi_tinh: user.gioi_tinh,
       ngay_sinh: user.ngay_sinh,
       tieu_su: user.tieu_su,
@@ -995,6 +1063,25 @@ export class UserContentService {
 
     if (dto.tieu_su != null) {
       user.tieu_su = dto.tieu_su.trim() || null;
+    }
+
+    if (dto.so_dien_thoai != null) {
+      const soDienThoai = dto.so_dien_thoai.trim();
+      if (!soDienThoai) {
+        user.so_dien_thoai = null;
+      } else {
+        const existed = await this.nguoiDungRepo.findOne({
+          where: { so_dien_thoai: soDienThoai },
+        });
+        if (existed && Number(existed.id) !== idNguoiDung) {
+          throw new ConflictException('Số điện thoại đã được sử dụng');
+        }
+        user.so_dien_thoai = soDienThoai;
+      }
+    }
+
+    if (dto.dia_chi != null) {
+      user.dia_chi = dto.dia_chi.trim() || null;
     }
 
     if (dto.cho_hien_thi_huy_hieu != null) {
@@ -1782,7 +1869,7 @@ export class UserContentService {
     };
   }
 
-  async layBangTin(trang?: number, soLuong?: number) {
+  async layBangTin(trang?: number, soLuong?: number, idNguoiDung?: number) {
     const { currentPage, pageSize, skip } = this.parsePaging(trang, soLuong);
 
     const [baiVietItems, tongSoBaiViet] = await this.baiVietRepo
@@ -1799,6 +1886,9 @@ export class UserContentService {
 
     const postIds = baiVietItems.map((item) => Number(item.id));
     const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
+    const originalMap = await this.buildBaiVietGocMap(
+      baiVietItems as Array<{ id_bai_viet_goc?: number | null }>,
+    );
 
     const tacGiaMap = new Map<number, NguoiDungEntity>();
     const cuaHangMap = new Map<number, CuaHangEntity>();
@@ -1822,6 +1912,38 @@ export class UserContentService {
     ]);
     users.forEach((u) => tacGiaMap.set(Number(u.id), u));
     stores.forEach((s) => cuaHangMap.set(Number(s.id), s));
+
+    const likedPostIds = new Set<number>();
+    const followedAuthorIds = new Set<number>();
+    if (idNguoiDung && postIds.length > 0) {
+      const [likedRows, followRows] = await Promise.all([
+        this.tuongTacRepo.find({
+          where: {
+            id_nguoi_dung: idNguoiDung,
+            loai_tuong_tac: 'thich',
+            id_bai_viet: In(postIds),
+          },
+          select: ['id_bai_viet'],
+        }),
+        userIds.length > 0
+          ? this.quanHeNguoiDungRepo.find({
+              where: {
+                id_nguoi_tao_quan_he: idNguoiDung,
+                id_nguoi_nhan_quan_he: In(userIds),
+                loai_quan_he: 'theo_doi',
+                trang_thai: 'hieu_luc',
+              },
+              select: ['id_nguoi_nhan_quan_he'],
+            })
+          : Promise.resolve([]),
+      ]);
+      likedRows.forEach((row) => {
+        if (row.id_bai_viet != null) likedPostIds.add(Number(row.id_bai_viet));
+      });
+      followRows.forEach((row) => {
+        followedAuthorIds.add(Number(row.id_nguoi_nhan_quan_he));
+      });
+    }
 
     const now = new Date();
     const khuyenMai = await this.khuyenMaiRepo
@@ -1877,11 +1999,18 @@ export class UserContentService {
           id: Number(item.id),
           loai_bai_viet: item.loai_bai_viet,
           noi_dung: item.noi_dung,
+          so_sao: item.so_sao != null ? Number(item.so_sao) : null,
           ngay_dang: item.ngay_dang,
           thong_tin_nguoi_dang: {
             id: tacGia ? Number(tacGia.id) : Number(item.id_nguoi_dang),
             ten_hien_thi: tacGia?.ten_hien_thi ?? 'Người dùng',
             anh_dai_dien: tacGia?.anh_dai_dien ?? null,
+          },
+          trang_thai_tuong_tac: {
+            da_thich: likedPostIds.has(Number(item.id)),
+            dang_theo_doi_tac_gia: followedAuthorIds.has(
+              Number(item.id_nguoi_dang),
+            ),
           },
           cua_hang: cuaHang
             ? {
@@ -1896,6 +2025,12 @@ export class UserContentService {
             luot_luu: Number(item.tong_luot_luu),
           },
           tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+          id_bai_viet_goc:
+            item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
+          bai_viet_goc:
+            item.id_bai_viet_goc != null
+              ? (originalMap.get(Number(item.id_bai_viet_goc)) ?? null)
+              : null,
         };
       }),
       deal_hom_nay: khuyenMai.map((item) => {
@@ -1952,12 +2087,13 @@ export class UserContentService {
       throw new NotFoundException('Bài viết không tồn tại');
     }
 
-    const [tacGia, cuaHang, mediaByPost] = await Promise.all([
+    const [tacGia, cuaHang, mediaByPost, originalMap] = await Promise.all([
       this.nguoiDungRepo.findOne({ where: { id: baiViet.id_nguoi_dang } }),
       baiViet.id_cua_hang
         ? this.cuaHangRepo.findOne({ where: { id: baiViet.id_cua_hang } })
         : Promise.resolve(null),
       this.mapMediaByObject('bai_viet', [idBaiViet]),
+      this.buildBaiVietGocMap([baiViet as any]),
     ]);
 
     return {
@@ -1984,6 +2120,12 @@ export class UserContentService {
         luot_luu: Number(baiViet.tong_luot_luu),
       },
       tep_dinh_kem: mediaByPost.get(idBaiViet) ?? [],
+      id_bai_viet_goc:
+        baiViet.id_bai_viet_goc != null ? Number(baiViet.id_bai_viet_goc) : null,
+      bai_viet_goc:
+        baiViet.id_bai_viet_goc != null
+          ? (originalMap.get(Number(baiViet.id_bai_viet_goc)) ?? null)
+          : null,
     };
   }
 
@@ -2151,6 +2293,9 @@ export class UserContentService {
     });
     if (!baiViet) {
       throw new NotFoundException('Bài viết không tồn tại hoặc không khả dụng');
+    }
+    if (baiViet.loai_bai_viet === 'repost') {
+      throw new BadRequestException('Không thể chia sẻ lại một bài đăng lại');
     }
 
     const existed = await this.tuongTacRepo.findOne({

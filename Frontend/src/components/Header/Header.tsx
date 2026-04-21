@@ -111,6 +111,10 @@ export default function Header() {
 
     const vaiTroLabel = nguoiDung?.vai_tro === 'chu_cua_hang' ? 'Cửa hàng'
         : nguoiDung?.vai_tro === 'admin' ? 'Admin' : 'Người dùng';
+    const avatarSrc =
+        nguoiDung?.anh_dai_dien && String(nguoiDung.anh_dai_dien).trim()
+            ? String(nguoiDung.anh_dai_dien)
+            : null;
     const daHydrate = useSyncExternalStore(
         () => () => { },
         () => true,
@@ -234,8 +238,16 @@ export default function Header() {
                             <button type="button" onClick={() => { setIsProfileOpen((c) => !c); setIsNotificationsOpen(false); }}
                                 className="flex items-center gap-3 rounded-full border border-[#eef1ea] bg-white px-2 py-1.5 shadow-[0_8px_20px_rgba(72,101,64,0.08)] transition hover:border-[#d9e5d4]">
                                 <div className="flex items-center gap-3">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f6f1ca] text-[11px] font-bold text-[#4f5b2d]">
-                                        {nguoiDung.ten_hien_thi.slice(0, 6)}
+                                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f6f1ca] text-[11px] font-bold text-[#4f5b2d]">
+                                        {avatarSrc ? (
+                                            <img
+                                                src={avatarSrc}
+                                                alt={nguoiDung.ten_hien_thi}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            nguoiDung.ten_hien_thi.slice(0, 6)
+                                        )}
                                     </div>
                                     <div className="hidden text-left md:block">
                                         <div className="max-w-[150px] truncate text-[14px] font-bold text-[#1d1d1d]">{nguoiDung.ten_hien_thi}</div>
@@ -248,13 +260,26 @@ export default function Header() {
                             {isProfileOpen ? (
                                 <div className="absolute right-0 top-[calc(100%+14px)] z-50 w-[260px] overflow-hidden rounded-[18px] border border-[#e5ebe0] bg-white shadow-[0_22px_40px_rgba(0,0,0,0.12)]">
                                     <div className="border-b border-[#eef2eb] bg-[linear-gradient(135deg,#f6fbf2_0%,#ffffff_100%)] px-5 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="text-[17px] font-bold text-[#1d1d1d]">{nguoiDung.ten_hien_thi}</div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f6f1ca] text-[11px] font-bold text-[#4f5b2d]">
+                                                {avatarSrc ? (
+                                                    <img
+                                                        src={avatarSrc}
+                                                        alt={nguoiDung.ten_hien_thi}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    nguoiDung.ten_hien_thi.slice(0, 2).toUpperCase()
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="truncate text-[17px] font-bold text-[#1d1d1d]">{nguoiDung.ten_hien_thi}</div>
+                                                <div className="mt-1 text-[14px] text-[#70816d]">@{nguoiDung.ten_dang_nhap}</div>
+                                            </div>
                                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
                                                 nguoiDung.vai_tro === 'chu_cua_hang' ? 'bg-[#fff1ee] text-[#d92d20]' : 'bg-[#edf7ed] text-[#2f7d32]'
                                             }`}>{vaiTroLabel}</span>
                                         </div>
-                                        <div className="mt-1 text-[14px] text-[#70816d]">@{nguoiDung.ten_dang_nhap}</div>
                                     </div>
 
                                     <div className="py-2">

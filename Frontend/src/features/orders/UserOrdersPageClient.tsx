@@ -15,6 +15,7 @@ import {
     type UserOrdersByTab,
 } from '@/features/orders/data';
 import { userCommerceApi } from '@/shared/userCommerceApi';
+import { useToast } from '@/shared/toast';
 
 const validOrderTabs: OrderTabKey[] = ['placed', 'purchased', 'cancelled', 'returned', 'review'];
 
@@ -98,9 +99,11 @@ function CancelModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
 function RefundModal({
     onClose,
     onConfirm,
+    error,
 }: {
     onClose: () => void;
     onConfirm: (reason: string, bankInfo: string) => void;
+    error?: string | null;
 }) {
     const [reason, setReason] = useState(refundReasonOptions[0]);
     const [bankInfo, setBankInfo] = useState('');
@@ -124,6 +127,7 @@ function RefundModal({
                     placeholder="Ví dụ: VCB - 123456789 - NGUYEN VAN A"
                     className="h-[44px] w-full rounded-[12px] border border-[#e8edf1] px-4 text-[14px] text-black outline-none"
                 />
+                {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
             </div>
             <div className="mt-6 flex justify-center">
                 <button
@@ -590,6 +594,7 @@ export default function UserOrdersPageClient() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const toast = useToast();
     const activeTab = resolveTab(searchParams.get('menu'));
     const paymentNotice = searchParams.get('payment');
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -607,6 +612,12 @@ export default function UserOrdersPageClient() {
     const [isLoading, setIsLoading] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (refundOrderId) {
+            setActionError(null);
+        }
+    }, [refundOrderId]);
 
     const navigateToTab = (tab: OrderTabKey) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -831,7 +842,9 @@ export default function UserOrdersPageClient() {
     const handleRefund = async (reason: string, bankInfo: string) => {
         if (!refundOrder) return;
         if (!bankInfo.trim()) {
-            setActionError('Vui lòng nhập tài khoản ngân hàng nhận hoàn tiền.');
+            const message = 'Vui lòng nhập tài khoản ngân hàng nhận hoàn tiền.';
+            setActionError(message);
+            toast.error(message);
             return;
         }
         try {
@@ -841,14 +854,16 @@ export default function UserOrdersPageClient() {
                 thong_tin_tai_khoan_hoan_tien: bankInfo.trim(),
             });
             setRefundOrderId(null);
+            toast.success('Đã gửi yêu cầu hoàn tiền.');
             await loadOrders();
             navigateToTab('returned');
         } catch (error) {
-            setActionError(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : 'Không gửi được yêu cầu hoàn tiền',
-            );
+                    : 'Không gửi được yêu cầu hoàn tiền';
+            setActionError(message);
+            toast.error(message);
         }
     };
 
@@ -940,13 +955,19 @@ export default function UserOrdersPageClient() {
                 <aside className="overflow-hidden rounded-[20px] bg-white shadow-[0_10px_24px_rgba(0,0,0,0.03)]"><div className="border-b border-[#e2ece0] px-7 py-7 text-[21px] font-bold text-black">Đơn Hàng</div><div>{orderTabs.map((tab) => <button key={tab.key} type="button" onClick={() => navigateToTab(tab.key)} className={`flex w-full items-center border-b border-[#e2ece0] px-7 py-5 text-left text-[16px] transition ${activeTab === tab.key ? 'bg-[#edf9ec] font-bold text-[#2f6f25]' : 'text-black hover:bg-[#fafcf9]'}`}>{tab.label}</button>)}</div></aside>
             <div>{content}</div>
             </section>
-            {actionError ? (
+            {actionError && !refundOrder ? (
                 <section className="mx-auto mt-4 w-full max-w-[1320px] px-5">
                     <p className="text-sm text-red-500">{actionError}</p>
                 </section>
             ) : null}
             {cancellingOrder ? <CancelModal onClose={() => setCancellingOrderId(null)} onConfirm={handleCancel} /> : null}
-            {refundOrder ? <RefundModal onClose={() => setRefundOrderId(null)} onConfirm={handleRefund} /> : null}
+            {refundOrder ? (
+                <RefundModal
+                    onClose={() => setRefundOrderId(null)}
+                    onConfirm={handleRefund}
+                    error={actionError}
+                />
+            ) : null}
             {reviewOrder ? <ReviewModal order={reviewOrder} onClose={() => setReviewOrderId(null)} onConfirm={handleReview} /> : null}
         </div>
     );

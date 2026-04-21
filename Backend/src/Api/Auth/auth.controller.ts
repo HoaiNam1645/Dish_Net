@@ -18,6 +18,7 @@ import {
   QuenMatKhauDto,
   DatLaiMatKhauDto,
   GuiLaiOtpDto,
+  DoiMatKhauDto,
 } from "./dto/auth.dto";
 import { Public } from "../../common/decorators/public.decorator";
 import { AUTH_COOKIE_NAME } from "../../common/constants/auth.constants";
@@ -122,6 +123,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async guiLaiOtp(@Body() dto: GuiLaiOtpDto) {
     return this.authService.guiLaiOtp(dto);
+  }
+
+  // Đổi mật khẩu khi đã đăng nhập
+  @Post("doi-mat-khau")
+  @HttpCode(HttpStatus.OK)
+  async doiMatKhau(@Req() req: AuthenticatedRequest, @Body() dto: DoiMatKhauDto) {
+    const token = req.cookies?.[AUTH_COOKIE_NAME];
+    return this.authService.doiMatKhau(req.user!.sub, dto, token);
   }
 
   // Đăng xuất

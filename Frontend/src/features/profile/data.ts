@@ -21,6 +21,7 @@ export type UserProfile = {
     showTrustScore: boolean;
     isPrivate: boolean;
     posts: ProfilePost[];
+    reposts: ProfilePost[];
     videos: ProfileVideo[];
     isMonetized?: boolean;
     earnings?: EarningsProfile;
@@ -35,6 +36,14 @@ export type ProfilePost = {
     comments: string;
     shares: string;
     sends: string;
+    type?: 'bai_viet' | 'video' | 'repost';
+    sharedPost?: {
+        id: string;
+        author: string;
+        date: string;
+        content: string;
+        images: string[];
+    };
 };
 
 export type ProfileVideo = {
@@ -171,6 +180,7 @@ function emptyProfileFromAuth(me?: any): UserProfile {
         isPrivate: false,
         isMonetized: false,
         posts: [],
+        reposts: [],
         videos: [],
         earnings: EMPTY_EARNINGS,
     };
@@ -185,11 +195,12 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
     }
 
     try {
-        const [editPayload, profilePayload, postPayload, videoPayload] = await Promise.all([
+        const [editPayload, profilePayload, postPayload, videoPayload, repostPayload] = await Promise.all([
             requestWithAuthCookie<any>('/user/trang-ca-nhan/me/chinh-sua'),
             requestWithAuthCookie<any>(`/user/trang-ca-nhan/${Number(me.id)}`),
             requestWithAuthCookie<any>(`/user/trang-ca-nhan/${Number(me.id)}/noi-dung?tab=bai_viet&trang=1&so_luong=20`),
             requestWithAuthCookie<any>(`/user/trang-ca-nhan/${Number(me.id)}/noi-dung?tab=video&trang=1&so_luong=20`),
+            requestWithAuthCookie<any>(`/user/trang-ca-nhan/${Number(me.id)}/noi-dung?tab=bai_dang_lai&trang=1&so_luong=20`),
         ]);
 
         const basic = profilePayload?.thong_tin_co_ban ?? {};
@@ -198,11 +209,40 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
                 id: String(item.id),
                 date: item.ngay_dang ? new Date(item.ngay_dang).toLocaleDateString('vi-VN') : '',
                 content: String(item.noi_dung ?? ''),
-                images: Array.isArray(item.tep_dinh_kem) ? item.tep_dinh_kem : [],
+                images: Array.isArray(item.tep_dinh_kem)
+                    ? item.tep_dinh_kem.filter((image: unknown): image is string => typeof image === 'string')
+                    : [],
                 likes: String(item.tong_luot_thich ?? 0),
                 comments: String(item.tong_luot_binh_luan ?? 0),
                 shares: String(item.tong_luot_chia_se ?? 0),
                 sends: '0',
+                type: item.loai_bai_viet ?? 'bai_viet',
+            }))
+            : [];
+        const apiReposts = Array.isArray(repostPayload?.du_lieu)
+            ? repostPayload.du_lieu.map((item: any) => ({
+                id: String(item.id),
+                date: item.ngay_dang ? new Date(item.ngay_dang).toLocaleDateString('vi-VN') : '',
+                content: String(item.noi_dung ?? ''),
+                images: Array.isArray(item.tep_dinh_kem)
+                    ? item.tep_dinh_kem.filter((image: unknown): image is string => typeof image === 'string')
+                    : [],
+                likes: String(item.tong_luot_thich ?? 0),
+                comments: String(item.tong_luot_binh_luan ?? 0),
+                shares: String(item.tong_luot_chia_se ?? 0),
+                sends: '0',
+                type: item.loai_bai_viet ?? 'repost',
+                sharedPost: item.bai_viet_goc
+                    ? {
+                        id: String(item.bai_viet_goc.id),
+                        author: String(item.bai_viet_goc?.thong_tin_nguoi_dang?.ten_hien_thi ?? 'Người dùng'),
+                        date: item.bai_viet_goc?.ngay_dang ? new Date(item.bai_viet_goc.ngay_dang).toLocaleDateString('vi-VN') : '',
+                        content: String(item.bai_viet_goc?.noi_dung ?? ''),
+                        images: Array.isArray(item.bai_viet_goc?.tep_dinh_kem)
+                            ? item.bai_viet_goc.tep_dinh_kem.filter((image: unknown): image is string => typeof image === 'string')
+                            : [],
+                    }
+                    : undefined,
             }))
             : [];
         const apiVideos = Array.isArray(videoPayload?.du_lieu)
@@ -234,6 +274,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
             isPrivate: Boolean(editPayload?.la_tai_khoan_rieng_tu),
             isMonetized: false,
             posts: apiPosts,
+            reposts: apiReposts,
             videos: apiVideos,
             earnings: EMPTY_EARNINGS,
         };

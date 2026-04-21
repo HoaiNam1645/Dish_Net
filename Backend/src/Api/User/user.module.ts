@@ -29,6 +29,10 @@ import { UserContentController } from './user-content.controller';
 import { UserContentService } from './user-content.service';
 import { UserCommerceController } from './user-commerce.controller';
 import { UserCommerceService } from './user-commerce.service';
+import {
+  UserVnpayApiPrefixedController,
+  UserVnpayController,
+} from './user-vnpay.controller';
 
 @Module({
   imports: [
@@ -60,7 +64,12 @@ import { UserCommerceService } from './user-commerce.service';
       PhienThanhToanEntity,
     ]),
   ],
-  controllers: [UserContentController, UserCommerceController],
+  controllers: [
+    UserContentController,
+    UserCommerceController,
+    UserVnpayController,
+    UserVnpayApiPrefixedController,
+  ],
   providers: [UserContentService, UserCommerceService],
 })
 export class UserModule {}

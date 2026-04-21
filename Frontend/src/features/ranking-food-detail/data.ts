@@ -53,6 +53,18 @@ export async function getRankingFoodDetailById(id: string): Promise<RankingFoodD
   const payload: any = await userContentApi.layDanhGiaMonAn(idMonAn, { trang: 1, so_luong: 40 });
   if (!payload?.mon_an) return null;
 
+  const rankingPayload: any = await userContentApi.layBangXepHangChiTiet({
+    tab: 'mon_an',
+    tu_khoa: String(payload.mon_an.ten_mon ?? ''),
+    trang: 1,
+    so_luong: 50,
+  });
+  const rankingRows = Array.isArray(rankingPayload?.du_lieu)
+    ? rankingPayload.du_lieu
+    : [];
+  const rankingItem =
+    rankingRows.find((item: any) => Number(item?.id) === idMonAn) || null;
+
   const monSearchPayload: any = await userContentApi.timKiem({
     tu_khoa: String(payload.mon_an.ten_mon ?? ''),
     loai: 'mon_an',
@@ -66,12 +78,14 @@ export async function getRankingFoodDetailById(id: string): Promise<RankingFoodD
     monRows.find((item: any) => Number(item?.id) === Number(payload.mon_an.id)) ||
     monRows[0] ||
     null;
+  const storeId =
+    monItem?.id_cua_hang != null ? Number(monItem.id_cua_hang) : null;
 
-  const storeId = monItem?.id_cua_hang != null ? Number(monItem.id_cua_hang) : null;
+  const storeNameFromRanking = String(rankingItem?.ten_cua_hang ?? '').trim();
 
-  const storePayload: any = storeId
+  const storePayload: any = storeNameFromRanking
     ? await userContentApi.timKiem({
-        tu_khoa: String(monItem?.ten_mon ?? payload.mon_an.ten_mon ?? ''),
+        tu_khoa: storeNameFromRanking,
         loai: 'cua_hang',
         trang: 1,
         so_luong: 50,
@@ -81,7 +95,9 @@ export async function getRankingFoodDetailById(id: string): Promise<RankingFoodD
     ? storePayload.ket_qua.cua_hang.du_lieu
     : [];
   const store =
-    storeRows.find((item: any) => Number(item?.id) === storeId) ||
+    (storeId != null
+      ? storeRows.find((item: any) => Number(item?.id) === storeId)
+      : null) ||
     storeRows[0] ||
     null;
 
@@ -107,16 +123,29 @@ export async function getRankingFoodDetailById(id: string): Promise<RankingFoodD
     author: review.author,
     source: 'DishNet',
     date: review.date,
-    rating: starText(Number((payload?.thong_ke?.diem_trung_binh || 0) as number)),
+    rating: starText(
+      Number(
+        (Array.isArray(payload?.du_lieu)
+          ? payload.du_lieu.find((item: any) => String(item?.id) === review.id)?.so_sao
+          : 0) || 0,
+      ),
+    ),
     title: 'Đánh giá món ăn',
     body: review.excerpt,
     gallery: review.gallery,
   }));
 
+  const resolvedScore = Number(
+    rankingItem?.diem_danh_gia ??
+      monItem?.diem_danh_gia ??
+      payload?.thong_ke?.diem_trung_binh ??
+      0,
+  );
+
   return {
     id: String(payload.mon_an.id),
     title: payload.mon_an.ten_mon || 'Món ăn',
-    storeName: store?.ten_cua_hang || 'Cửa hàng',
+    storeName: store?.ten_cua_hang || rankingItem?.ten_cua_hang || 'Cửa hàng',
     coverImage: payload.mon_an.hinh_anh || reviews[0]?.heroImage || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
     address: store?.dia_chi || store?.khu_vuc || '',
     hours: '',
@@ -124,7 +153,7 @@ export async function getRankingFoodDetailById(id: string): Promise<RankingFoodD
       monItem?.gia_ban != null
         ? `${Number(monItem.gia_ban).toLocaleString('vi-VN')}đ`
         : '',
-    score: Number(payload?.thong_ke?.diem_trung_binh || 0).toFixed(1),
+    score: resolvedScore.toFixed(1),
     reviews,
     comments,
   };

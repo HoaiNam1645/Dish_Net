@@ -19,6 +19,7 @@ import {
   QuenMatKhauDto,
   DatLaiMatKhauDto,
   GuiLaiOtpDto,
+  DoiMatKhauDto,
 } from "./dto/auth.dto";
 import { EmailService } from "../../shared/email/email.service";
 
@@ -325,6 +326,56 @@ export class AuthService {
     }
 
     return { message: "Ma OTP moi da duoc gui ve email cua ban" };
+  }
+
+  async doiMatKhau(
+    userId: number,
+    dto: DoiMatKhauDto,
+    tokenHienTai?: string,
+  ) {
+    if (dto.mat_khau_moi !== dto.xac_nhan_mat_khau) {
+      throw new BadRequestException(
+        "Mat khau moi va xac nhan mat khau khong trung khop",
+      );
+    }
+
+    const nguoiDung = await this.nguoiDungRepo.findOne({ where: { id: userId } });
+    if (!nguoiDung) {
+      throw new NotFoundException("Nguoi dung khong ton tai");
+    }
+
+    const matKhauCuDung = await compare(
+      dto.mat_khau_hien_tai,
+      nguoiDung.mat_khau_bam,
+    );
+    if (!matKhauCuDung) {
+      throw new BadRequestException("Mat khau hien tai khong dung");
+    }
+
+    const laMatKhauCu = await compare(dto.mat_khau_moi, nguoiDung.mat_khau_bam);
+    if (laMatKhauCu) {
+      throw new BadRequestException(
+        "Mat khau moi khong duoc trung voi mat khau hien tai",
+      );
+    }
+
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
+    nguoiDung.mat_khau_bam = await hash(dto.mat_khau_moi, saltRounds);
+    await this.nguoiDungRepo.save(nguoiDung);
+
+    if (dto.dang_xuat_thiet_bi_khac) {
+      const qb = this.phienDangNhapRepo
+        .createQueryBuilder()
+        .delete()
+        .from(PhienDangNhapEntity)
+        .where("id_nguoi_dung = :userId", { userId });
+      if (tokenHienTai) {
+        qb.andWhere("token_phien != :token", { token: tokenHienTai });
+      }
+      await qb.execute();
+    }
+
+    return { message: "Doi mat khau thanh cong" };
   }
 
   async dangXuat(tokenPhien: string) {

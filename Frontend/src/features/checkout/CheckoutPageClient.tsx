@@ -58,6 +58,9 @@ type CheckoutPromoOption = {
   thoi_gian_ket_thuc?: string;
 };
 
+type CheckoutField = 'recipientName' | 'phone' | 'address';
+type CheckoutFieldErrors = Partial<Record<CheckoutField, string>>;
+
 function formatCurrency(value: number) {
   return `${value.toLocaleString('vi-VN')}đ`;
 }
@@ -161,6 +164,7 @@ export default function CheckoutPageClient() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
 
   const [recipientName, setRecipientName] = useState('');
   const [phone, setPhone] = useState('');
@@ -172,6 +176,56 @@ export default function CheckoutPageClient() {
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
   const [availablePromos, setAvailablePromos] = useState<CheckoutPromoOption[]>([]);
   const [showPromoList, setShowPromoList] = useState(false);
+
+  const mapBackendErrorsToFields = useCallback((rawMessage: string) => {
+    const entries = rawMessage
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const mapped: CheckoutFieldErrors = {};
+
+    entries.forEach((message) => {
+      const lower = message.toLowerCase();
+      if (lower.includes('nguoi_nhan')) {
+        mapped.recipientName = 'Vui lòng nhập tên người nhận.';
+      } else if (lower.includes('so_dien_thoai_nhan')) {
+        mapped.phone = lower.includes('empty')
+          ? 'Vui lòng nhập số điện thoại nhận hàng.'
+          : 'Số điện thoại nhận hàng không hợp lệ.';
+      } else if (lower.includes('dia_chi_giao')) {
+        mapped.address = 'Vui lòng nhập địa chỉ giao hàng.';
+      }
+    });
+
+    return mapped;
+  }, []);
+
+  const validateDeliveryForm = useCallback(() => {
+    const nextErrors: CheckoutFieldErrors = {};
+    const tenNguoiNhan = (recipientName ?? '').trim();
+    const soDienThoai = (phone ?? '').trim();
+    const diaChi = (address ?? '').trim();
+
+    if (!tenNguoiNhan) {
+      nextErrors.recipientName = 'Vui lòng nhập tên người nhận.';
+    }
+
+    if (!soDienThoai) {
+      nextErrors.phone = 'Vui lòng nhập số điện thoại nhận hàng.';
+    } else {
+      const digitsOnly = soDienThoai.replace(/\D/g, '');
+      if (digitsOnly.length < 9 || digitsOnly.length > 11) {
+        nextErrors.phone = 'Số điện thoại không hợp lệ.';
+      }
+    }
+
+    if (!diaChi) {
+      nextErrors.address = 'Vui lòng nhập địa chỉ giao hàng.';
+    }
+
+    return nextErrors;
+  }, [address, phone, recipientName]);
 
   const vnpayCallbackQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -371,8 +425,16 @@ export default function CheckoutPageClient() {
       return;
     }
 
+    const nextErrors = validateDeliveryForm();
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setPageError('Vui lòng kiểm tra lại thông tin giao hàng.');
+      return;
+    }
+
     setIsPlacingOrder(true);
     setPageError(null);
+    setFieldErrors({});
 
     try {
       const result: any = await userCommerceApi.datDonHang({
@@ -390,7 +452,14 @@ export default function CheckoutPageClient() {
       emitUserCartRefreshEvent();
       router.push('/user/orders?menu=placed&payment=success');
     } catch (error) {
-      setPageError(error instanceof Error ? error.message : 'Đặt đơn thất bại');
+      const message = error instanceof Error ? error.message : 'Đặt đơn thất bại';
+      const mappedFieldErrors = mapBackendErrorsToFields(message);
+      if (Object.keys(mappedFieldErrors).length > 0) {
+        setFieldErrors(mappedFieldErrors);
+        setPageError('Vui lòng kiểm tra lại thông tin giao hàng.');
+      } else {
+        setPageError(message);
+      }
     } finally {
       setIsPlacingOrder(false);
     }
@@ -470,9 +539,19 @@ export default function CheckoutPageClient() {
                   </div>
                   <input
                     value={recipientName}
-                    onChange={(event) => setRecipientName(event.target.value)}
-                    className="h-[42px] w-full rounded-[10px] border border-[#e3e6eb] px-4 text-[14px] text-black outline-none transition focus:border-[#cfd6df]"
+                    onChange={(event) => {
+                      setRecipientName(event.target.value);
+                      setFieldErrors((prev) => ({ ...prev, recipientName: undefined }));
+                    }}
+                    className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
+                      fieldErrors.recipientName
+                        ? 'border-[#ef4444] bg-[#fff7f7] focus:border-[#ef4444]'
+                        : 'border-[#e3e6eb] focus:border-[#cfd6df]'
+                    }`}
                   />
+                  {fieldErrors.recipientName ? (
+                    <p className="mt-1 text-[12px] text-[#ef4444]">{fieldErrors.recipientName}</p>
+                  ) : null}
                 </label>
 
                 <label className="block">
@@ -481,9 +560,19 @@ export default function CheckoutPageClient() {
                   </div>
                   <input
                     value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    className="h-[42px] w-full rounded-[10px] border border-[#e3e6eb] px-4 text-[14px] text-black outline-none transition focus:border-[#cfd6df]"
+                    onChange={(event) => {
+                      setPhone(event.target.value);
+                      setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                    }}
+                    className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
+                      fieldErrors.phone
+                        ? 'border-[#ef4444] bg-[#fff7f7] focus:border-[#ef4444]'
+                        : 'border-[#e3e6eb] focus:border-[#cfd6df]'
+                    }`}
                   />
+                  {fieldErrors.phone ? (
+                    <p className="mt-1 text-[12px] text-[#ef4444]">{fieldErrors.phone}</p>
+                  ) : null}
                 </label>
 
                 <label className="block">
@@ -492,9 +581,19 @@ export default function CheckoutPageClient() {
                   </div>
                   <input
                     value={address}
-                    onChange={(event) => setAddress(event.target.value)}
-                    className="h-[42px] w-full rounded-[10px] border border-[#e3e6eb] px-4 text-[14px] text-black outline-none transition focus:border-[#cfd6df]"
+                    onChange={(event) => {
+                      setAddress(event.target.value);
+                      setFieldErrors((prev) => ({ ...prev, address: undefined }));
+                    }}
+                    className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
+                      fieldErrors.address
+                        ? 'border-[#ef4444] bg-[#fff7f7] focus:border-[#ef4444]'
+                        : 'border-[#e3e6eb] focus:border-[#cfd6df]'
+                    }`}
                   />
+                  {fieldErrors.address ? (
+                    <p className="mt-1 text-[12px] text-[#ef4444]">{fieldErrors.address}</p>
+                  ) : null}
                 </label>
 
                 <label className="block">

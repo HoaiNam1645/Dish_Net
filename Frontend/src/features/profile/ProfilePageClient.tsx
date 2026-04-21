@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import CommentModal from '@/features/home/CommentModal';
+import { userContentApi } from '@/shared/userContentApi';
 
 import type {
     EarningsItem,
@@ -258,11 +260,20 @@ function PostMenu({ isOpen, onToggle, onClose }: { isOpen: boolean; onToggle: ()
 function PostCard({
     post,
     profile,
+    onLike,
+    onComment,
+    onShare,
+    onReport,
 }: {
     post: UserProfile['posts'][number];
     profile: UserProfile;
+    onLike: () => void;
+    onComment: () => void;
+    onShare: () => void;
+    onReport: () => void;
 }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const isRepost = post.type === 'repost' || Boolean(post.sharedPost);
 
     return (
         <article className="border-t border-[#d9d9d9] px-4 py-5 sm:px-6">
@@ -288,26 +299,54 @@ function PostCard({
                     </div>
 
                     <div className="mt-3 space-y-2 text-[13px] leading-7 text-[#535353]">
-                        {post.content.split('\n\n').map((paragraph, index) => (
-                            <p key={index}>{paragraph}</p>
-                        ))}
+                        <p className="whitespace-pre-wrap">{post.content}</p>
                     </div>
 
-                    <div className="mt-4 grid max-w-[424px] grid-cols-2 gap-3">
-                        {post.images.slice(0, 2).map((image, index) => (
-                            <img
-                                key={`${post.id}-${index}`}
-                                src={image}
-                                alt=""
-                                className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
-                            />
-                        ))}
-                    </div>
+                    {isRepost && post.sharedPost ? (
+                        <div className="mt-4 rounded-[14px] border border-dashed border-[#dfe6d8] bg-[#f8fbf7] p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-[13px] font-semibold text-[#285e19]">{post.sharedPost.author}</p>
+                                <p className="text-[11px] text-[#7d7d7d]">{post.sharedPost.date}</p>
+                            </div>
+                            <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-[#444]">{post.sharedPost.content}</p>
+                            {post.sharedPost.images.length > 0 ? (
+                                <div className="mt-4 grid max-w-[424px] grid-cols-2 gap-3">
+                                    {post.sharedPost.images.slice(0, 2).map((image, index) => (
+                                        <img
+                                            key={`${post.id}-shared-${index}`}
+                                            src={image}
+                                            alt=""
+                                            className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
+                                        />
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : post.images.length > 0 ? (
+                        <div className="mt-4 grid max-w-[424px] grid-cols-2 gap-3">
+                            {post.images.slice(0, 2).map((image, index) => (
+                                <img
+                                    key={`${post.id}-${index}`}
+                                    src={image}
+                                    alt=""
+                                    className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
+                                />
+                            ))}
+                        </div>
+                    ) : null}
 
                     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 text-[13px] text-[#5b5b5b]">
-                        <span>♡ {post.likes}</span>
-                        <span>◔ {post.comments}</span>
-                        <span>↺ {post.shares}</span>
+                        <button type="button" onClick={onLike} className="transition hover:text-[#285e19]">♡ {post.likes}</button>
+                        <button type="button" onClick={onComment} className="transition hover:text-[#285e19]">◔ {post.comments}</button>
+                        <button
+                            type="button"
+                            onClick={onShare}
+                            disabled={isRepost}
+                            className={`transition ${isRepost ? 'cursor-not-allowed text-[#b5b5b5]' : 'hover:text-[#285e19]'}`}
+                        >
+                            ↺ {post.shares}
+                        </button>
+                        <button type="button" onClick={onReport} className="transition hover:text-[#c62828]">⚑ Báo cáo</button>
                         <span>➤ {post.sends}</span>
                         <button
                             type="button"
@@ -806,8 +845,14 @@ export default function ProfilePageClient({
     const [isWithdrawSuccessOpen, setIsWithdrawSuccessOpen] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('1,000,000');
     const [selectedWithdrawAccountId, setSelectedWithdrawAccountId] = useState(profile.earnings?.withdrawalAccounts[0]?.id ?? '');
+    const [posts, setPosts] = useState(profile.posts);
+    const [reposts, setReposts] = useState(profile.reposts ?? []);
+    const [actionMessage, setActionMessage] = useState<string | null>(null);
+    const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
+    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
 
-    const visiblePosts = sortMode === 'latest' ? profile.posts : [...profile.posts].reverse();
+    const visiblePosts = sortMode === 'latest' ? posts : [...posts].reverse();
+    const visibleReposts = sortMode === 'latest' ? reposts : [...reposts].reverse();
     const visibleVideos = profile.videos;
 
     const tabs = [
@@ -834,10 +879,34 @@ export default function ProfilePageClient({
         setActiveTab('withdrawals');
     };
 
+    const patchPostMetric = (
+        postId: number,
+        field: 'likes' | 'comments' | 'shares',
+        nextValue?: number,
+        delta = 0,
+    ) => {
+        setPosts((current) =>
+            current.map((post) => {
+                if (Number(post.id) !== postId) return post;
+                const currentValue = Number.parseInt(String(post[field] ?? '0'), 10) || 0;
+                const resolved =
+                    Number.isFinite(nextValue as number) && nextValue != null
+                        ? Math.max(0, Number(nextValue))
+                        : Math.max(0, currentValue + delta);
+                return { ...post, [field]: String(resolved) };
+            }),
+        );
+    };
+
     return (
         <div className="bg-[#f3f3f1] px-4 py-7 sm:px-6 lg:py-8">
             <section className="mx-auto w-full max-w-[820px] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.08)] xl:max-w-[880px]">
                 <div className="px-4 pb-3 pt-5 sm:px-6">
+                    {actionMessage ? (
+                        <div className="mb-3 rounded-[10px] bg-[#eaf8eb] px-4 py-3 text-sm text-[#285e19]">
+                            {actionMessage}
+                        </div>
+                    ) : null}
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
                         <div className="mx-auto flex h-[132px] w-[132px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f6f1ca] sm:mx-0">
                             <img src={profile.avatar} alt={profile.name} className="h-[132px] w-[132px] object-cover" />
@@ -949,7 +1018,93 @@ export default function ProfilePageClient({
                     <div>
                         {visiblePosts.length > 0 ? (
                             visiblePosts.map((post) => (
-                                <PostCard key={post.id} post={post} profile={profile} />
+                                <PostCard
+                                    key={post.id}
+                                    post={post}
+                                    profile={profile}
+                                    onLike={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi
+                                            .toggleThichBaiViet(id)
+                                            .then((res: unknown) => {
+                                                const data = (res ?? {}) as {
+                                                    da_tuong_tac?: boolean;
+                                                    tong_luot?: number;
+                                                };
+                                                patchPostMetric(id, 'likes', data.tong_luot);
+                                                setActionMessage(
+                                                    data.da_tuong_tac
+                                                        ? 'Đã thích bài viết'
+                                                        : 'Đã bỏ thích bài viết',
+                                                );
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể thích bài viết',
+                                                ),
+                                            );
+                                    }}
+                                    onComment={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        setActiveCommentPostId(id);
+                                        setIsCommentModalOpen(true);
+                                    }}
+                                    onShare={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        if ((post.type ?? 'bai_viet') === 'repost') {
+                                            setActionMessage('Không thể chia sẻ lại một bài đăng lại');
+                                            return;
+                                        }
+                                        void userContentApi
+                                            .chiaSeBaiViet(id)
+                                            .then((res: unknown) => {
+                                                const data = (res ?? {}) as {
+                                                    tong_luot_chia_se?: number;
+                                                };
+                                                patchPostMetric(
+                                                    id,
+                                                    'shares',
+                                                    data.tong_luot_chia_se,
+                                                );
+                                                setActionMessage('Đã chia sẻ bài viết');
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể chia sẻ bài viết',
+                                                ),
+                                            );
+                                    }}
+                                    onReport={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        const reason = window.prompt(
+                                            'Nhập lý do báo cáo bài viết',
+                                        );
+                                        if (!reason?.trim()) return;
+                                        void userContentApi
+                                            .baoCaoBaiViet(id, {
+                                                loai_vi_pham: 'noi_dung_vi_pham',
+                                                noi_dung_bao_cao: reason.trim(),
+                                            })
+                                            .then(() =>
+                                                setActionMessage('Đã gửi báo cáo bài viết'),
+                                            )
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể báo cáo bài viết',
+                                                ),
+                                            );
+                                    }}
+                                />
                             ))
                         ) : (
                             <div className="border-t border-[#d9d9d9] px-4 py-12 text-center text-[14px] text-[#787878] sm:px-6">
@@ -976,8 +1131,116 @@ export default function ProfilePageClient({
                 ) : null}
 
                 {activeTab === 'reposts' ? (
-                    <div className="border-t border-[#d9d9d9] px-4 py-12 text-center text-[14px] text-[#787878] sm:px-6">
-                        Chưa có bài đăng lại nào được hiển thị.
+                    <div>
+                        {visibleReposts.length > 0 ? (
+                            visibleReposts.map((post) => (
+                                <PostCard
+                                    key={post.id}
+                                    post={post}
+                                    profile={profile}
+                                    onLike={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi
+                                            .toggleThichBaiViet(id)
+                                            .then((res: unknown) => {
+                                                const data = (res ?? {}) as {
+                                                    da_tuong_tac?: boolean;
+                                                    tong_luot?: number;
+                                                };
+                                                setReposts((current) =>
+                                                    current.map((item) =>
+                                                        Number(item.id) === id
+                                                            ? {
+                                                                ...item,
+                                                                likes: String(data.tong_luot ?? Number(item.likes)),
+                                                            }
+                                                            : item,
+                                                    ),
+                                                );
+                                                setActionMessage(
+                                                    data.da_tuong_tac
+                                                        ? 'Đã thích bài viết'
+                                                        : 'Đã bỏ thích bài viết',
+                                                );
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể thích bài viết',
+                                                ),
+                                            );
+                                    }}
+                                    onComment={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        setActiveCommentPostId(id);
+                                        setIsCommentModalOpen(true);
+                                    }}
+                                    onShare={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        if ((post.type ?? 'bai_viet') === 'repost') {
+                                            setActionMessage('Không thể chia sẻ lại một bài đăng lại');
+                                            return;
+                                        }
+                                        void userContentApi
+                                            .chiaSeBaiViet(id)
+                                            .then((res: unknown) => {
+                                                const data = (res ?? {}) as {
+                                                    tong_luot_chia_se?: number;
+                                                };
+                                                setReposts((current) =>
+                                                    current.map((item) =>
+                                                        Number(item.id) === id
+                                                            ? {
+                                                                ...item,
+                                                                shares: String(data.tong_luot_chia_se ?? Number(item.shares)),
+                                                            }
+                                                            : item,
+                                                    ),
+                                                );
+                                                setActionMessage('Đã chia sẻ bài viết');
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể chia sẻ bài viết',
+                                                ),
+                                            );
+                                    }}
+                                    onReport={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        const reason = window.prompt(
+                                            'Nhập lý do báo cáo bài viết',
+                                        );
+                                        if (!reason?.trim()) return;
+                                        void userContentApi
+                                            .baoCaoBaiViet(id, {
+                                                loai_vi_pham: 'noi_dung_vi_pham',
+                                                noi_dung_bao_cao: reason.trim(),
+                                            })
+                                            .then(() =>
+                                                setActionMessage('Đã gửi báo cáo bài viết'),
+                                            )
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error
+                                                        ? e.message
+                                                        : 'Không thể báo cáo bài viết',
+                                                ),
+                                            );
+                                    }}
+                                />
+                            ))
+                        ) : (
+                            <div className="border-t border-[#d9d9d9] px-4 py-12 text-center text-[14px] text-[#787878] sm:px-6">
+                                Chưa có bài đăng lại nào được hiển thị.
+                            </div>
+                        )}
                     </div>
                 ) : null}
 
@@ -1005,9 +1268,22 @@ export default function ProfilePageClient({
                 ) : null}
             </section>
 
-            {isCreatePostModalOpen ? (
-                <CreatePostModal profile={profile} onClose={() => setIsCreatePostModalOpen(false)} />
-            ) : null}
+                {isCreatePostModalOpen ? (
+                    <CreatePostModal profile={profile} onClose={() => setIsCreatePostModalOpen(false)} />
+                ) : null}
+
+                <CommentModal
+                    isOpen={isCommentModalOpen}
+                    onClose={() => {
+                        setIsCommentModalOpen(false);
+                        setActiveCommentPostId(null);
+                    }}
+                    storeName={profile.name}
+                    postId={activeCommentPostId}
+                    onCommentPosted={(postId) => {
+                        patchPostMetric(postId, 'comments', undefined, 1);
+                    }}
+                />
 
             {isWithdrawModalOpen && earnings ? (
                 <WithdrawModal

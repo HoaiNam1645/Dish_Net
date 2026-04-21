@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsBoolean,
   MinLength,
   MaxLength,
 } from "class-validator";
@@ -111,4 +112,23 @@ export class GuiLaiOtpDto {
   @IsString()
   @IsNotEmpty()
   loai_xac_thuc: string;
+}
+
+export class DoiMatKhauDto {
+  @IsString()
+  @IsNotEmpty({ message: "Mat khau hien tai khong duoc de trong" })
+  mat_khau_hien_tai: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Mat khau moi khong duoc de trong" })
+  @MinLength(6, { message: "Mat khau phai co it nhat 6 ky tu" })
+  mat_khau_moi: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Xac nhan mat khau khong duoc de trong" })
+  xac_nhan_mat_khau: string;
+
+  @IsOptional()
+  @IsBoolean()
+  dang_xuat_thiet_bi_khac?: boolean;
 }

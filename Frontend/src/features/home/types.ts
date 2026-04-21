@@ -18,6 +18,7 @@ export interface HeroSection {
 
 export interface SpotlightCard {
     id: string;
+    dealId?: number;
     postId?: number;
     storeId?: number;
     title: string;
@@ -27,21 +28,39 @@ export interface SpotlightCard {
     coverImage: string;
     reviewerAvatar: string;
     galleryImages?: string[];
+    dishName?: string;
+    originalPrice?: string;
+    discountedPrice?: string;
+    discountText?: string;
+    endAt?: string;
 }
 
 export interface FeedPost {
     id: string;
+    type: 'bai_viet' | 'video' | 'repost';
     authorId?: number;
     storeId?: number;
     storeName?: string;
     author: string;
     authorAvatar: string;
     date: string;
-    rating: string;
+    rating: string | null;
     review: string;
     followLabel: string;
     tags: string[];
     images: string[];
+    likeCount: number;
+    commentCount: number;
+    shareCount: number;
+    saveCount: number;
+    isLiked: boolean;
+    sharedPost?: {
+        id: string;
+        author: string;
+        date: string;
+        content: string;
+        images: string[];
+    };
 }
 
 export interface OrderPreview {
@@ -77,6 +96,12 @@ export interface HomePageData {
     rankings: Record<RankingMode, RankingItem[]>;
     spotlightCards: SpotlightCard[];
     feedPosts: FeedPost[];
+    feedPagination: {
+        trang: number;
+        so_luong: number;
+        tong_so: number;
+        tong_trang: number;
+    };
     orderPreview: OrderPreview;
     menu: MenuModalData;
 }

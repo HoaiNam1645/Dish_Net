@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
 import OpenStoreFlow from '@/features/settings/OpenStoreFlow';
+import { useToast } from '@/shared/toast';
+import { authApi } from '@/shared/authApi';
 import { userCommerceApi } from '@/shared/userCommerceApi';
 import { userContentApi } from '@/shared/userContentApi';
 
@@ -91,6 +93,8 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
                 ten_hien_thi: name.trim(),
                 gioi_tinh: normalizeGender(gender),
                 ngay_sinh: parseBirthdateToIso(birthday),
+                so_dien_thoai: phone.trim() || undefined,
+                dia_chi: address.trim() || undefined,
                 cho_hien_thi_huy_hieu: showBadge,
                 cho_hien_thi_diem_uy_tin: showTrustScore,
                 la_tai_khoan_rieng_tu: isPrivate,
@@ -259,7 +263,7 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
             {saveError ? <p className="mt-3 text-center text-sm text-red-500">{saveError}</p> : null}
             {saveSuccess ? <p className="mt-3 text-center text-sm text-[#2f8f27]">{saveSuccess}</p> : null}
             <p className="mt-2 text-center text-xs text-[#8a8a8a]">
-                Email, số điện thoại và địa chỉ trong màn này chỉ hiển thị; cập nhật chính thức qua hồ sơ tài khoản backend.
+                Email hiện chỉ hiển thị; số điện thoại và địa chỉ sẽ được cập nhật vào hồ sơ tài khoản.
             </p>
         </div>
     );
@@ -269,11 +273,51 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
    TAB 2 – Mật khẩu và bảo mật
    ═══════════════════════════════════════════ */
 function PasswordTab() {
+    const toast = useToast();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [logoutOthers, setLogoutOthers] = useState(true);
     const [message, setMessage] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleChangePassword = async () => {
+        if (isSubmitting) return;
+        if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+            setMessage('Vui lòng nhập đầy đủ thông tin mật khẩu.');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setMessage('Mật khẩu mới phải có ít nhất 6 ký tự.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setMessage('Mật khẩu mới và xác nhận mật khẩu chưa khớp.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setMessage(null);
+        try {
+            const payload = await authApi.doiMatKhau({
+                mat_khau_hien_tai: currentPassword,
+                mat_khau_moi: newPassword,
+                xac_nhan_mat_khau: confirmPassword,
+                dang_xuat_thiet_bi_khac: logoutOthers,
+            });
+            toast.success(payload?.message || 'Đổi mật khẩu thành công');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setMessage('Đổi mật khẩu thành công.');
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Đổi mật khẩu thất bại';
+            toast.error(msg);
+            setMessage(msg);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div>
@@ -337,13 +381,12 @@ function PasswordTab() {
 
             <button
                 type="button"
-                onClick={() =>
-                    setMessage('Hiện chưa có endpoint đổi mật khẩu trực tiếp trong API người dùng.')
-                }
-                className="mt-8 w-full rounded-[10px] bg-[#2e7d32] py-3.5 text-[16px] font-bold text-white transition hover:bg-[#256b28]"
+                onClick={() => void handleChangePassword()}
+                disabled={isSubmitting}
+                className="mt-8 w-full rounded-[10px] bg-[#2e7d32] py-3.5 text-[16px] font-bold text-white transition hover:bg-[#256b28] disabled:cursor-not-allowed disabled:opacity-60"
                 id="btn-change-password"
             >
-                Đổi mật khẩu
+                {isSubmitting ? 'Đang xử lý...' : 'Đổi mật khẩu'}
             </button>
             {message ? <p className="mt-3 text-center text-sm text-[#666]">{message}</p> : null}
         </div>

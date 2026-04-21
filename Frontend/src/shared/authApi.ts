@@ -131,6 +131,17 @@ export const authApi = {
       body: JSON.stringify(body),
     }),
 
+  doiMatKhau: (body: {
+    mat_khau_hien_tai: string;
+    mat_khau_moi: string;
+    xac_nhan_mat_khau: string;
+    dang_xuat_thiet_bi_khac?: boolean;
+  }) =>
+    request<{ message: string }>('/auth/doi-mat-khau', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   guiLaiOtp: (body: { email: string; loai_xac_thuc: string }) =>
     request<{ message: string }>('/auth/gui-lai-otp', {
       method: 'POST',

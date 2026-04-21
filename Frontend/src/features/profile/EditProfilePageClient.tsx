@@ -2,9 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
+import { useToast } from '@/shared/toast';
 import { userContentApi } from '@/shared/userContentApi';
 
 function Toggle({
@@ -22,9 +24,10 @@ function Toggle({
             onClick={onToggle}
             className={`relative h-7 w-12 rounded-full transition-colors ${checked ? 'bg-[#2f8f22]' : 'bg-[#737b87]'}`}
             id={id}
+            aria-pressed={checked}
         >
             <span
-                className={`absolute top-[2px] h-[24px] w-[24px] rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-[2px]'}`}
+                className={`absolute left-[2px] top-[2px] h-[24px] w-[24px] rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0'}`}
             />
         </button>
     );
@@ -62,6 +65,8 @@ export default function EditProfilePageClient({
     profile: UserProfile;
     backHref?: string;
 }) {
+    const router = useRouter();
+    const toast = useToast();
     const [accountName, setAccountName] = useState(profile.handle || profile.name);
     const [gender, setGender] = useState(profile.gender);
     const [birthday, setBirthday] = useState(profile.birthday);
@@ -74,6 +79,13 @@ export default function EditProfilePageClient({
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<{
+        accountName?: string;
+        gender?: string;
+        birthday?: string;
+        bio?: string;
+        general?: string;
+    }>({});
     const [avatarPreview, setAvatarPreview] = useState(profile.avatar);
     const [avatarUploadUrl, setAvatarUploadUrl] = useState<string | null>(null);
 
@@ -92,16 +104,52 @@ export default function EditProfilePageClient({
         return undefined;
     };
 
+    const normalizeGender = (value: string): 'nam' | 'nu' | 'khac' => {
+        const normalized = value.trim().toLowerCase();
+        if (normalized.includes('nam')) return 'nam';
+        if (normalized.includes('nu') || normalized.includes('nữ')) return 'nu';
+        return 'khac';
+    };
+
+    const validateForm = () => {
+        const nextErrors: {
+            accountName?: string;
+            gender?: string;
+            birthday?: string;
+            bio?: string;
+        } = {};
+
+        const name = accountName.trim();
+        if (!name) {
+            nextErrors.accountName = 'Tên tài khoản không được để trống.';
+        } else if (name.length > 50) {
+            nextErrors.accountName = 'Tên tài khoản tối đa 50 ký tự.';
+        }
+
+        if (birthday.trim() && !toIsoDate(birthday)) {
+            nextErrors.birthday = 'Ngày sinh không hợp lệ (dd/mm/yyyy).';
+        }
+
+        if (bio.length > 80) {
+            nextErrors.bio = 'Tiểu sử tối đa 80 ký tự.';
+        }
+
+        setFieldErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+
     const handleSave = async () => {
+        if (!validateForm()) {
+            toast.error('Vui lòng kiểm tra lại các trường đang báo lỗi.');
+            return;
+        }
+
         setIsSaving(true);
+        setFieldErrors({});
         try {
             await userContentApi.chinhSuaTrangCaNhan({
                 ten_dang_nhap: accountName.trim() || undefined,
-                gioi_tinh: gender.toLowerCase().includes('nam')
-                    ? 'nam'
-                    : gender.toLowerCase().includes('nu')
-                        ? 'nu'
-                        : 'khac',
+                gioi_tinh: normalizeGender(gender),
                 ngay_sinh: toIsoDate(birthday),
                 tieu_su: bio.trim() || undefined,
                 anh_dai_dien: avatarUploadUrl ?? undefined,
@@ -111,11 +159,26 @@ export default function EditProfilePageClient({
             });
             setIsSaving(false);
             setSaved(true);
-            window.setTimeout(() => setSaved(false), 1800);
-        } catch {
+            toast.success('Đã lưu thông tin cá nhân');
+            window.setTimeout(() => {
+                setSaved(false);
+                router.push(backHref);
+                router.refresh();
+            }, 450);
+        } catch (error) {
             setIsSaving(false);
             setSaved(false);
-            window.alert('Lưu thất bại, vui lòng kiểm tra dữ liệu và thử lại.');
+            const message = error instanceof Error ? error.message : 'Lưu thất bại, vui lòng kiểm tra dữ liệu và thử lại.';
+            if (message.toLowerCase().includes('tên tài khoản')) {
+                setFieldErrors({ accountName: message });
+            } else if (message.toLowerCase().includes('ngày sinh')) {
+                setFieldErrors({ birthday: message });
+            } else if (message.toLowerCase().includes('tiểu sử')) {
+                setFieldErrors({ bio: message });
+            } else {
+                setFieldErrors({ general: message });
+            }
+            toast.error(message);
         }
     };
 
@@ -174,8 +237,12 @@ export default function EditProfilePageClient({
                                                 setAvatarPreview(uploadedUrl);
                                             }
                                         })
-                                        .catch(() => {
-                                            window.alert('Upload ảnh thất bại. Vui lòng thử lại.');
+                                        .catch((error) => {
+                                            toast.error(
+                                                error instanceof Error
+                                                    ? error.message
+                                                    : 'Upload ảnh thất bại. Vui lòng thử lại.',
+                                            );
                                         })
                                         .finally(() => {
                                             setIsUploadingAvatar(false);
@@ -190,10 +257,16 @@ export default function EditProfilePageClient({
                             <input
                                 type="text"
                                 value={accountName}
-                                onChange={(e) => setAccountName(e.target.value)}
-                                className="h-12 w-full rounded-[10px] border border-[#e1e5ea] bg-[#fafbfc] px-4 text-[15px] text-[#1d1d1d] outline-none transition focus:border-[#2f8f22] focus:bg-white"
+                                onChange={(e) => {
+                                    setAccountName(e.target.value);
+                                    setFieldErrors((current) => ({ ...current, accountName: undefined, general: undefined }));
+                                }}
+                                className={`h-12 w-full rounded-[10px] border bg-[#fafbfc] px-4 text-[15px] text-[#1d1d1d] outline-none transition focus:bg-white ${
+                                    fieldErrors.accountName ? 'border-[#e04f4f] focus:border-[#e04f4f]' : 'border-[#e1e5ea] focus:border-[#2f8f22]'
+                                }`}
                                 id="input-name"
                             />
+                            {fieldErrors.accountName ? <p className="mt-1 text-[13px] text-[#d33434]">{fieldErrors.accountName}</p> : null}
                         </RowField>
 
                         <RowField label="Giới tính">
@@ -201,12 +274,16 @@ export default function EditProfilePageClient({
                                 <input
                                     type="text"
                                     value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
+                                    onChange={(e) => {
+                                        setGender(e.target.value);
+                                        setFieldErrors((current) => ({ ...current, gender: undefined, general: undefined }));
+                                    }}
                                     className="h-12 flex-1 rounded-[10px] border border-[#e1e5ea] bg-white px-4 text-[15px] text-[#1d1d1d] outline-none transition focus:border-[#2f8f22]"
                                     id="input-gender"
                                 />
                                 <Toggle checked={showGender} onToggle={() => setShowGender((current) => !current)} id="toggle-gender" />
                             </div>
+                            {fieldErrors.gender ? <p className="mt-1 text-[13px] text-[#d33434]">{fieldErrors.gender}</p> : null}
                         </RowField>
 
                         <RowField label="Ngày sinh">
@@ -215,9 +292,14 @@ export default function EditProfilePageClient({
                                     <input
                                         type="text"
                                         value={birthday}
-                                        onChange={(e) => setBirthday(e.target.value)}
+                                        onChange={(e) => {
+                                            setBirthday(e.target.value);
+                                            setFieldErrors((current) => ({ ...current, birthday: undefined, general: undefined }));
+                                        }}
                                         placeholder="dd/mm/yyyy"
-                                        className="h-12 w-full rounded-[10px] border border-[#e1e5ea] bg-white px-4 pr-11 text-[15px] text-[#1d1d1d] outline-none transition focus:border-[#2f8f22]"
+                                        className={`h-12 w-full rounded-[10px] border bg-white px-4 pr-11 text-[15px] text-[#1d1d1d] outline-none transition ${
+                                            fieldErrors.birthday ? 'border-[#e04f4f] focus:border-[#e04f4f]' : 'border-[#e1e5ea] focus:border-[#2f8f22]'
+                                        }`}
                                         id="input-birthday"
                                     />
                                     <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#666]">
@@ -231,21 +313,28 @@ export default function EditProfilePageClient({
                                 </div>
                                 <Toggle checked={showBirthday} onToggle={() => setShowBirthday((current) => !current)} id="toggle-birthday" />
                             </div>
+                            {fieldErrors.birthday ? <p className="mt-1 text-[13px] text-[#d33434]">{fieldErrors.birthday}</p> : null}
                         </RowField>
 
                         <RowField label="Tiểu sử">
                             <div>
                                 <textarea
                                     value={bio}
-                                    onChange={(e) => setBio(e.target.value.slice(0, 80))}
+                                    onChange={(e) => {
+                                        setBio(e.target.value.slice(0, 80));
+                                        setFieldErrors((current) => ({ ...current, bio: undefined, general: undefined }));
+                                    }}
                                     placeholder="Tiểu sử"
                                     rows={4}
-                                    className="w-full resize-none rounded-[10px] border border-[#e1e5ea] bg-[#fafbfc] px-4 py-3 text-[15px] text-[#1d1d1d] outline-none transition focus:border-[#2f8f22] focus:bg-white"
+                                    className={`w-full resize-none rounded-[10px] border bg-[#fafbfc] px-4 py-3 text-[15px] text-[#1d1d1d] outline-none transition focus:bg-white ${
+                                        fieldErrors.bio ? 'border-[#e04f4f] focus:border-[#e04f4f]' : 'border-[#e1e5ea] focus:border-[#2f8f22]'
+                                    }`}
                                     id="input-bio"
                                 />
                                 <div className="mt-1 text-[12px] text-[#8e939c]">
                                     {80 - remainingBio}/80
                                 </div>
+                                {fieldErrors.bio ? <p className="mt-1 text-[13px] text-[#d33434]">{fieldErrors.bio}</p> : null}
                             </div>
                         </RowField>
 
@@ -273,6 +362,7 @@ export default function EditProfilePageClient({
                         </div>
 
                         <div className="mt-6 flex items-center justify-end gap-3">
+                            {fieldErrors.general ? <p className="mr-auto text-[13px] text-[#d33434]">{fieldErrors.general}</p> : null}
                             <Link
                                 href={backHref}
                                 className="flex h-12 min-w-[82px] items-center justify-center rounded-[8px] border border-[#e3e3e3] bg-white px-5 text-[15px] font-semibold text-[#4b4f56] transition hover:bg-[#f7f7f7]"

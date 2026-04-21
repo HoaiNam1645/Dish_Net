@@ -341,8 +341,15 @@ export class UserContentController {
    */
   @Public()
   @Get('bang-tin')
-  async layBangTin(@Query() query: PhanTrangQueryDto) {
-    return this.userContentService.layBangTin(query.trang, query.so_luong);
+  async layBangTin(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: PhanTrangQueryDto,
+  ) {
+    return this.userContentService.layBangTin(
+      query.trang,
+      query.so_luong,
+      req.user?.sub,
+    );
   }
 
   /**

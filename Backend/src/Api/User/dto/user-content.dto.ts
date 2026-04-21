@@ -133,6 +133,16 @@ export class ChinhSuaTrangCaNhanDto {
   tieu_su?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  so_dien_thoai?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  dia_chi?: string;
+
+  @IsOptional()
   @IsBoolean()
   cho_hien_thi_huy_hieu?: boolean;
 
