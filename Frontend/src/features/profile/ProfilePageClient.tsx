@@ -2,14 +2,16 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import CommentModal from '@/features/home/CommentModal';
 import { userContentApi } from '@/shared/userContentApi';
+import { userCommerceApi } from '@/shared/userCommerceApi';
 
 import type {
     EarningsItem,
     EarningsItemStatus,
+    ProfilePost,
     EarningsProfile,
     UserProfile,
     WithdrawalAccount,
@@ -119,6 +121,105 @@ function SearchImageIcon() {
     );
 }
 
+function RevenuePostDetailModal({
+    postId,
+    onClose,
+}: {
+    postId: number | null;
+    onClose: () => void;
+}) {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [detail, setDetail] = useState<{
+        title: string;
+        author: string;
+        createdAt: string;
+        content: string;
+        mediaUrls: string[];
+    } | null>(null);
+
+    useEffect(() => {
+        if (!postId) return;
+        let active = true;
+        setLoading(true);
+        setError(null);
+        setDetail(null);
+
+        userContentApi
+            .layChiTietBaiViet(postId)
+            .then((payload: unknown) => {
+                if (!active) return;
+                const data = (payload ?? {}) as Record<string, unknown>;
+                const author = (data.thong_tin_nguoi_dang ?? {}) as Record<string, unknown>;
+                const media = Array.isArray(data.tep_dinh_kem) ? data.tep_dinh_kem : [];
+                const mediaUrls = media
+                    .map((item) => {
+                        if (typeof item === 'string') return item;
+                        if (item && typeof item === 'object' && 'url' in item) {
+                            const url = (item as { url?: unknown }).url;
+                            return typeof url === 'string' ? url : null;
+                        }
+                        return null;
+                    })
+                    .filter((item): item is string => typeof item === 'string');
+
+                setDetail({
+                    title: String(data.noi_dung ?? 'Bài viết'),
+                    author: String(author.ten_hien_thi ?? 'Người dùng'),
+                    createdAt: data.ngay_dang
+                        ? new Date(String(data.ngay_dang)).toLocaleString('vi-VN')
+                        : '',
+                    content: String(data.noi_dung ?? ''),
+                    mediaUrls,
+                });
+            })
+            .catch((e) => {
+                if (!active) return;
+                setError(e instanceof Error ? e.message : 'Không tải được chi tiết bài viết');
+            })
+            .finally(() => {
+                if (!active) return;
+                setLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [postId]);
+
+    if (!postId) return null;
+
+    return (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+            <div className="w-full max-w-[760px] rounded-[16px] bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.2)]" onClick={(event) => event.stopPropagation()}>
+                <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-[22px] font-bold text-black">Chi tiết bài viết</h3>
+                    <button type="button" onClick={onClose} className="text-[34px] leading-none text-[#555]">×</button>
+                </div>
+
+                {loading ? <p className="text-[14px] text-[#666]">Đang tải...</p> : null}
+                {error ? <p className="text-[14px] text-red-500">{error}</p> : null}
+                {!loading && !error && detail ? (
+                    <div className="space-y-3">
+                        <p className="text-[14px] text-[#666]">
+                            <strong className="text-black">{detail.author}</strong>
+                            {detail.createdAt ? ` • ${detail.createdAt}` : ''}
+                        </p>
+                        <p className="whitespace-pre-wrap text-[16px] text-black">{detail.content || detail.title}</p>
+                        {detail.mediaUrls.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                {detail.mediaUrls.map((url) => (
+                                    <img key={url} src={url} alt="" className="h-[180px] w-full rounded-[10px] object-cover" />
+                                ))}
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
 function Badge({ children, tone = 'yellow' }: { children: ReactNode; tone?: 'yellow' | 'pink' }) {
     const toneClass = tone === 'yellow'
         ? 'bg-[#faedc8] text-[#202020]'
@@ -131,8 +232,79 @@ function Badge({ children, tone = 'yellow' }: { children: ReactNode; tone?: 'yel
     );
 }
 
-function CreatePostModal({ profile, onClose }: { profile: UserProfile; onClose: () => void }) {
-    const [isOrderLink, setIsOrderLink] = useState(false);
+function CreatePostModal({
+    profile,
+    onClose,
+    onSubmit,
+    initialData,
+}: {
+    profile: UserProfile;
+    onClose: () => void;
+    onSubmit: (payload: {
+        content: string;
+        mediaUrls: string[];
+        monetize: boolean;
+        dishLink: string;
+        visibility: 'cong_khai' | 'ban_be';
+    }) => Promise<void>;
+    initialData?: {
+        content: string;
+        mediaUrls: string[];
+        monetize: boolean;
+        dishLink: string;
+        visibility: 'cong_khai' | 'ban_be';
+    };
+}) {
+    const [isOrderLink, setIsOrderLink] = useState(Boolean(initialData?.monetize));
+    const [content, setContent] = useState(initialData?.content ?? '');
+    const [mediaUrls, setMediaUrls] = useState<string[]>(initialData?.mediaUrls ?? []);
+    const [dishLink, setDishLink] = useState(initialData?.dishLink ?? '');
+    const [visibility, setVisibility] = useState<'cong_khai' | 'ban_be'>(
+        initialData?.visibility ?? 'cong_khai',
+    );
+    const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const canSubmit =
+        (content.trim().length > 0 || mediaUrls.length > 0) &&
+        !isSubmitting &&
+        !isUploadingMedia;
+
+    const handleSubmit = async () => {
+        if (!canSubmit) return;
+        try {
+            setIsSubmitting(true);
+            await onSubmit({
+                content: content.trim(),
+                mediaUrls,
+                monetize: isOrderLink,
+                dishLink: dishLink.trim(),
+                visibility,
+            });
+            onClose();
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handlePickMedia = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleMediaChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        if (files.length === 0) return;
+        setIsUploadingMedia(true);
+        try {
+            const uploaded = await Promise.all(
+                files.map((file) => userContentApi.uploadTepBaiViet(file)),
+            );
+            setMediaUrls((current) => [...current, ...uploaded.map((item) => item.url)]);
+        } finally {
+            setIsUploadingMedia(false);
+            event.target.value = '';
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex justify-center bg-black/40 px-4 pt-[10vh] backdrop-blur-sm">
@@ -151,29 +323,66 @@ function CreatePostModal({ profile, onClose }: { profile: UserProfile; onClose: 
                         <div className="flex-1">
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-black">{profile.handle}</span>
-                                <button className="flex items-center gap-1 rounded bg-[#e4e6eb] px-2 py-0.5 text-[12px] font-medium text-[#050505]">
+                                <div className="flex items-center gap-1 rounded bg-[#e4e6eb] px-2 py-0.5 text-[12px] font-medium text-[#050505]">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                     </svg>
-                                    Bạn bè
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="m6 9 6 6 6-6" />
-                                    </svg>
-                                </button>
+                                    <select
+                                        value={visibility}
+                                        onChange={(event) =>
+                                            setVisibility(event.target.value as 'cong_khai' | 'ban_be')
+                                        }
+                                        className="bg-transparent outline-none"
+                                    >
+                                        <option value="cong_khai">Công khai</option>
+                                        <option value="ban_be">Bạn bè</option>
+                                    </select>
+                                </div>
                             </div>
+
                             <textarea
                                 placeholder="Có gì mới?"
+                                value={content}
+                                onChange={(event) => setContent(event.target.value)}
                                 className="mt-2 w-full resize-none bg-transparent text-[16px] outline-none placeholder:text-[#8a8d91]"
                                 rows={3}
                                 autoFocus
                             />
 
                             <div className="mt-2 flex items-center gap-4 text-[#65676b]">
-                                <button className="transition hover:text-black"><SearchImageIcon /></button>
-                                <button className="transition hover:text-black"><GridIcon /></button>
-                                <button className="transition hover:text-black"><VideoIcon /></button>
-                                <button className="transition hover:text-black"><RepostIcon /></button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    accept="image/*,video/*"
+                                    className="hidden"
+                                    onChange={(event) => void handleMediaChange(event)}
+                                />
+                                <button type="button" onClick={handlePickMedia} className="transition hover:text-black">
+                                    <SearchImageIcon />
+                                </button>
+                                {isUploadingMedia ? <span className="text-[12px] text-[#8a8d91]">Đang tải tệp...</span> : null}
                             </div>
+
+                            {mediaUrls.length > 0 ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {mediaUrls.map((url) => (
+                                        <button
+                                            key={url}
+                                            type="button"
+                                            onClick={() => setMediaUrls((current) => current.filter((item) => item !== url))}
+                                            className="max-w-[220px] truncate rounded-full bg-[#f1f3f5] px-3 py-1 text-[12px] text-[#4b4f56]"
+                                            title="Bấm để bỏ tệp"
+                                        >
+                                            {url.split('/').pop()} ×
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : null}
+
+                            {content.trim().length === 0 && mediaUrls.length === 0 ? (
+                                <p className="mt-3 text-[12px] text-[#8a8d91]">Vui lòng nhập nội dung hoặc thêm phương tiện</p>
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -191,14 +400,25 @@ function CreatePostModal({ profile, onClose }: { profile: UserProfile; onClose: 
                         <input
                             type="text"
                             placeholder="Link món"
+                            value={dishLink}
+                            onChange={(event) => setDishLink(event.target.value)}
                             className="h-[34px] w-[180px] rounded-[6px] border border-[#ced0d4] px-3 text-[14px] outline-none transition focus:border-[#1a6e14]"
                             disabled={!isOrderLink}
                             style={{ opacity: isOrderLink ? 1 : 0.6 }}
                         />
                     </div>
 
-                    <button className="rounded-[8px] border border-[#f0f0f0] px-6 py-1.5 font-bold text-[#bcc0c4]">
-                        Đăng
+                    <button
+                        type="button"
+                        onClick={() => void handleSubmit()}
+                        disabled={!canSubmit}
+                        className={`rounded-[8px] border px-6 py-1.5 font-bold transition ${
+                            canSubmit
+                                ? 'border-[#2f8e2a] bg-[#2f8e2a] text-white hover:bg-[#277823]'
+                                : 'border-[#f0f0f0] text-[#bcc0c4]'
+                        }`}
+                    >
+                        {isSubmitting ? 'Đang đăng...' : 'Đăng'}
                     </button>
                 </div>
             </div>
@@ -230,7 +450,19 @@ function CreatePostBox({ profile, onClick }: { profile: UserProfile; onClick: ()
     );
 }
 
-function PostMenu({ isOpen, onToggle, onClose }: { isOpen: boolean; onToggle: () => void; onClose: () => void }) {
+function PostMenu({
+    isOpen,
+    onToggle,
+    onClose,
+    onEdit,
+    onDelete,
+}: {
+    isOpen: boolean;
+    onToggle: () => void;
+    onClose: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+}) {
     return (
         <div className="relative">
             <button
@@ -243,11 +475,11 @@ function PostMenu({ isOpen, onToggle, onClose }: { isOpen: boolean; onToggle: ()
             </button>
             {isOpen ? (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-10 w-[132px] rounded-[10px] border border-[#ebebeb] bg-white py-1 shadow-[0_16px_32px_rgba(0,0,0,0.12)]">
-                    <button type="button" onClick={onClose} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
+                    <button type="button" onClick={onEdit} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
                         <span>📝</span>
                         <span>Chỉnh sửa</span>
                     </button>
-                    <button type="button" onClick={onClose} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
+                    <button type="button" onClick={onDelete} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
                         <span>🗑️</span>
                         <span>Xóa bài viết</span>
                     </button>
@@ -264,6 +496,9 @@ function PostCard({
     onComment,
     onShare,
     onReport,
+    onOpenDishLink,
+    onEditPost,
+    onDeletePost,
 }: {
     post: UserProfile['posts'][number];
     profile: UserProfile;
@@ -271,9 +506,13 @@ function PostCard({
     onComment: () => void;
     onShare: () => void;
     onReport: () => void;
+    onOpenDishLink: () => void;
+    onEditPost: () => void;
+    onDeletePost: () => void;
 }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isRepost = post.type === 'repost' || Boolean(post.sharedPost);
+    const isVideoUrl = (url: string) => /\.(mp4|mov|avi|mkv)(\?|#|$)/i.test(url);
 
     return (
         <article className="border-t border-[#d9d9d9] px-4 py-5 sm:px-6">
@@ -287,7 +526,7 @@ function PostCard({
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="text-[16px] font-bold text-black">@vy.fooodieee</span>
+                                <span className="text-[16px] font-bold text-black">@{profile.handle}</span>
                                 <span className="text-[11px] text-[#8c8c8c]">{post.date}</span>
                             </div>
                         </div>
@@ -295,6 +534,14 @@ function PostCard({
                             isOpen={isMenuOpen}
                             onToggle={() => setIsMenuOpen((current) => !current)}
                             onClose={() => setIsMenuOpen(false)}
+                            onEdit={() => {
+                                setIsMenuOpen(false);
+                                onEditPost();
+                            }}
+                            onDelete={() => {
+                                setIsMenuOpen(false);
+                                onDeletePost();
+                            }}
                         />
                     </div>
 
@@ -325,12 +572,21 @@ function PostCard({
                     ) : post.images.length > 0 ? (
                         <div className="mt-4 grid max-w-[424px] grid-cols-2 gap-3">
                             {post.images.slice(0, 2).map((image, index) => (
-                                <img
-                                    key={`${post.id}-${index}`}
-                                    src={image}
-                                    alt=""
-                                    className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
-                                />
+                                isVideoUrl(image) ? (
+                                    <video
+                                        key={`${post.id}-${index}`}
+                                        src={image}
+                                        controls
+                                        className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
+                                    />
+                                ) : (
+                                    <img
+                                        key={`${post.id}-${index}`}
+                                        src={image}
+                                        alt=""
+                                        className="h-[154px] w-full rounded-[10px] object-cover sm:h-[168px]"
+                                    />
+                                )
                             ))}
                         </div>
                     ) : null}
@@ -348,12 +604,15 @@ function PostCard({
                         </button>
                         <button type="button" onClick={onReport} className="transition hover:text-[#c62828]">⚑ Báo cáo</button>
                         <span>➤ {post.sends}</span>
-                        <button
-                            type="button"
-                            className="ml-auto rounded-full bg-[#2f8e2a] px-5 py-1.5 text-[12px] font-bold text-white transition hover:bg-[#277823]"
-                        >
-                            Đặt món
-                        </button>
+                        {post.dishLink ? (
+                            <button
+                                type="button"
+                                onClick={onOpenDishLink}
+                                className="ml-auto rounded-full bg-[#2f8e2a] px-5 py-1.5 text-[12px] font-bold text-white transition hover:bg-[#277823]"
+                            >
+                                Đặt món
+                            </button>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -441,11 +700,13 @@ function EarningsCard({
     isMenuOpen,
     onToggleMenu,
     onCloseMenu,
+    onOpenPost,
 }: {
     item: EarningsItem;
     isMenuOpen: boolean;
     onToggleMenu: () => void;
     onCloseMenu: () => void;
+    onOpenPost: (postId: string) => void;
 }) {
     return (
         <article className="rounded-[14px] border border-[#dcd6cb] bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
@@ -494,6 +755,7 @@ function EarningsCard({
                         <p className="text-[13px] text-[#4d4d4d]">Ngày đăng : {item.publishedAt}</p>
                         <button
                             type="button"
+                            onClick={() => onOpenPost(item.id)}
                             className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#202020] px-5 text-[13px] font-semibold text-[#202020] transition hover:bg-[#f8f8f8]"
                         >
                             Xem bài viết
@@ -639,6 +901,7 @@ function EarningsPanel({
     filter,
     searchValue,
     openMenuId,
+    onOpenPost,
     onFilterChange,
     onSearchChange,
     onToggleMenu,
@@ -648,6 +911,7 @@ function EarningsPanel({
     filter: EarningsFilter;
     searchValue: string;
     openMenuId: string | null;
+    onOpenPost: (postId: string) => void;
     onFilterChange: (value: EarningsFilter) => void;
     onSearchChange: (value: string) => void;
     onToggleMenu: (value: string) => void;
@@ -714,6 +978,7 @@ function EarningsPanel({
                         isMenuOpen={openMenuId === item.id}
                         onToggleMenu={() => onToggleMenu(item.id)}
                         onCloseMenu={onCloseMenu}
+                        onOpenPost={onOpenPost}
                     />
                 ))}
             </div>
@@ -831,7 +1096,7 @@ export default function ProfilePageClient({
     editLabel?: string;
 }) {
     const hasEarnings = Boolean(profile.isMonetized && profile.earnings);
-    const earnings = profile.earnings;
+    const [earnings, setEarnings] = useState(profile.earnings);
 
     const [activeTab, setActiveTab] = useState<ProfileTab>(hasEarnings ? 'revenue' : 'posts');
     const [sortMode, setSortMode] = useState<SortMode>('latest');
@@ -846,10 +1111,12 @@ export default function ProfilePageClient({
     const [withdrawAmount, setWithdrawAmount] = useState('1,000,000');
     const [selectedWithdrawAccountId, setSelectedWithdrawAccountId] = useState(profile.earnings?.withdrawalAccounts[0]?.id ?? '');
     const [posts, setPosts] = useState(profile.posts);
+    const [editingPost, setEditingPost] = useState<UserProfile['posts'][number] | null>(null);
     const [reposts, setReposts] = useState(profile.reposts ?? []);
     const [actionMessage, setActionMessage] = useState<string | null>(null);
     const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+    const [activeRevenuePostId, setActiveRevenuePostId] = useState<number | null>(null);
 
     const visiblePosts = sortMode === 'latest' ? posts : [...posts].reverse();
     const visibleReposts = sortMode === 'latest' ? reposts : [...reposts].reverse();
@@ -869,9 +1136,24 @@ export default function ProfilePageClient({
 
     const showSortControls = activeTab === 'posts' || activeTab === 'videos' || activeTab === 'reposts';
 
-    const handleWithdrawConfirm = () => {
-        setIsWithdrawModalOpen(false);
-        setIsWithdrawSuccessOpen(true);
+    const handleWithdrawConfirm = async () => {
+        const amountNumber = Number(String(withdrawAmount).replace(/[^\d]/g, ''));
+        const accountId = Number(selectedWithdrawAccountId);
+        if (!Number.isFinite(accountId) || accountId <= 0) {
+            setActionMessage('Vui lòng chọn tài khoản nhận tiền hợp lệ');
+            return;
+        }
+        try {
+            await userCommerceApi.taoYeuCauRutTien({
+                id_tai_khoan_rut_tien: accountId,
+                so_tien: amountNumber,
+            });
+            setIsWithdrawModalOpen(false);
+            setIsWithdrawSuccessOpen(true);
+            setActionMessage('Đã gửi yêu cầu rút tiền');
+        } catch (e) {
+            setActionMessage(e instanceof Error ? e.message : 'Không thể gửi yêu cầu rút tiền');
+        }
     };
 
     const handleOpenWithdrawalHistory = () => {
@@ -896,6 +1178,82 @@ export default function ProfilePageClient({
                 return { ...post, [field]: String(resolved) };
             }),
         );
+    };
+
+    const handleCreatePost = async ({
+        content,
+        mediaUrls,
+        monetize,
+        dishLink,
+        visibility,
+    }: {
+        content: string;
+        mediaUrls: string[];
+        monetize: boolean;
+        dishLink: string;
+        visibility: 'cong_khai' | 'ban_be';
+    }) => {
+        if (editingPost) {
+            const id = Number(editingPost.id);
+            if (!Number.isFinite(id)) return;
+            const updated = await userContentApi.capNhatBaiViet(id, {
+                noi_dung: content || undefined,
+                tep_dinh_kem: mediaUrls,
+                muc_do_hien_thi: visibility,
+                bat_kiem_tien: monetize,
+                link_mon_an: monetize ? dishLink : undefined,
+            });
+            setPosts((current) =>
+                current.map((item) =>
+                    Number(item.id) === id
+                        ? {
+                            ...item,
+                            content: updated.noi_dung ?? '',
+                            images: updated.tep_dinh_kem?.map((media) => media.url) ?? [],
+                            type: updated.loai_bai_viet === 'video' ? 'video' : 'bai_viet',
+                            visibility: updated.muc_do_hien_thi === 'ban_be' ? 'ban_be' : 'cong_khai',
+                            monetized: Boolean(updated.bat_kiem_tien),
+                            dishLink: updated.link_mon_an ?? null,
+                        }
+                        : item,
+                ),
+            );
+            setEditingPost(null);
+            setActionMessage('Đã cập nhật bài viết');
+            return;
+        }
+
+        const created = await userContentApi.taoBaiViet({
+            noi_dung: content || undefined,
+            tep_dinh_kem: mediaUrls,
+            muc_do_hien_thi: visibility,
+            bat_kiem_tien: monetize,
+            link_mon_an: monetize ? dishLink : undefined,
+        });
+        const newPost: ProfilePost = {
+            id: String(created.id),
+            date: created.ngay_dang
+                ? new Date(created.ngay_dang).toLocaleDateString('vi-VN')
+                : new Date().toLocaleDateString('vi-VN'),
+            content: created.noi_dung ?? '',
+            images: created.tep_dinh_kem?.map((item) => item.url) ?? [],
+            likes: String(created.tong_luot_thich ?? 0),
+            comments: String(created.tong_luot_binh_luan ?? 0),
+            shares: String(created.tong_luot_chia_se ?? 0),
+            sends: '0',
+            type: created.loai_bai_viet === 'video' ? 'video' : 'bai_viet',
+            visibility: created.muc_do_hien_thi === 'ban_be' ? 'ban_be' : 'cong_khai',
+            monetized: Boolean(created.bat_kiem_tien),
+            dishLink: created.link_mon_an ?? null,
+        };
+        setPosts((current) => [newPost, ...current]);
+        setActionMessage('Đã đăng bài viết');
+    };
+
+    const handleOpenEarningPost = (postId: string) => {
+        const id = Number(postId);
+        if (!Number.isFinite(id)) return;
+        setActiveRevenuePostId(id);
     };
 
     return (
@@ -1012,7 +1370,10 @@ export default function ProfilePageClient({
                     </div>
                 </div>
 
-                {activeTab === 'posts' ? <CreatePostBox profile={profile} onClick={() => setIsCreatePostModalOpen(true)} /> : null}
+                {activeTab === 'posts' ? <CreatePostBox profile={profile} onClick={() => {
+                    setEditingPost(null);
+                    setIsCreatePostModalOpen(true);
+                }} /> : null}
 
                 {activeTab === 'posts' ? (
                     <div>
@@ -1101,6 +1462,42 @@ export default function ProfilePageClient({
                                                     e instanceof Error
                                                         ? e.message
                                                         : 'Không thể báo cáo bài viết',
+                                                ),
+                                            );
+                                    }}
+                                    onOpenDishLink={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi
+                                            .nhanLinkMonBaiViet(id)
+                                            .then((res) => {
+                                                if (res?.url) {
+                                                    window.open(res.url, '_blank', 'noopener,noreferrer');
+                                                }
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error ? e.message : 'Không thể mở link món',
+                                                ),
+                                            );
+                                    }}
+                                    onEditPost={() => {
+                                        setEditingPost(post);
+                                        setIsCreatePostModalOpen(true);
+                                    }}
+                                    onDeletePost={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        if (!window.confirm('Bạn muốn xóa bài viết này?')) return;
+                                        void userContentApi
+                                            .xoaBaiViet(id)
+                                            .then(() => {
+                                                setPosts((current) => current.filter((item) => Number(item.id) !== id));
+                                                setActionMessage('Đã xóa bài viết');
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error ? e.message : 'Không thể xóa bài viết',
                                                 ),
                                             );
                                     }}
@@ -1234,6 +1631,42 @@ export default function ProfilePageClient({
                                                 ),
                                             );
                                     }}
+                                    onOpenDishLink={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        void userContentApi
+                                            .nhanLinkMonBaiViet(id)
+                                            .then((res) => {
+                                                if (res?.url) {
+                                                    window.open(res.url, '_blank', 'noopener,noreferrer');
+                                                }
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error ? e.message : 'Không thể mở link món',
+                                                ),
+                                            );
+                                    }}
+                                    onEditPost={() => {
+                                        setEditingPost(post);
+                                        setIsCreatePostModalOpen(true);
+                                    }}
+                                    onDeletePost={() => {
+                                        const id = Number(post.id);
+                                        if (!Number.isFinite(id)) return;
+                                        if (!window.confirm('Bạn muốn xóa bài viết này?')) return;
+                                        void userContentApi
+                                            .xoaBaiViet(id)
+                                            .then(() => {
+                                                setReposts((current) => current.filter((item) => Number(item.id) !== id));
+                                                setActionMessage('Đã xóa bài viết');
+                                            })
+                                            .catch((e) =>
+                                                setActionMessage(
+                                                    e instanceof Error ? e.message : 'Không thể xóa bài viết',
+                                                ),
+                                            );
+                                    }}
                                 />
                             ))
                         ) : (
@@ -1250,6 +1683,7 @@ export default function ProfilePageClient({
                         filter={earningsFilter}
                         searchValue={earningsSearch}
                         openMenuId={openEarningMenuId}
+                        onOpenPost={handleOpenEarningPost}
                         onFilterChange={setEarningsFilter}
                         onSearchChange={setEarningsSearch}
                         onToggleMenu={(value) => setOpenEarningMenuId((current) => current === value ? null : value)}
@@ -1269,7 +1703,25 @@ export default function ProfilePageClient({
             </section>
 
                 {isCreatePostModalOpen ? (
-                    <CreatePostModal profile={profile} onClose={() => setIsCreatePostModalOpen(false)} />
+                    <CreatePostModal
+                        profile={profile}
+                        onClose={() => {
+                            setIsCreatePostModalOpen(false);
+                            setEditingPost(null);
+                        }}
+                        onSubmit={handleCreatePost}
+                        initialData={
+                            editingPost
+                                ? {
+                                    content: editingPost.content,
+                                    mediaUrls: editingPost.images ?? [],
+                                    monetize: Boolean(editingPost.monetized),
+                                    dishLink: editingPost.dishLink ?? '',
+                                    visibility: editingPost.visibility ?? 'cong_khai',
+                                }
+                                : undefined
+                        }
+                    />
                 ) : null}
 
                 <CommentModal
@@ -1304,6 +1756,11 @@ export default function ProfilePageClient({
                     onViewHistory={handleOpenWithdrawalHistory}
                 />
             ) : null}
+
+            <RevenuePostDetailModal
+                postId={activeRevenuePostId}
+                onClose={() => setActiveRevenuePostId(null)}
+            />
         </div>
     );
 }

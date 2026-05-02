@@ -33,6 +33,7 @@ import {
   GuiTinNhanDto,
   HuyDonHangDto,
   TaoHoTroDto,
+  TaoYeuCauRutTienDto,
   ThemVaoGioHangDto,
   YeuCauHoanTienDto,
 } from './dto/user-commerce.dto';
@@ -43,6 +44,8 @@ import { PhienThanhToanEntity } from './entities/phien-thanh-toan.entity';
 import { CuocTroChuyenEntity } from './entities/cuoc-tro-chuyen.entity';
 import { TinNhanEntity } from './entities/tin-nhan.entity';
 import { QuanHeNguoiDungEntity } from './entities/quan-he-nguoi-dung.entity';
+import { TaiKhoanRutTienEntity } from './entities/tai-khoan-rut-tien.entity';
+import { YeuCauRutTienEntity } from './entities/yeu-cau-rut-tien.entity';
 
 type StatusDonHang =
   | 'cho_xac_nhan'
@@ -138,6 +141,10 @@ export class UserCommerceService {
     private readonly tinNhanRepo: Repository<TinNhanEntity>,
     @InjectRepository(QuanHeNguoiDungEntity)
     private readonly quanHeNguoiDungRepo: Repository<QuanHeNguoiDungEntity>,
+    @InjectRepository(TaiKhoanRutTienEntity)
+    private readonly taiKhoanRutTienRepo: Repository<TaiKhoanRutTienEntity>,
+    @InjectRepository(YeuCauRutTienEntity)
+    private readonly yeuCauRutTienRepo: Repository<YeuCauRutTienEntity>,
   ) {}
 
   private parsePaging(trang?: number, soLuong?: number) {
@@ -635,12 +642,87 @@ export class UserCommerceService {
       thoi_gian_xu_ly: null,
     });
 
+    if (user.trang_thai_kiem_tien_noi_dung !== 'da_duyet') {
+      user.trang_thai_kiem_tien_noi_dung = 'cho_duyet';
+      await this.nguoiDungRepo.save(user);
+    }
+
     return {
       id: Number(request.id),
       loai_yeu_cau: request.loai_yeu_cau,
       trang_thai: request.trang_thai,
       thoi_gian_gui: request.thoi_gian_gui,
       message: 'Đã gửi đăng ký kiếm tiền từ nội dung',
+    };
+  }
+
+  async taoYeuCauRutTien(userId: number, dto: TaoYeuCauRutTienDto) {
+    const user = await this.nguoiDungRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Người dùng không tồn tại');
+    }
+    if (!user.la_nha_sang_tao && user.trang_thai_kiem_tien_noi_dung !== 'da_duyet') {
+      throw new ForbiddenException('Tài khoản chưa được phê duyệt kiếm tiền từ nội dung');
+    }
+
+    const soTienRut = Number(dto.so_tien || 0);
+    if (!Number.isFinite(soTienRut) || soTienRut < 100000) {
+      throw new BadRequestException('Số tiền rút tối thiểu phải từ 100.000 VNĐ.');
+    }
+
+    const taiKhoan = await this.taiKhoanRutTienRepo.findOne({
+      where: {
+        id: Number(dto.id_tai_khoan_rut_tien),
+        id_nguoi_dung: userId,
+        trang_thai: 'hieu_luc',
+      },
+    });
+    if (!taiKhoan) {
+      throw new BadRequestException('Tài khoản ngân hàng không hợp lệ');
+    }
+
+    const daHoanThanhRaw = await this.donHangRepo
+      .createQueryBuilder('dh')
+      .select('COALESCE(SUM(dh.hoa_hong_nha_sang_tao), 0)', 'total')
+      .where('dh.id_nha_sang_tao_nguon = :userId', { userId })
+      .andWhere('dh.trang_thai_don_hang = :status', { status: 'da_giao' })
+      .getRawOne<{ total: string }>();
+    const tongHoaHongDaGhiNhan = Number(daHoanThanhRaw?.total ?? 0);
+
+    const rutTienRows = await this.yeuCauRutTienRepo.find({
+      where: { id_nguoi_dung: userId },
+    });
+    const dangXuLy = rutTienRows
+      .filter((row) => row.trang_thai === 'dang_xu_ly')
+      .reduce((sum, row) => sum + Number(row.so_tien), 0);
+    const daRutThanhCong = rutTienRows
+      .filter((row) => row.trang_thai === 'da_hoan_thanh')
+      .reduce((sum, row) => sum + Number(row.so_tien), 0);
+    const soDuKhaDung = Math.max(0, tongHoaHongDaGhiNhan - dangXuLy - daRutThanhCong);
+
+    if (soTienRut > soDuKhaDung) {
+      throw new BadRequestException('Số dư không đủ');
+    }
+
+    const record = await this.yeuCauRutTienRepo.save({
+      ma_yeu_cau: this.taoMa('RT'),
+      id_nguoi_dung: userId,
+      id_tai_khoan_rut_tien: Number(taiKhoan.id),
+      so_tien: soTienRut,
+      trang_thai: 'dang_xu_ly',
+      ly_do_tu_choi: null,
+      id_admin_xu_ly: null,
+      thoi_gian_yeu_cau: new Date(),
+      thoi_gian_xu_ly: null,
+    });
+
+    return {
+      id: Number(record.id),
+      ma_yeu_cau: record.ma_yeu_cau,
+      trang_thai: record.trang_thai,
+      so_tien: Number(record.so_tien),
+      thoi_gian_yeu_cau: record.thoi_gian_yeu_cau,
+      message: 'Đã gửi yêu cầu rút tiền. Yêu cầu đang được xử lý.',
     };
   }
 
@@ -1616,6 +1698,7 @@ export class UserCommerceService {
           thoi_gian_dat: item.thoi_gian_dat,
           thoi_gian_giao: item.thoi_gian_giao,
           co_the_huy: item.trang_thai_don_hang === 'cho_xac_nhan',
+          co_the_xac_nhan_da_nhan: item.trang_thai_don_hang === 'dang_giao',
           co_the_hoan_tien: item.trang_thai_don_hang === 'da_giao',
           co_the_danh_gia: item.trang_thai_don_hang === 'da_giao' && !daDanhGia,
           da_danh_gia: daDanhGia,
@@ -1717,6 +1800,7 @@ export class UserCommerceService {
       thoi_gian_giao: order.thoi_gian_giao,
       thoi_gian_hoan_tat: order.thoi_gian_hoan_tat,
       thoi_gian_huy: order.thoi_gian_huy,
+      co_the_xac_nhan_da_nhan: order.trang_thai_don_hang === 'dang_giao',
       thanh_toan: payment
         ? {
             phuong_thuc: payment.phuong_thuc_thanh_toan,
@@ -1906,6 +1990,44 @@ export class UserCommerceService {
     return {
       message: 'Đã thêm món từ đơn cũ vào giỏ hàng',
       gio_hang: await this.layGioHang(userId),
+    };
+  }
+
+  async xacNhanDaGiao(userId: number, maDonHang: string) {
+    const order = await this.donHangRepo.findOne({
+      where: { ma_don_hang: maDonHang, id_nguoi_mua: userId },
+    });
+    if (!order) {
+      throw new NotFoundException('Đơn hàng không tồn tại');
+    }
+
+    if (order.trang_thai_don_hang !== 'dang_giao') {
+      throw new BadRequestException(
+        'Chỉ đơn hàng đang giao mới có thể xác nhận đã nhận hàng',
+      );
+    }
+
+    const now = new Date();
+    order.trang_thai_don_hang = 'da_giao';
+    order.thoi_gian_hoan_tat = now;
+    if (!order.thoi_gian_giao) {
+      order.thoi_gian_giao = now;
+    }
+
+    await this.donHangRepo.save(order);
+    await this.lichSuDonHangRepo.save({
+      id_don_hang: Number(order.id),
+      trang_thai_tu: 'dang_giao',
+      trang_thai_den: 'da_giao',
+      noi_dung: 'Nguoi mua xac nhan da nhan hang',
+      id_nguoi_cap_nhat: userId,
+      thoi_gian_cap_nhat: now,
+    });
+
+    return {
+      message: 'Đã xác nhận nhận hàng thành công',
+      trang_thai_moi: 'da_giao',
+      thoi_gian_hoan_tat: now,
     };
   }
 

@@ -353,3 +353,12 @@ export class GuiTinNhanDto {
   @MaxLength(5000)
   noi_dung: string;
 }
+
+export class TaoYeuCauRutTienDto {
+  @IsInt()
+  id_tai_khoan_rut_tien: number;
+
+  @IsInt()
+  @Min(1)
+  so_tien: number;
+}

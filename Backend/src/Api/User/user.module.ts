@@ -25,6 +25,10 @@ import { GioHangChiTietEntity } from './entities/gio-hang-chi-tiet.entity';
 import { ThanhToanEntity } from './entities/thanh-toan.entity';
 import { DonHangKhuyenMaiEntity } from './entities/don-hang-khuyen-mai.entity';
 import { PhienThanhToanEntity } from './entities/phien-thanh-toan.entity';
+import { TaiKhoanRutTienEntity } from './entities/tai-khoan-rut-tien.entity';
+import { YeuCauRutTienEntity } from './entities/yeu-cau-rut-tien.entity';
+import { LuotNhanLinkBaiVietEntity } from './entities/luot-nhan-link-bai-viet.entity';
+import { LuotXemBaiVietEntity } from './entities/luot-xem-bai-viet.entity';
 import { UserContentController } from './user-content.controller';
 import { UserContentService } from './user-content.service';
 import { UserCommerceController } from './user-commerce.controller';
@@ -62,6 +66,10 @@ import {
       ThanhToanEntity,
       DonHangKhuyenMaiEntity,
       PhienThanhToanEntity,
+      TaiKhoanRutTienEntity,
+      YeuCauRutTienEntity,
+      LuotNhanLinkBaiVietEntity,
+      LuotXemBaiVietEntity,
     ]),
   ],
   controllers: [

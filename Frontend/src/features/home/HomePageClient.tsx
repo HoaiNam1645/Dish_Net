@@ -2,16 +2,31 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/shared/AuthContext';
 import { userContentApi } from '@/shared/userContentApi';
 
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
-import { getBangTinPage, mapFeedPosts } from './data';
+import { mapFeedPosts } from './data';
 import type { FeedPost, HomePageData, RankingItem, RankingMode, SpotlightCard } from './types';
+
+const FEED_PAGE_SIZE = 10;
+
+type FeedCategoryFilter = 'tat_ca' | 'bai_viet' | 'video' | 'repost';
+type FeedCuisineFilter = 'tat_ca' | 'co_hinh_anh' | 'co_video' | 'chi_van_ban';
+type FeedTimeFilter = 'moi_nhat' | 'hom_nay' | 'hom_qua' | 'tuan_nay' | 'thang_nay';
+
+const FEED_CATEGORY_FILTERS: FeedCategoryFilter[] = ['tat_ca', 'bai_viet', 'video', 'repost'];
+const FEED_CUISINE_FILTERS: FeedCuisineFilter[] = ['tat_ca', 'co_hinh_anh', 'co_video', 'chi_van_ban'];
+const FEED_TIME_FILTERS: FeedTimeFilter[] = ['moi_nhat', 'hom_nay', 'hom_qua', 'tuan_nay', 'thang_nay'];
+
+function parseEnumParam<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+    if (!value) return fallback;
+    return (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+}
 
 const rankingColumnLabels: Record<RankingMode, { name: string; metric: string; popularity: string }> = {
     stores: {
@@ -35,6 +50,50 @@ function RankingRow({ item }: { item: RankingItem }) {
             <div className="truncate text-center text-[11px] text-[#5e625e] whitespace-nowrap">{item.popularity}</div>
         </div>
     );
+}
+
+function parseVietnameseDate(value: string): Date | null {
+    if (!value) return null;
+    const fromNative = new Date(value);
+    if (!Number.isNaN(fromNative.getTime())) return fromNative;
+
+    const ddmmyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!ddmmyyyy) return null;
+    const day = Number(ddmmyyyy[1]);
+    const month = Number(ddmmyyyy[2]) - 1;
+    const year = Number(ddmmyyyy[3]);
+    const parsed = new Date(year, month, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDisplayDate(value: string) {
+    const parsed = parseVietnameseDate(value);
+    if (!parsed) return '';
+    return parsed.toLocaleDateString('vi-VN');
+}
+
+function hasVideoMedia(images: string[]) {
+    return images.some((url) => /\.(mp4|mov|avi|mkv|webm)(\?|#|$)/i.test(url));
+}
+
+function isSameDate(a: Date, b: Date) {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
+function isInCurrentWeek(target: Date, now: Date) {
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+    return target >= startOfWeek && target < endOfWeek;
 }
 
 function SidebarStoreCard({
@@ -209,7 +268,6 @@ function FeedPostCard({
     post,
     onComment,
     onOrder,
-    onOpenMenu,
     onFollow,
     onLike,
     onShare,
@@ -220,7 +278,6 @@ function FeedPostCard({
     post: FeedPost;
     onComment: () => void;
     onOrder: () => void;
-    onOpenMenu: () => void;
     onFollow: () => void;
     onLike: () => void;
     onShare: () => void;
@@ -265,7 +322,7 @@ function FeedPostCard({
                                 TOP REVIEWER
                             </span>
                         </div>
-                        <p className="mt-1 text-sm text-[#727672]">{post.date}</p>
+                        <p className="mt-1 text-sm text-[#727672]">{formatDisplayDate(post.date)}</p>
                     </div>
                 </div>
 
@@ -302,7 +359,7 @@ function FeedPostCard({
                             <div className="mt-4 rounded-[14px] bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
                                 <div className="flex items-center justify-between gap-3">
                                     <p className="text-sm font-semibold text-black">{post.sharedPost.author}</p>
-                                    <p className="text-xs text-[#7a7a7a]">{post.sharedPost.date}</p>
+                                    <p className="text-xs text-[#7a7a7a]">{formatDisplayDate(post.sharedPost.date)}</p>
                                 </div>
                                 <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-[#404040]">{post.sharedPost.content}</p>
                                 {post.sharedPost.images.length > 0 ? (
@@ -335,6 +392,13 @@ function FeedPostCard({
                                     className="h-60 w-full rounded-[18px] object-cover"
                                 />
                             ))}
+                        </div>
+                    ) : null}
+
+                    {post.dishLink ? (
+                        <div className="mt-4 rounded-[12px] border border-[#dbead5] bg-[#f5fbf2] px-4 py-3">
+                            <p className="text-sm font-semibold text-[#2a6b1d]">Link món</p>
+                            <p className="mt-1 line-clamp-1 text-sm text-[#285e19]">{post.dishLink}</p>
                         </div>
                     ) : null}
                 </>
@@ -407,15 +471,6 @@ function FeedPostCard({
                     <button
                         onClick={(event) => {
                             event.stopPropagation();
-                            onOpenMenu();
-                        }}
-                        className="rounded-full border border-[#b7afaf] bg-[#f7f6f6] px-6 py-2 text-sm font-bold text-[#285e19] transition hover:border-[#285e19]"
-                    >
-                        Xem menu
-                    </button>
-                    <button
-                        onClick={(event) => {
-                            event.stopPropagation();
                             onOrder();
                         }}
                         className="rounded-full border border-[#258f22] bg-[#dcebdc] px-6 py-2 text-sm font-bold text-[#285e19] transition hover:bg-[#cae4ca]"
@@ -464,6 +519,19 @@ function PostDetailModal({
                 const data = (payload ?? {}) as Record<string, unknown>;
                 const authorInfo = (data.thong_tin_nguoi_dang ?? {}) as Record<string, unknown>;
                 const storeInfo = data.cua_hang as Record<string, unknown> | null;
+                const extractMediaUrls = (input: unknown): string[] => {
+                    if (!Array.isArray(input)) return [];
+                    return input
+                        .map((item) => {
+                            if (typeof item === 'string') return item;
+                            if (item && typeof item === 'object' && 'url' in item) {
+                                const value = (item as { url?: unknown }).url;
+                                return typeof value === 'string' ? value : '';
+                            }
+                            return '';
+                        })
+                        .filter(Boolean);
+                };
                 setDetail({
                     id: Number(data.id ?? postId),
                     loai_bai_viet: String(data.loai_bai_viet ?? ''),
@@ -477,9 +545,7 @@ function PostDetailModal({
                     cua_hang: storeInfo
                         ? { ten_cua_hang: String(storeInfo.ten_cua_hang ?? 'Cửa hàng') }
                         : null,
-                    tep_dinh_kem: Array.isArray(data.tep_dinh_kem)
-                        ? data.tep_dinh_kem.filter((item): item is string => typeof item === 'string')
-                        : [],
+                    tep_dinh_kem: extractMediaUrls(data.tep_dinh_kem),
                     bai_viet_goc: data.bai_viet_goc
                         ? {
                             id: Number((data.bai_viet_goc as Record<string, unknown>).id ?? 0),
@@ -489,9 +555,7 @@ function PostDetailModal({
                                 ten_hien_thi: String(((data.bai_viet_goc as Record<string, unknown>).thong_tin_nguoi_dang as Record<string, unknown> | undefined)?.ten_hien_thi ?? 'Người dùng'),
                                 anh_dai_dien: ((((data.bai_viet_goc as Record<string, unknown>).thong_tin_nguoi_dang as Record<string, unknown> | undefined)?.anh_dai_dien as string | null) ?? null),
                             },
-                            tep_dinh_kem: Array.isArray((data.bai_viet_goc as Record<string, unknown>).tep_dinh_kem)
-                                ? ((data.bai_viet_goc as Record<string, unknown>).tep_dinh_kem as unknown[]).filter((item): item is string => typeof item === 'string')
-                                : [],
+                            tep_dinh_kem: extractMediaUrls((data.bai_viet_goc as Record<string, unknown>).tep_dinh_kem),
                         }
                         : null,
                 });
@@ -606,6 +670,8 @@ function DealDetailModal({
 
 export default function HomePageClient({ data }: { data: HomePageData }) {
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [rankingMode, setRankingMode] = useState<RankingMode>('stores');
     const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
     const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
@@ -619,15 +685,24 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [visibleDealCount, setVisibleDealCount] = useState(3);
     const [activePostDetailId, setActivePostDetailId] = useState<number | null>(null);
     const [feedPosts, setFeedPosts] = useState<FeedPost[]>(data.feedPosts);
-    const [feedPage, setFeedPage] = useState<number>(Number(data.feedPagination?.trang ?? 1));
-    const [totalFeedPages, setTotalFeedPages] = useState<number>(Number(data.feedPagination?.tong_trang ?? 1));
-    const [isLoadingMorePosts, setIsLoadingMorePosts] = useState(false);
+    const [feedCurrentPage, setFeedCurrentPage] = useState(() => {
+        const page = Number(searchParams.get('page') ?? '1');
+        return Number.isFinite(page) && page > 0 ? page : 1;
+    });
+    const [categoryFilter, setCategoryFilter] = useState<FeedCategoryFilter>(() =>
+        parseEnumParam(searchParams.get('category'), FEED_CATEGORY_FILTERS, 'tat_ca'),
+    );
+    const [cuisineFilter, setCuisineFilter] = useState<FeedCuisineFilter>(() =>
+        parseEnumParam(searchParams.get('cuisine'), FEED_CUISINE_FILTERS, 'tat_ca'),
+    );
+    const [timeFilter, setTimeFilter] = useState<FeedTimeFilter>(() =>
+        parseEnumParam(searchParams.get('time'), FEED_TIME_FILTERS, 'moi_nhat'),
+    );
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
     const [actionMessage, setActionMessage] = useState<string | null>(null);
     const [spotlightCards] = useState<SpotlightCard[]>(data.spotlightCards);
     const [menuData] = useState(data.menu);
-    const feedLoadMoreRef = useRef<HTMLDivElement | null>(null);
     const dealSectionRef = useRef<HTMLElement | null>(null);
     const { dangNhap: isAuthenticated } = useAuth();
 
@@ -662,90 +737,104 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
         const matchesQuery = !menuQuery || item.name.toLowerCase().includes(menuQuery.toLowerCase());
         return matchesCategory && matchesQuery;
     });
-    const hasMorePosts = feedPage < totalFeedPages;
+    const filteredFeedPosts = useMemo(() => {
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        const byCategory = feedPosts.filter((post) => {
+            if (categoryFilter === 'tat_ca') return true;
+            return post.type === categoryFilter;
+        });
+
+        const byCuisine = byCategory.filter((post) => {
+            if (cuisineFilter === 'tat_ca') return true;
+            if (cuisineFilter === 'co_video') return hasVideoMedia(post.images);
+            if (cuisineFilter === 'co_hinh_anh') return post.images.length > 0 && !hasVideoMedia(post.images);
+            return post.images.length === 0;
+        });
+
+        const byTime = byCuisine.filter((post) => {
+            if (timeFilter === 'moi_nhat') return true;
+            const date = parseVietnameseDate(post.date);
+            if (!date) return false;
+            if (timeFilter === 'hom_nay') return isSameDate(date, now);
+            if (timeFilter === 'hom_qua') return isSameDate(date, yesterday);
+            if (timeFilter === 'tuan_nay') return isInCurrentWeek(date, now);
+            return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+        });
+
+        return [...byTime].sort((a, b) => {
+            const dateA = parseVietnameseDate(a.date)?.getTime() ?? 0;
+            const dateB = parseVietnameseDate(b.date)?.getTime() ?? 0;
+            return dateB - dateA;
+        });
+    }, [categoryFilter, cuisineFilter, feedPosts, timeFilter]);
+    const totalFeedPages = Math.max(1, Math.ceil(filteredFeedPosts.length / FEED_PAGE_SIZE));
+    const currentFeedPage = Math.min(feedCurrentPage, totalFeedPages);
+    const paginatedFeedPosts = useMemo(() => {
+        const start = (currentFeedPage - 1) * FEED_PAGE_SIZE;
+        return filteredFeedPosts.slice(start, start + FEED_PAGE_SIZE);
+    }, [currentFeedPage, filteredFeedPosts]);
     const hasMoreDeals = spotlightCards.length > visibleDealCount;
 
-    const loadMorePosts = useCallback(async () => {
-        if (isLoadingMorePosts || !hasMorePosts) return;
-        setIsLoadingMorePosts(true);
-        try {
-            const nextPage = feedPage + 1;
-            const result = await getBangTinPage(nextPage, Number(data.feedPagination?.so_luong ?? 12));
-            const nextPosts: FeedPost[] = result.feedPosts;
-            setFeedPosts((current) => {
-                const existingIds = new Set(current.map((item) => item.id));
-                const merged = [...current];
-                nextPosts.forEach((post) => {
-                    if (!existingIds.has(post.id)) {
-                        merged.push(post);
-                    }
-                });
-                return merged;
-            });
-            setFeedPage(nextPage);
-            setTotalFeedPages(
-                Number(result.feedPayload?.phan_trang_bai_viet?.tong_trang ?? totalFeedPages),
-            );
-        } catch (error) {
-            setActionMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Không tải thêm được bài viết',
-            );
-        } finally {
-            setIsLoadingMorePosts(false);
-        }
-    }, [data.feedPagination?.so_luong, feedPage, hasMorePosts, isLoadingMorePosts, totalFeedPages]);
-
     useEffect(() => {
-        if (!hasMorePosts || !feedLoadMoreRef.current) return;
-        const target = feedLoadMoreRef.current;
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries.some((entry) => entry.isIntersecting)) {
-                    void loadMorePosts();
-                }
-            },
-            { rootMargin: '180px 0px' },
-        );
-        observer.observe(target);
-        return () => observer.disconnect();
-    }, [hasMorePosts, loadMorePosts]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
         let active = true;
-        void userContentApi
-            .layBangTin({
-                trang: 1,
-                so_luong: Number(data.feedPagination?.so_luong ?? 12),
-            })
-            .then((payload: unknown) => {
+        const syncFeed = async () => {
+            try {
+                const payload = (await userContentApi.layBangTin({
+                    trang: 1,
+                    so_luong: 100,
+                })) as Record<string, unknown>;
                 if (!active) return;
-                const latest: FeedPost[] = mapFeedPosts(payload as Record<string, unknown>);
-                const latestById = new Map(latest.map((item) => [item.id, item]));
-                setFeedPosts((current) =>
-                    current.map((post) => {
-                        const synced = latestById.get(post.id);
-                        if (!synced) return post;
-                        return {
-                            ...post,
-                            isLiked: synced.isLiked,
-                            followLabel: synced.followLabel,
-                            likeCount: synced.likeCount,
-                            commentCount: synced.commentCount,
-                            shareCount: synced.shareCount,
-                        };
-                    }),
-                );
-            })
-            .catch(() => {
+                const latest: FeedPost[] = mapFeedPosts(payload);
+                setFeedPosts(latest);
+                setFeedCurrentPage(1);
+            } catch {
                 // keep current UI state if sync fails
-            });
+            }
+        };
+
+        void syncFeed();
+        const onFocus = () => {
+            void syncFeed();
+        };
+        window.addEventListener('focus', onFocus);
+
         return () => {
             active = false;
+            window.removeEventListener('focus', onFocus);
         };
-    }, [data.feedPagination?.so_luong, isAuthenticated]);
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        setFeedCurrentPage(1);
+    }, [categoryFilter, cuisineFilter, timeFilter]);
+
+    useEffect(() => {
+        const urlCategory = parseEnumParam(searchParams.get('category'), FEED_CATEGORY_FILTERS, 'tat_ca');
+        const urlCuisine = parseEnumParam(searchParams.get('cuisine'), FEED_CUISINE_FILTERS, 'tat_ca');
+        const urlTime = parseEnumParam(searchParams.get('time'), FEED_TIME_FILTERS, 'moi_nhat');
+        const urlPageRaw = Number(searchParams.get('page') ?? '1');
+        const urlPage = Number.isFinite(urlPageRaw) && urlPageRaw > 0 ? urlPageRaw : 1;
+
+        if (urlCategory !== categoryFilter) setCategoryFilter(urlCategory);
+        if (urlCuisine !== cuisineFilter) setCuisineFilter(urlCuisine);
+        if (urlTime !== timeFilter) setTimeFilter(urlTime);
+        if (urlPage !== feedCurrentPage) setFeedCurrentPage(urlPage);
+    }, [searchParams]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('category', categoryFilter);
+        params.set('cuisine', cuisineFilter);
+        params.set('time', timeFilter);
+        params.set('page', String(currentFeedPage));
+        const nextUrl = `${pathname}?${params.toString()}`;
+        const currentUrl = `${pathname}?${searchParams.toString()}`;
+        if (nextUrl === currentUrl) return;
+        router.replace(nextUrl, { scroll: false });
+    }, [categoryFilter, cuisineFilter, timeFilter, currentFeedPage, pathname, router, searchParams]);
 
     return (
         <>
@@ -837,21 +926,52 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
 
                     <section className="rounded-[22px] bg-[#e6e9e6] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
                         <div className="flex flex-wrap justify-end gap-4">
-                            {data.filters.map((filter) => (
-                                <button
-                                    key={filter}
-                                    className="inline-flex min-w-[180px] items-center justify-between rounded-[10px] bg-white px-5 py-3 text-base text-[#616462] shadow-[0_3px_8px_rgba(0,0,0,0.03)]"
+                            <label className="inline-flex min-w-[180px] items-center justify-between gap-3 rounded-[10px] bg-white px-4 py-3 text-base text-[#616462] shadow-[0_3px_8px_rgba(0,0,0,0.03)]">
+                                <span>Danh mục</span>
+                                <select
+                                    value={categoryFilter}
+                                    onChange={(event) => setCategoryFilter(event.target.value as FeedCategoryFilter)}
+                                    className="bg-transparent text-sm outline-none"
                                 >
-                                    {filter}
-                                    <img src={homeUiAssets.filterChevron} alt="" className="h-5 w-5 object-contain" />
-                                </button>
-                            ))}
+                                    <option value="tat_ca">Tất cả</option>
+                                    <option value="bai_viet">Bài viết</option>
+                                    <option value="video">Video</option>
+                                    <option value="repost">Bài đăng lại</option>
+                                </select>
+                            </label>
+                            <label className="inline-flex min-w-[180px] items-center justify-between gap-3 rounded-[10px] bg-white px-4 py-3 text-base text-[#616462] shadow-[0_3px_8px_rgba(0,0,0,0.03)]">
+                                <span>Ẩm thực</span>
+                                <select
+                                    value={cuisineFilter}
+                                    onChange={(event) => setCuisineFilter(event.target.value as FeedCuisineFilter)}
+                                    className="bg-transparent text-sm outline-none"
+                                >
+                                    <option value="tat_ca">Tất cả</option>
+                                    <option value="co_hinh_anh">Có ảnh</option>
+                                    <option value="co_video">Có video</option>
+                                    <option value="chi_van_ban">Chỉ văn bản</option>
+                                </select>
+                            </label>
+                            <label className="inline-flex min-w-[180px] items-center justify-between gap-3 rounded-[10px] bg-white px-4 py-3 text-base text-[#616462] shadow-[0_3px_8px_rgba(0,0,0,0.03)]">
+                                <span>Thời gian</span>
+                                <select
+                                    value={timeFilter}
+                                    onChange={(event) => setTimeFilter(event.target.value as FeedTimeFilter)}
+                                    className="bg-transparent text-sm outline-none"
+                                >
+                                    <option value="moi_nhat">Mới nhất</option>
+                                    <option value="hom_nay">Hôm nay</option>
+                                    <option value="hom_qua">Hôm qua</option>
+                                    <option value="tuan_nay">Tuần này</option>
+                                    <option value="thang_nay">Tháng này</option>
+                                </select>
+                            </label>
                         </div>
                     </section>
 
                     <section ref={dealSectionRef} className="grid gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
                         <div className="space-y-8">
-                                {feedPosts.map((post) => (
+                                {paginatedFeedPosts.map((post) => (
                                     <FeedPostCard
                                         key={post.id}
                                         post={post}
@@ -861,8 +981,33 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                             setCommentComposerOpen(false);
                                             setIsCommentModalOpen(true);
                                         }}
-                                        onOpenMenu={() => setIsMenuModalOpen(true)}
-                                        onOrder={() => setIsOrderModalOpen(true)}
+                                        onOrder={() => {
+                                            const postId = Number(post.id);
+                                            if (!Number.isFinite(postId) || postId <= 0) {
+                                                setActionMessage('Không xác định được bài viết để đặt món');
+                                                return;
+                                            }
+                                            void userContentApi
+                                                .nhanLinkMonBaiViet(postId)
+                                                .then((payload: unknown) => {
+                                                    const data = (payload ?? {}) as { url?: unknown };
+                                                    const resolved = typeof data.url === 'string' ? data.url.trim() : '';
+                                                    const fallback = post.dishLink?.trim() ?? '';
+                                                    const nextLink = resolved || fallback;
+                                                    if (!nextLink) {
+                                                        setActionMessage('Bài viết này chưa gắn link món');
+                                                        return;
+                                                    }
+                                                    if (/^https?:\/\//i.test(nextLink)) {
+                                                        window.location.href = nextLink;
+                                                    } else {
+                                                        router.push(nextLink.startsWith('/') ? nextLink : `/${nextLink}`);
+                                                    }
+                                                })
+                                                .catch((error) => {
+                                                    setActionMessage(error instanceof Error ? error.message : 'Không thể mở link món');
+                                                });
+                                        }}
                                         onOpenDetail={() => setActivePostDetailId(Number(post.id) || null)}
                                         onOpenAuthorProfile={() => {
                                             const targetId = Number(post.authorId || 0);
@@ -956,19 +1101,30 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                 />
                             ))}
                             <div className="flex flex-col items-center gap-3 pt-2">
-                                {hasMorePosts ? (
+                                <div className="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => void loadMorePosts()}
-                                        disabled={isLoadingMorePosts}
-                                        className="rounded-full border border-[#2f8f22] px-5 py-2 text-sm font-semibold text-[#2f8f22] disabled:opacity-60"
+                                        onClick={() => setFeedCurrentPage((current) => Math.max(1, current - 1))}
+                                        disabled={currentFeedPage <= 1}
+                                        className="rounded-full border border-[#d7d7d7] px-4 py-2 text-sm font-semibold text-[#2f8f22] disabled:opacity-40"
                                     >
-                                        {isLoadingMorePosts ? 'Đang tải...' : 'Xem thêm bài viết'}
+                                        Trước
                                     </button>
-                                ) : (
-                                    <p className="text-sm text-[#6b7280]">Đã hiển thị tất cả bài viết.</p>
-                                )}
-                                <div ref={feedLoadMoreRef} className="h-2 w-full" />
+                                    <span className="text-sm text-[#4b5563]">
+                                        Trang {currentFeedPage}/{totalFeedPages}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFeedCurrentPage((current) => Math.min(totalFeedPages, current + 1))}
+                                        disabled={currentFeedPage >= totalFeedPages}
+                                        className="rounded-full border border-[#d7d7d7] px-4 py-2 text-sm font-semibold text-[#2f8f22] disabled:opacity-40"
+                                    >
+                                        Sau
+                                    </button>
+                                </div>
+                                <p className="text-sm text-[#6b7280]">
+                                    Hiển thị tối đa {FEED_PAGE_SIZE} bài viết mỗi trang
+                                </p>
                             </div>
                         </div>
 

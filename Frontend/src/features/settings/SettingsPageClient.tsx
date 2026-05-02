@@ -432,6 +432,8 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
     const [requestLoadError, setRequestLoadError] = useState<string | null>(null);
     const [latestEarnRequest, setLatestEarnRequest] = useState<ProfessionalRequestItem | null>(null);
     const [latestStoreRequest, setLatestStoreRequest] = useState<ProfessionalRequestItem | null>(null);
+    const isEarnApproved = Boolean(profile.isMonetized || latestEarnRequest?.trang_thai === 'da_duyet');
+    const isEarnPending = latestEarnRequest?.trang_thai === 'cho_duyet';
 
     useEffect(() => {
         let isMounted = true;
@@ -477,7 +479,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
 
     /* ── Step 1: Menu ── */
     if (step === 'menu') {
-        const earnStatusLabel = getRequestStatusLabel(latestEarnRequest?.trang_thai);
+        const earnStatusLabel = isEarnApproved ? 'Đã đăng ký' : getRequestStatusLabel(latestEarnRequest?.trang_thai);
         const storeStatusLabel = getRequestStatusLabel(latestStoreRequest?.trang_thai);
 
         return (
@@ -488,14 +490,20 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                     <button
                         type="button"
                         onClick={() => {
-                            if (latestEarnRequest?.trang_thai === 'cho_duyet') {
+                            if (isEarnApproved) {
+                                return;
+                            }
+                            if (isEarnPending) {
                                 setPendingRequestLabel('Kiếm tiền từ nội dung');
                                 setStep('pending');
                                 return;
                             }
                             setStep('earn-form');
                         }}
-                        className="flex w-full items-center justify-between border-b border-[#e0ddd6] px-5 py-4 text-left text-[15px] text-black transition hover:bg-[#fafaf8]"
+                        className={`flex w-full items-center justify-between border-b border-[#e0ddd6] px-5 py-4 text-left text-[15px] transition ${
+                            isEarnApproved ? 'cursor-not-allowed bg-[#f7f7f5] text-[#888]' : 'text-black hover:bg-[#fafaf8]'
+                        }`}
+                        disabled={isEarnApproved}
                         id="btn-earn-content"
                     >
                         <span>
@@ -529,6 +537,9 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         </svg>
                     </button>
                 </div>
+                {isEarnApproved ? (
+                    <p className="mt-3 text-sm text-[#2e7d32]">Tài khoản của bạn đã đăng ký kiếm tiền từ nội dung.</p>
+                ) : null}
                 {requestsLoading ? (
                     <p className="mt-3 text-sm text-[#888]">Đang tải trạng thái yêu cầu...</p>
                 ) : null}
@@ -563,9 +574,15 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
     }
 
     /* ── Step 2: Earn form ── */
+    const isEarnFormLocked = isEarnApproved || isEarnPending;
     return (
         <div>
             <h2 className="text-[22px] font-bold text-black">Thông tin cơ bản</h2>
+            {isEarnApproved ? (
+                <p className="mt-3 rounded-[8px] border border-[#d9f0dc] bg-[#edf9ef] px-3 py-2 text-sm text-[#2e7d32]">
+                    Bạn đã đăng ký kiếm tiền từ nội dung. Không cần gửi đăng ký lại.
+                </p>
+            ) : null}
             {latestEarnRequest?.trang_thai === 'da_tu_choi' && latestEarnRequest.ly_do_tu_choi ? (
                 <p className="mt-3 rounded-[8px] border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
                     Lý do từ chối gần nhất: {latestEarnRequest.ly_do_tu_choi}
@@ -583,6 +600,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Tên tài khoản"
                         className="flex-1 bg-transparent text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-name"
@@ -596,6 +614,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                             type="text"
                             value={gender}
                             onChange={(e) => setGender(e.target.value)}
+                            disabled={isEarnFormLocked}
                             placeholder="Giới tính"
                             className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
                             id="pro-input-gender"
@@ -606,6 +625,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                             type="text"
                             value={birthday}
                             onChange={(e) => setBirthday(e.target.value)}
+                            disabled={isEarnFormLocked}
                             placeholder="dd/mm/yyyy"
                             className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
                             id="pro-input-birthday"
@@ -619,6 +639,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="text"
                         value={bank}
                         onChange={(e) => setBank(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Chọn ngân hàng"
                         className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-bank"
@@ -631,6 +652,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="text"
                         value={bankAccount}
                         onChange={(e) => setBankAccount(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Số tài khoản ngân hàng"
                         className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-bank-account"
@@ -647,6 +669,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Email"
                         className="flex-1 bg-transparent text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-email"
@@ -662,6 +685,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Số điện thoại"
                         className="flex-1 bg-transparent text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-phone"
@@ -678,6 +702,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         type="text"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
+                        disabled={isEarnFormLocked}
                         placeholder="Địa chỉ"
                         className="flex-1 bg-transparent text-[15px] text-black outline-none placeholder:text-[#999]"
                         id="pro-input-address"
@@ -690,6 +715,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
             <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={isEarnFormLocked}
                 placeholder=""
                 rows={5}
                 className="mt-3 w-full resize-none rounded-[10px] border border-[#e0ddd6] bg-white px-4 py-3.5 text-[15px] text-black outline-none transition placeholder:text-[#999] focus:border-green-primary"
@@ -701,6 +727,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                 <button
                     type="button"
                     onClick={async () => {
+                        if (isEarnFormLocked) return;
                         if (isSubmitting) return;
                         if (
                             !name.trim() ||
@@ -742,6 +769,7 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                         }
                     }}
                     className="min-w-[160px] rounded-[10px] bg-[#2e7d32] px-10 py-3 text-[16px] font-bold text-white transition hover:bg-[#256b28]"
+                    disabled={isEarnFormLocked}
                     id="btn-submit-professional"
                 >
                     {isSubmitting ? 'Đang gửi...' : 'Gửi'}

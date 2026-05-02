@@ -101,6 +101,73 @@ export const userContentApi = {
       body: JSON.stringify(body),
     }),
 
+  uploadTepBaiViet: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ url: string; loai_tep: string }>('/user/bai-viet/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  taoBaiViet: (body: {
+    noi_dung?: string;
+    tep_dinh_kem?: string[];
+    muc_do_hien_thi?: 'cong_khai' | 'ban_be';
+    bat_kiem_tien?: boolean;
+    link_mon_an?: string;
+  }) =>
+    request<{
+      id: number;
+      loai_bai_viet: string;
+      noi_dung: string | null;
+      ngay_dang: string;
+      tep_dinh_kem: Array<{ loai_tep: string; url: string }>;
+      tong_luot_thich: number;
+      tong_luot_binh_luan: number;
+      tong_luot_chia_se: number;
+      muc_do_hien_thi?: 'cong_khai' | 'ban_be';
+      bat_kiem_tien?: boolean;
+      link_mon_an?: string | null;
+      id_mon_an?: number | null;
+    }>('/user/bai-viet', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  capNhatBaiViet: (idBaiViet: number, body: {
+    noi_dung?: string;
+    tep_dinh_kem?: string[];
+    muc_do_hien_thi?: 'cong_khai' | 'ban_be';
+    bat_kiem_tien?: boolean;
+    link_mon_an?: string;
+  }) =>
+    request<{
+      id: number;
+      loai_bai_viet: string;
+      noi_dung: string | null;
+      ngay_dang: string;
+      tep_dinh_kem: Array<{ loai_tep: string; url: string }>;
+      tong_luot_thich: number;
+      tong_luot_binh_luan: number;
+      tong_luot_chia_se: number;
+      muc_do_hien_thi?: 'cong_khai' | 'ban_be';
+      bat_kiem_tien?: boolean;
+      link_mon_an?: string | null;
+      id_mon_an?: number | null;
+    }>(`/user/bai-viet/${idBaiViet}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  xoaBaiViet: (idBaiViet: number) =>
+    request<{ id: number; trang_thai_duyet: string; message: string }>(`/user/bai-viet/${idBaiViet}`, {
+      method: 'DELETE',
+    }),
+
+  nhanLinkMonBaiViet: (idBaiViet: number) =>
+    request<{ url: string; id_mon_an: number | null }>(`/user/bai-viet/${idBaiViet}/link-mon`),
+
   toggleThichBaiViet: (idBaiViet: number) =>
     request(`/user/bai-viet/${idBaiViet}/tuong-tac/thich`, { method: 'POST' }),
 

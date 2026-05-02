@@ -34,6 +34,7 @@ import {
   HuyDonHangDto,
   TaoHoTroDto,
   ThemVaoGioHangDto,
+  TaoYeuCauRutTienDto,
   YeuCauHoanTienDto,
 } from './dto/user-commerce.dto';
 import { UserCommerceService } from './user-commerce.service';
@@ -92,6 +93,14 @@ export class UserCommerceController {
     @Body() dto: DangKyKiemTienNoiDungDto,
   ) {
     return this.userCommerceService.taoYeuCauKiemTienNoiDung(req.user!.sub, dto);
+  }
+
+  @Post('che-do-chuyen-nghiep/rut-tien')
+  async taoYeuCauRutTien(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: TaoYeuCauRutTienDto,
+  ) {
+    return this.userCommerceService.taoYeuCauRutTien(req.user!.sub, dto);
   }
 
   @Post('che-do-chuyen-nghiep/mo-cua-hang')
@@ -280,6 +289,14 @@ export class UserCommerceController {
     @Param('maDonHang') maDonHang: string,
   ) {
     return this.userCommerceService.muaLaiDonHang(req.user!.sub, maDonHang);
+  }
+
+  @Post('don-hang/:maDonHang/xac-nhan-da-giao')
+  async xacNhanDaGiao(
+    @Req() req: AuthenticatedRequest,
+    @Param('maDonHang') maDonHang: string,
+  ) {
+    return this.userCommerceService.xacNhanDaGiao(req.user!.sub, maDonHang);
   }
 
   @Post('don-hang/:maDonHang/danh-gia')

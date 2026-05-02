@@ -112,6 +112,15 @@ export const userCommerceApi = {
       body: JSON.stringify(body),
     }),
 
+  taoYeuCauRutTien: (body: {
+    id_tai_khoan_rut_tien: number;
+    so_tien: number;
+  }) =>
+    request('/user/che-do-chuyen-nghiep/rut-tien', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   dangKyMoCuaHang: (body: {
     chu_so_huu: string;
     so_cccd: string;
@@ -253,6 +262,11 @@ export const userCommerceApi = {
 
   muaLaiDonHang: (maDonHang: string) =>
     request(`/user/don-hang/${encodeURIComponent(maDonHang)}/mua-lai`, {
+      method: 'POST',
+    }),
+
+  xacNhanDaGiao: (maDonHang: string) =>
+    request(`/user/don-hang/${encodeURIComponent(maDonHang)}/xac-nhan-da-giao`, {
       method: 'POST',
     }),
 
