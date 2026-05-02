@@ -266,6 +266,8 @@ export const userContentApi = {
     ban_kinh_km?: number;
   }) => request(`/user/kham-pha${toQueryString(query)}`),
 
+  layChiTietCuaHang: (idCuaHang: number) => request(`/user/cua-hang/${idCuaHang}`),
+
   layMonTheoDanhMuc: (
     idDanhMuc: number,
     query?: { khu_vuc?: string; trang?: number; so_luong?: number },

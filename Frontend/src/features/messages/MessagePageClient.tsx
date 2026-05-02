@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { userCommerceApi } from '@/shared/userCommerceApi';
 
 type ConversationItem = {
@@ -46,6 +47,8 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
     const [conversations, setConversations] = useState<ConversationItem[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
     const [messages, setMessages] = useState<MessageItem[]>([]);
+    const [isSending, setIsSending] = useState(false);
+    const [socket, setSocket] = useState<Socket | null>(null);
 
     const activeConversation = useMemo(
         () =>
@@ -60,14 +63,19 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
             trang: 1,
         });
         const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
-        setMessages(
-            rows.map((item: any) => ({
+        const mapped: MessageItem[] = rows.map((item: any) => ({
                 id: Number(item.id),
                 noi_dung: String(item.noi_dung ?? ''),
                 thoi_gian_gui: String(item.thoi_gian_gui ?? ''),
                 la_tin_cua_toi: Boolean(item.la_tin_cua_toi),
-            })),
-        );
+            }));
+        setMessages((current) => {
+            if (current.length === 0) return mapped;
+            const byId = new Map<number, MessageItem>();
+            current.forEach((item) => byId.set(item.id, item));
+            mapped.forEach((item) => byId.set(item.id, item));
+            return [...byId.values()].sort((a, b) => a.id - b.id);
+        });
     };
 
     const loadConversations = async (initialConversationId?: number | null) => {
@@ -97,6 +105,26 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
         } else {
             setMessages([]);
         }
+    };
+
+    const refreshConversationsMeta = async () => {
+        const payload: any = await userCommerceApi.layDanhSachTroChuyen({
+            trang: 1,
+            so_luong: 50,
+        });
+        const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+        const mapped: ConversationItem[] = rows.map((item: any) => ({
+            id_cuoc_tro_chuyen: Number(item.id_cuoc_tro_chuyen),
+            doi_tac: {
+                id: Number(item?.doi_tac?.id ?? 0),
+                ten_hien_thi: String(item?.doi_tac?.ten_hien_thi ?? 'Người dùng'),
+                anh_dai_dien: item?.doi_tac?.anh_dai_dien ?? null,
+            },
+            tin_nhan_cuoi: item?.tin_nhan_cuoi ?? null,
+            thoi_gian_tin_nhan_cuoi: item?.thoi_gian_tin_nhan_cuoi ?? null,
+            so_tin_chua_doc: Number(item?.so_tin_chua_doc ?? 0),
+        }));
+        setConversations(mapped);
     };
 
     useEffect(() => {
@@ -130,15 +158,80 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
         };
     }, [targetId]);
 
+    useEffect(() => {
+        const origin = process.env.NEXT_PUBLIC_API_ORIGIN ?? 'http://127.0.0.1:3009';
+        const conn = io(`${origin}/chat`, {
+            transports: ['websocket'],
+            withCredentials: true,
+        });
+        setSocket(conn);
+
+        conn.on('chat:message:new', (payload: any) => {
+            const mapped: MessageItem = {
+                id: Number(payload?.id ?? 0),
+                noi_dung: String(payload?.noi_dung ?? ''),
+                thoi_gian_gui: String(payload?.thoi_gian_gui ?? new Date().toISOString()),
+                la_tin_cua_toi: Boolean(payload?.la_tin_cua_toi),
+            };
+            const roomId = Number(payload?.id_cuoc_tro_chuyen ?? 0);
+            if (roomId && activeConversationId && roomId === activeConversationId) {
+                setMessages((current) => {
+                    if (current.some((item) => item.id === mapped.id)) return current;
+                    return [...current, mapped].sort((a, b) => a.id - b.id);
+                });
+            }
+            void refreshConversationsMeta().catch(() => {
+                // ignore background refresh errors
+            });
+        });
+
+        return () => {
+            conn.disconnect();
+            setSocket(null);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!socket || !activeConversationId) return;
+        socket.emit('chat:join', { conversationId: activeConversationId });
+        return () => {
+            socket.emit('chat:leave', { conversationId: activeConversationId });
+        };
+    }, [socket, activeConversationId]);
+
     const handleSendMessage = async () => {
         const content = draft.trim();
-        if (!activeConversationId || !content) return;
+        if (!activeConversationId || !content || isSending) return;
+        if (!socket) {
+            setError('Kết nối realtime chưa sẵn sàng, vui lòng thử lại');
+            return;
+        }
         try {
-            await userCommerceApi.guiTinNhan(activeConversationId, content);
+            setIsSending(true);
+            await new Promise<void>((resolve, reject) => {
+                socket.emit(
+                    'chat:send',
+                    {
+                        conversationId: activeConversationId,
+                        noi_dung: content,
+                    },
+                    (ack: { ok?: boolean; message?: string }) => {
+                        if (ack?.ok) {
+                            resolve();
+                            return;
+                        }
+                        reject(new Error(ack?.message || 'Không gửi được tin nhắn'));
+                    },
+                );
+            });
             setDraft('');
-            await loadConversations(activeConversationId);
+            void refreshConversationsMeta().catch(() => {
+                // ignore background refresh errors
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Không gửi được tin nhắn');
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -266,7 +359,8 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                             <button
                                 type="button"
                                 onClick={handleSendMessage}
-                                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2f7f27] text-[17px] text-white lg:h-11 lg:w-11 lg:text-[18px]"
+                                disabled={isSending}
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2f7f27] text-[17px] text-white disabled:opacity-50 lg:h-11 lg:w-11 lg:text-[18px]"
                             >
                                 ➤
                             </button>

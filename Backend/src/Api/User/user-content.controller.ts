@@ -85,6 +85,16 @@ export class UserContentController {
   }
 
   /**
+   * Chi tiết cửa hàng theo id
+   * GET /user/cua-hang/:idCuaHang
+   */
+  @Public()
+  @Get('cua-hang/:idCuaHang')
+  async layChiTietCuaHang(@Param('idCuaHang') idCuaHang: number) {
+    return this.userContentService.layChiTietCuaHang(idCuaHang);
+  }
+
+  /**
    * PB13 - Món ăn theo danh mục
    * GET /user/kham-pha/danh-muc/:idDanhMuc
    */

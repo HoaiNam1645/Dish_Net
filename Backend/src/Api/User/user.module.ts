@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MonAnEntity } from '../Admin/entities/mon-an.entity';
 import { DanhMucMonEntity } from '../Admin/entities/danh-muc-mon.entity';
@@ -33,6 +34,7 @@ import { UserContentController } from './user-content.controller';
 import { UserContentService } from './user-content.service';
 import { UserCommerceController } from './user-commerce.controller';
 import { UserCommerceService } from './user-commerce.service';
+import { ChatGateway } from './chat.gateway';
 import {
   UserVnpayApiPrefixedController,
   UserVnpayController,
@@ -40,6 +42,7 @@ import {
 
 @Module({
   imports: [
+    JwtModule.register({}),
     TypeOrmModule.forFeature([
       MonAnEntity,
       DanhMucMonEntity,
@@ -78,6 +81,6 @@ import {
     UserVnpayController,
     UserVnpayApiPrefixedController,
   ],
-  providers: [UserContentService, UserCommerceService],
+  providers: [UserContentService, UserCommerceService, ChatGateway],
 })
 export class UserModule {}

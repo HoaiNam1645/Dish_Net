@@ -325,8 +325,10 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                     }),
                 )
                 .filter(
-                    (entry): entry is StoreCartSummaryItem =>
-                        Boolean(entry) && entry.quantity > 0,
+                    (entry): entry is StoreCartSummaryItem => {
+                        if (!entry) return false;
+                        return entry.quantity > 0;
+                    },
                 );
 
             setCartSummary(mapped);

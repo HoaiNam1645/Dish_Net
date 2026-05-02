@@ -1,4 +1,3 @@
-import { getExplorePageData } from '@/features/explore/data';
 import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 import { userContentApi } from '@/shared/userContentApi';
 
@@ -75,22 +74,23 @@ function formatDate(value: string) {
 }
 
 export async function getStoreDetailById(id: string): Promise<StoreDetailData | null> {
-    const exploreData = await getExplorePageData();
-    const allStores = [
-        ...exploreData.nearby,
-        ...exploreData.recommendations,
-        ...exploreData.topReviewerPicks,
-    ];
-    const store = allStores.find((item) => String(item.id) === String(id));
-    if (!store) {
+    const storeId = Number(id);
+    if (!Number.isFinite(storeId) || storeId <= 0) {
+        return null;
+    }
+
+    let storeDetail: any = null;
+    try {
+        storeDetail = await userContentApi.layChiTietCuaHang(storeId);
+    } catch {
         return null;
     }
 
     const fallbackImage =
-        store.image || figmaFallbackAssets.storeImage || figmaFallbackAssets.feedDishImage;
+        storeDetail?.anh_dai_dien || figmaFallbackAssets.storeImage || figmaFallbackAssets.feedDishImage;
 
     const cuaHangPayload: any = await userContentApi.timKiem({
-        tu_khoa: store.title,
+        tu_khoa: String(storeDetail?.ten_cua_hang ?? ''),
         loai: 'cua_hang',
         so_luong: 20,
         trang: 1,
@@ -103,17 +103,18 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
     const numericId = Number(id);
     let matchedStore =
         cuaHangRows.find((item: any) => Number(item?.id) === numericId) ||
-        cuaHangRows.find(
-            (item: any) =>
-                normalizeText(String(item?.ten_cua_hang ?? '')) === normalizeText(store.title),
+        cuaHangRows.find((item: any) =>
+            normalizeText(String(item?.ten_cua_hang ?? '')) ===
+            normalizeText(String(storeDetail?.ten_cua_hang ?? '')),
         ) ||
+        storeDetail ||
         null;
 
     let resolvedStoreId =
         matchedStore?.id != null ? Number(matchedStore.id) : null;
 
     const monPayload: any = await userContentApi.timKiem({
-        tu_khoa: String(matchedStore?.ten_cua_hang ?? store.title),
+        tu_khoa: String(matchedStore?.ten_cua_hang ?? storeDetail?.ten_cua_hang ?? ''),
         loai: 'mon_an',
         so_luong: 80,
         trang: 1,
@@ -137,14 +138,9 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
         }
     }
 
-    const resolvedStoreCard =
-        resolvedStoreId != null
-            ? allStores.find((item) => Number(item.id) === resolvedStoreId) ?? store
-            : store;
-
-    if (!matchedStore && resolvedStoreCard.title && resolvedStoreCard.title !== store.title) {
+    if (!matchedStore && storeDetail?.ten_cua_hang) {
         const fallbackStorePayload: any = await userContentApi.timKiem({
-            tu_khoa: String(resolvedStoreCard.title),
+            tu_khoa: String(storeDetail.ten_cua_hang),
             loai: 'cua_hang',
             so_luong: 20,
             trang: 1,
@@ -159,7 +155,7 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
             fallbackStoreRows.find(
                 (item: any) =>
                     normalizeText(String(item?.ten_cua_hang ?? '')) ===
-                    normalizeText(resolvedStoreCard.title),
+                    normalizeText(String(storeDetail?.ten_cua_hang ?? '')),
             ) ||
             matchedStore;
     }
@@ -254,18 +250,21 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
         fallbackImage;
 
     return {
-        id: String(resolvedStoreId ?? store.id),
-        title: String(matchedStore?.ten_cua_hang ?? resolvedStoreCard.title ?? store.title),
+        id: String(resolvedStoreId ?? storeId),
+        title: String(matchedStore?.ten_cua_hang ?? storeDetail?.ten_cua_hang ?? 'Cửa hàng'),
         subtitle: 'Cửa hàng trên DishNet',
         coverImage,
-        views: resolvedStoreCard.meta || store.meta || '---',
-        address: String(matchedStore?.dia_chi ?? resolvedStoreCard.address ?? store.address ?? ''),
-        hours: '',
+        views: `${Number(matchedStore?.tong_luot_xem ?? storeDetail?.tong_luot_xem ?? 0).toLocaleString('vi-VN')} lượt xem`,
+        address: String(matchedStore?.dia_chi ?? storeDetail?.dia_chi ?? ''),
+        hours:
+            storeDetail?.gio_mo_cua && storeDetail?.gio_dong_cua
+                ? `${String(storeDetail.gio_mo_cua).slice(0, 5)} - ${String(storeDetail.gio_dong_cua).slice(0, 5)}`
+                : '',
         priceRange:
             minPrice > 0 && maxPrice > 0
                 ? `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`
                 : '',
-        score: Number(matchedStore?.diem_danh_gia ?? store.rating ?? 0).toFixed(1),
+        score: Number(matchedStore?.diem_danh_gia ?? storeDetail?.diem_danh_gia ?? 0).toFixed(1),
         soldCount: soldCount.toLocaleString('vi-VN'),
         reviewCount: String(reviewCards.length),
         commentCount: String(comments.length),

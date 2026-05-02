@@ -1987,6 +1987,39 @@ export class UserContentService {
     };
   }
 
+  async layChiTietCuaHang(idCuaHang: number) {
+    const id = Number(idCuaHang);
+    if (!Number.isFinite(id) || id <= 0) {
+      throw new BadRequestException('ID cửa hàng không hợp lệ');
+    }
+
+    const cuaHang = await this.cuaHangRepo.findOne({
+      where: { id, trang_thai_hoat_dong: 'hoat_dong' },
+    });
+
+    if (!cuaHang) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+
+    return {
+      id: Number(cuaHang.id),
+      ten_cua_hang: cuaHang.ten_cua_hang,
+      slug: cuaHang.slug,
+      mo_ta: cuaHang.mo_ta,
+      anh_dai_dien: cuaHang.anh_dai_dien,
+      dia_chi: cuaHang.dia_chi_kinh_doanh,
+      khu_vuc: cuaHang.khu_vuc,
+      diem_danh_gia: Number(cuaHang.diem_danh_gia || 0),
+      tong_don_hang: Number(cuaHang.tong_don_hang || 0),
+      tong_luot_xem: Number(cuaHang.tong_luot_xem || 0),
+      tong_luot_thich: Number(cuaHang.tong_luot_thich || 0),
+      gio_mo_cua: cuaHang.gio_mo_cua,
+      gio_dong_cua: cuaHang.gio_dong_cua,
+      vi_do: cuaHang.vi_do != null ? Number(cuaHang.vi_do) : null,
+      kinh_do: cuaHang.kinh_do != null ? Number(cuaHang.kinh_do) : null,
+    };
+  }
+
   async layMonTheoDanhMuc(idDanhMuc: number, query: MonTheoDanhMucQueryDto) {
     const danhMuc = await this.danhMucMonRepo.findOne({ where: { id: idDanhMuc } });
     if (!danhMuc || danhMuc.trang_thai !== 'hieu_luc') {

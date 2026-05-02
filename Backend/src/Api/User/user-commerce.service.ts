@@ -2165,6 +2165,14 @@ export class UserCommerceService {
     return room;
   }
 
+  async xacThucThanhVienCuocTroChuyen(
+    userId: number,
+    idCuocTroChuyen: number,
+  ) {
+    await this.assertNguoiDungTrongCuocTroChuyen(userId, idCuocTroChuyen);
+    return { hop_le: true };
+  }
+
   async layDanhSachTroChuyen(userId: number, query: DanhSachTroChuyenQueryDto) {
     const { currentPage, pageSize, skip } = this.parsePaging(query.trang, query.so_luong);
 
