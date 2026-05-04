@@ -57,6 +57,51 @@ export class UserCommerceController {
     return this.userCommerceService.taoYeuCauHoTro(req.user!.sub, dto);
   }
 
+  @Post('ho-tro/upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req: any, _file: any, cb: any) => {
+          const uploadDir = join(process.cwd(), 'uploads', 'support');
+          if (!existsSync(uploadDir)) {
+            mkdirSync(uploadDir, { recursive: true });
+          }
+          cb(null, uploadDir);
+        },
+        filename: (_req: any, file: any, cb: any) => {
+          const ext = extname(file.originalname || '').toLowerCase() || '.jpg';
+          const safeExt = [
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.pdf',
+            '.doc',
+            '.docx',
+            '.xls',
+            '.xlsx',
+            '.txt',
+          ].includes(ext)
+            ? ext
+            : '.txt';
+          cb(null, `support-${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
+        },
+      }),
+      limits: { fileSize: 8 * 1024 * 1024 },
+    }),
+  )
+  async uploadTepHoTro(@Req() req: any, @UploadedFile() file?: any) {
+    if (!file) {
+      throw new BadRequestException('Thiếu tệp tải lên');
+    }
+
+    const host = req.get('host') ?? '127.0.0.1:3009';
+    const protocol = req.protocol ?? 'http';
+    const url = `${protocol}://${host}/uploads/support/${file.filename}`;
+    return { url };
+  }
+
   @Get('ho-tro')
   async layDanhSachYeuCauHoTro(
     @Req() req: AuthenticatedRequest,
@@ -71,6 +116,14 @@ export class UserCommerceController {
     @Query() query: DanhSachThongBaoQueryDto,
   ) {
     return this.userCommerceService.layDanhSachThongBao(req.user!.sub, query);
+  }
+
+  @Patch('thong-bao/:id/danh-dau-da-doc')
+  async danhDauThongBaoDaDoc(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: number,
+  ) {
+    return this.userCommerceService.danhDauThongBaoDaDoc(req.user!.sub, id);
   }
 
   @Get('ho-tro/:id')

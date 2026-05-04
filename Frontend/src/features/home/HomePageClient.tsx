@@ -825,6 +825,12 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     }, [searchParams]);
 
     useEffect(() => {
+        const postId = Number(searchParams.get('post_id') ?? 0);
+        if (!Number.isFinite(postId) || postId <= 0) return;
+        setActivePostDetailId(postId);
+    }, [searchParams]);
+
+    useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('category', categoryFilter);
         params.set('cuisine', cuisineFilter);

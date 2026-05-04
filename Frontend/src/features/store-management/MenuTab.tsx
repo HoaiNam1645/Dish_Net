@@ -18,6 +18,13 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+function parseMoneyInput(raw: string): number | null {
+  const normalized = raw.trim().replace(/[^\d-]/g, '');
+  if (!normalized || normalized === '-') return null;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
 /* ═══════════════════════════════════════════
    TYPES & CONSTANTS
    ═══════════════════════════════════════════ */
@@ -65,8 +72,8 @@ function EditItemModal({
 
   const handleSave = async () => {
     if (!name.trim()) { setError('Tên món không được để trống'); return; }
-    const priceNum = parseFloat(price.replace(/\D/g, '')) || 0;
-    if (priceNum < 0) { setError('Giá không hợp lệ'); return; }
+    const priceNum = parseMoneyInput(price);
+    if (priceNum === null || priceNum < 0) { setError('Giá không hợp lệ'); return; }
     setSaving(true);
     setError('');
     try {
@@ -78,7 +85,7 @@ function EditItemModal({
         trang_thai_ban: status,
         toppings: toppings.filter((t) => t.name.trim()).map((t) => ({
           ten_topping: t.name.trim(),
-          gia: parseFloat(t.price.replace(/\D/g, '')) || 0,
+          gia: Math.max(0, parseMoneyInput(t.price) ?? 0),
         })),
       });
       onSave({ ...item, ten_mon: name, mo_ta: desc, gia_ban: priceNum, id_danh_muc: idDanhMuc ? Number(idDanhMuc) : null, trang_thai_ban: status });
@@ -251,8 +258,8 @@ function AddItemModal({
 
   const handleAdd = async () => {
     if (!name.trim()) { setError('Tên món không được để trống'); return; }
-    const priceNum = parseFloat(price.replace(/\D/g, '')) || 0;
-    if (priceNum < 0) { setError('Giá không hợp lệ'); return; }
+    const priceNum = parseMoneyInput(price);
+    if (priceNum === null || priceNum < 0) { setError('Giá không hợp lệ'); return; }
     setSaving(true);
     setError('');
     try {
@@ -265,7 +272,7 @@ function AddItemModal({
         trang_thai_ban: status,
         toppings: toppings.filter((t) => t.name.trim()).map((t) => ({
           ten_topping: t.name.trim(),
-          gia: parseFloat(t.price.replace(/\D/g, '')) || 0,
+          gia: Math.max(0, parseMoneyInput(t.price) ?? 0),
         })),
       });
       onAdd({
@@ -629,7 +636,7 @@ export default function MenuTab() {
             {/* Sort */}
             <div className="relative">
               <button type="button" onClick={() => setSortDropdown(!sortDropdown)} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
-                <span>Sắp xếp</span>
+                <span>{SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label ?? 'Sắp xếp'}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
               </button>
               {sortDropdown && (
@@ -643,7 +650,7 @@ export default function MenuTab() {
             {/* Status filter */}
             <div className="relative">
               <button type="button" onClick={() => setStatusDropdown(!statusDropdown)} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
-                <span>Trạng thái món</span>
+                <span>{statusFilter === 'Tất cả' ? 'Tất cả' : mapDbStatusToUi(statusFilter)}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
               </button>
               {statusDropdown && (

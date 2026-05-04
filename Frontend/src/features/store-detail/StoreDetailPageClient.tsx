@@ -47,6 +47,8 @@ const PACKAGING_OPTIONS: DishOption[] = [
     { id: 'dong-goi-thuong', label: 'Đựng túi bóng', extraPrice: 0 },
     { id: 'dong-goi-to-dua', label: 'Đựng túi bóng + Tô đũa muỗng', extraPrice: 2000 },
 ];
+const MAX_DISTINCT_CART_ITEMS = 50;
+const MAX_QUANTITY_PER_ITEM = 50;
 
 function parseCurrency(value: string) {
     const normalized = value.replace(/[^\d]/g, '');
@@ -430,6 +432,33 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
             if (!monAnId) {
                 setCartActionError(
                     'Món này chưa có dữ liệu backend để thêm vào giỏ hàng.',
+                );
+                return false;
+            }
+
+            const cartPayload = (await userCommerceApi.layGioHang()) as {
+                groups?: CartApiGroup[];
+            };
+            const groups = Array.isArray(cartPayload?.groups) ? cartPayload.groups : [];
+            const allItems = groups.flatMap((group) =>
+                Array.isArray(group?.items) ? group.items : [],
+            );
+            const existing = allItems.find(
+                (cartItem) => Number(cartItem?.id_mon_an) === monAnId,
+            );
+            const distinctCount = allItems.length;
+
+            if (!existing && distinctCount >= MAX_DISTINCT_CART_ITEMS) {
+                setCartActionError(
+                    `Giỏ hàng chỉ chứa tối đa ${MAX_DISTINCT_CART_ITEMS} món khác nhau.`,
+                );
+                return false;
+            }
+
+            const currentQuantity = Number(existing?.so_luong ?? 0);
+            if (currentQuantity + quantity > MAX_QUANTITY_PER_ITEM) {
+                setCartActionError(
+                    `Mỗi món chỉ được tối đa ${MAX_QUANTITY_PER_ITEM} phần.`,
                 );
                 return false;
             }
@@ -1052,7 +1081,15 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                         <span className="w-8 text-center text-[24px] font-medium text-black">{dishQuantity}</span>
                                         <button
                                             type="button"
-                                            onClick={() => setDishQuantity((value) => value + 1)}
+                                            onClick={() => {
+                                                if (dishQuantity >= MAX_QUANTITY_PER_ITEM) {
+                                                    setCartActionError(
+                                                        `Mỗi món chỉ được tối đa ${MAX_QUANTITY_PER_ITEM} phần.`,
+                                                    );
+                                                    return;
+                                                }
+                                                setDishQuantity((value) => value + 1);
+                                            }}
                                             className="flex h-[36px] w-[40px] items-center justify-center rounded-[9px] bg-[#f59e0b] text-[24px] font-medium text-white"
                                             aria-label="Tăng số lượng"
                                         >

@@ -27,7 +27,8 @@ function formatTimeLabel(value?: string | null) {
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-function resolveTargetUserId(rawId: string) {
+function resolveTargetUserId(rawId?: string) {
+    if (!rawId) return null;
     const numeric = Number(rawId);
     if (Number.isFinite(numeric) && numeric > 0) {
         return numeric;
@@ -40,7 +41,7 @@ function resolveTargetUserId(rawId: string) {
     return aliasMap[rawId] ?? null;
 }
 
-export default function MessagePageClient({ targetId }: { targetId: string }) {
+export default function MessagePageClient({ targetId }: { targetId?: string }) {
     const [draft, setDraft] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -265,7 +266,11 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto p-3 lg:p-4">
-                        {conversations.map((conversation) => (
+                        {conversations.length === 0 ? (
+                            <div className="flex h-full min-h-[220px] items-center justify-center rounded-[18px] border border-dashed border-[#d9e4d5] bg-[#fbfdf9] px-4 text-center text-[15px] text-[#7b8a78]">
+                                Chưa có cuộc trò chuyện nào
+                            </div>
+                        ) : conversations.map((conversation) => (
                             <button
                                 key={conversation.id_cuoc_tro_chuyen}
                                 type="button"
@@ -307,7 +312,11 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                     </div>
                 </aside>
 
-                <section className="grid min-h-0 grid-rows-[76px_minmax(0,1fr)_92px] bg-[radial-gradient(circle_at_top_left,_rgba(186,230,197,0.22),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fbf6_100%)] lg:grid-rows-[82px_minmax(0,1fr)_98px]">
+                <section className={`grid min-h-0 bg-[radial-gradient(circle_at_top_left,_rgba(186,230,197,0.22),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fbf6_100%)] ${
+                    conversations.length === 0
+                        ? 'grid-rows-[76px_minmax(0,1fr)] lg:grid-rows-[82px_minmax(0,1fr)]'
+                        : 'grid-rows-[76px_minmax(0,1fr)_92px] lg:grid-rows-[82px_minmax(0,1fr)_98px]'
+                }`}>
                     <header className="flex items-center justify-between gap-4 border-b border-[#e5eee1] px-5 lg:px-8">
                         <div className="flex min-w-0 items-center gap-3 lg:gap-4">
                             <img
@@ -317,16 +326,23 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                             />
                             <div className="min-w-0">
                                 <div className="truncate text-[17px] font-bold text-[#181818] lg:text-[18px]">
-                                    {activeConversation?.doi_tac.ten_hien_thi ?? 'Chọn cuộc trò chuyện'}
+                                    {activeConversation?.doi_tac.ten_hien_thi ?? 'Chưa có cuộc trò chuyện nào'}
                                 </div>
-                                <div className="text-[12px] text-[#5f8e55] lg:text-[13px]">Đang hoạt động gần đây</div>
+                                <div className="text-[12px] text-[#5f8e55] lg:text-[13px]">
+                                    {activeConversation ? 'Đang hoạt động gần đây' : 'Bắt đầu nhắn tin từ trang cá nhân hoặc bảng xếp hạng'}
+                                </div>
                             </div>
                         </div>
                     </header>
 
                     <div className="min-h-0 overflow-y-auto px-5 py-5 lg:px-8 lg:py-6">
-                        <div className="space-y-4 lg:space-y-5">
-                            {messages.map((message) => (
+                        {conversations.length === 0 ? (
+                            <div className="flex h-full min-h-[260px] items-center justify-center text-center text-[16px] text-[#7b8a78]">
+                                Bạn chưa có cuộc trò chuyện nào.
+                            </div>
+                        ) : (
+                            <div className="space-y-4 lg:space-y-5">
+                                {messages.map((message) => (
                                 <div
                                     key={message.id}
                                     className={`flex ${message.la_tin_cua_toi ? 'justify-end' : 'justify-start'}`}
@@ -344,11 +360,13 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="border-t border-[#e5eee1] bg-white/90 px-5 py-4 backdrop-blur lg:px-7">
+                    {conversations.length > 0 ? (
+                        <div className="border-t border-[#e5eee1] bg-white/90 px-5 py-4 backdrop-blur lg:px-7">
                         <div className="flex h-full items-center gap-3 rounded-[22px] border border-[#dbe7d6] bg-white px-3 py-2 shadow-[0_16px_30px_rgba(56,97,49,0.08)] lg:px-4">
                             <textarea
                                 value={draft}
@@ -365,7 +383,8 @@ export default function MessagePageClient({ targetId }: { targetId: string }) {
                                 ➤
                             </button>
                         </div>
-                    </div>
+                        </div>
+                    ) : null}
                 </section>
             </section>
         </div>

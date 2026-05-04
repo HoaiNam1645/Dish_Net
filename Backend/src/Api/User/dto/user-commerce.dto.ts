@@ -197,6 +197,7 @@ export class CapNhatGioHangDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(50)
   so_luong?: number;
 
   @IsOptional()
@@ -216,6 +217,7 @@ export class ThemVaoGioHangDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(50)
   so_luong?: number;
 
   @IsOptional()
