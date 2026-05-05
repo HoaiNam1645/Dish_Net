@@ -25,6 +25,7 @@ import {
   BangXepHangMiniQueryDto,
   BaoCaoNguoiDungDto,
   BaoCaoBaiVietDto,
+  ChiaSeBaiVietDto,
   ChinhSuaTrangCaNhanDto,
   KhamPhaQueryDto,
   MonTheoDanhMucQueryDto,
@@ -434,6 +435,19 @@ export class UserContentController {
   }
 
   /**
+   * PB07 - Hữu ích bình luận (toggle)
+   * POST /user/binh-luan/:idBinhLuan/tuong-tac/thich
+   */
+  @Post('binh-luan/:idBinhLuan/tuong-tac/thich')
+  @Roles('nguoi_dung', 'nha_sang_tao', 'chu_cua_hang')
+  async toggleThichBinhLuan(
+    @Req() req: AuthenticatedRequest,
+    @Param('idBinhLuan') idBinhLuan: number,
+  ) {
+    return this.userContentService.toggleThichBinhLuan(idBinhLuan, req.user!.sub);
+  }
+
+  /**
    * PB24 - Upload ảnh/video bài viết
    * POST /user/bai-viet/upload
    */
@@ -562,8 +576,9 @@ export class UserContentController {
   async chiaSe(
     @Req() req: AuthenticatedRequest,
     @Param('idBaiViet') idBaiViet: number,
+    @Body() dto: ChiaSeBaiVietDto,
   ) {
-    return this.userContentService.chiaSeBaiViet(idBaiViet, req.user!.sub);
+    return this.userContentService.chiaSeBaiViet(idBaiViet, req.user!.sub, dto);
   }
 
   /**

@@ -101,6 +101,12 @@ export const userContentApi = {
       body: JSON.stringify(body),
     }),
 
+  toggleThichBinhLuan: (idBinhLuan: number) =>
+    request<{ da_tuong_tac: boolean; hanh_dong: string; tong_luot: number }>(
+      `/user/binh-luan/${idBinhLuan}/tuong-tac/thich`,
+      { method: 'POST' },
+    ),
+
   uploadTepBaiViet: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -174,8 +180,14 @@ export const userContentApi = {
   toggleLuuBaiViet: (idBaiViet: number) =>
     request(`/user/bai-viet/${idBaiViet}/tuong-tac/luu`, { method: 'POST' }),
 
-  chiaSeBaiViet: (idBaiViet: number) =>
-    request(`/user/bai-viet/${idBaiViet}/tuong-tac/chia-se`, { method: 'POST' }),
+  chiaSeBaiViet: (
+    idBaiViet: number,
+    body?: { muc_do_hien_thi?: 'cong_khai' | 'ban_be' },
+  ) =>
+    request(`/user/bai-viet/${idBaiViet}/tuong-tac/chia-se`, {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }),
 
   baoCaoBaiViet: (
     idBaiViet: number,

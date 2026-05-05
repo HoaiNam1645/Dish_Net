@@ -36,6 +36,7 @@ import {
   KhamPhaQueryDto,
   MonTheoDanhMucQueryDto,
   NoiDungTrangCaNhanQueryDto,
+  ChiaSeBaiVietDto,
   TaoBaiVietDto,
   TimKiemQueryDto,
 } from './dto/user-content.dto';
@@ -2529,6 +2530,58 @@ export class UserContentService {
     });
   }
 
+  async toggleThichBinhLuan(idBinhLuan: number, idNguoiDung: number) {
+    const binhLuan = await this.binhLuanRepo.findOne({
+      where: { id: idBinhLuan, trang_thai: 'hien_thi' },
+    });
+    if (!binhLuan) {
+      throw new NotFoundException('Bình luận không tồn tại hoặc không khả dụng');
+    }
+
+    const existed = await this.tuongTacRepo.findOne({
+      where: {
+        id_nguoi_dung: idNguoiDung,
+        id_binh_luan: idBinhLuan,
+        loai_tuong_tac: 'thich',
+      },
+    });
+
+    if (existed) {
+      await this.tuongTacRepo.delete({ id: existed.id });
+      await this.binhLuanRepo
+        .createQueryBuilder()
+        .update(BinhLuanEntity)
+        .set({
+          tong_luot_thich: () => 'GREATEST(tong_luot_thich - 1, 0)',
+        })
+        .where('id = :idBinhLuan', { idBinhLuan })
+        .execute();
+
+      const refreshed = await this.binhLuanRepo.findOne({ where: { id: idBinhLuan } });
+      return {
+        da_tuong_tac: false,
+        hanh_dong: 'bo_tuong_tac',
+        tong_luot: Number(refreshed?.tong_luot_thich ?? 0),
+      };
+    }
+
+    await this.tuongTacRepo.save({
+      id_nguoi_dung: idNguoiDung,
+      id_bai_viet: null,
+      id_binh_luan: idBinhLuan,
+      loai_tuong_tac: 'thich',
+      ngay_tao: new Date(),
+    });
+    await this.binhLuanRepo.increment({ id: idBinhLuan }, 'tong_luot_thich', 1);
+
+    const refreshed = await this.binhLuanRepo.findOne({ where: { id: idBinhLuan } });
+    return {
+      da_tuong_tac: true,
+      hanh_dong: 'tao_tuong_tac',
+      tong_luot: Number(refreshed?.tong_luot_thich ?? 0),
+    };
+  }
+
   async toggleLuuBaiViet(idBaiViet: number, idNguoiDung: number) {
     return this.toggleInteraction({
       idBaiViet,
@@ -2539,7 +2592,11 @@ export class UserContentService {
     });
   }
 
-  async chiaSeBaiViet(idBaiViet: number, idNguoiDung: number) {
+  async chiaSeBaiViet(
+    idBaiViet: number,
+    idNguoiDung: number,
+    dto?: ChiaSeBaiVietDto,
+  ) {
     const baiViet = await this.baiVietRepo.findOne({
       where: {
         id: idBaiViet,
@@ -2581,7 +2638,7 @@ export class UserContentService {
       id_don_hang: baiViet.id_don_hang,
       noi_dung: `Đã chia sẻ bài viết #${idBaiViet}`,
       so_sao: null,
-      muc_do_hien_thi: 'cong_khai',
+      muc_do_hien_thi: dto?.muc_do_hien_thi ?? 'cong_khai',
       trang_thai_duyet: 'hien_thi',
       tong_luot_xem: 0,
       tong_luot_thich: 0,

@@ -229,7 +229,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     return (
         <div className="fixed inset-0 z-[90] bg-black/45" onClick={onClose}>
             <div
-                className="absolute right-0 top-0 flex h-full w-full max-w-[860px] flex-col overflow-hidden bg-[#f4f4f3] shadow-[-20px_0_60px_rgba(0,0,0,0.18)]"
+                className="absolute right-0 top-0 flex h-full w-full max-w-[560px] flex-col overflow-hidden bg-[#f4f4f3] shadow-[-20px_0_60px_rgba(0,0,0,0.18)] xl:w-[36vw]"
                 onClick={(event) => event.stopPropagation()}
             >
                 <div className="flex items-center justify-between border-b border-[#e6e6e6] bg-white px-10 py-7">

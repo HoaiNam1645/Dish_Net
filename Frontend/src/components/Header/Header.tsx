@@ -270,7 +270,7 @@ export default function Header() {
                     </>
                 )}
 
-                {sanSangHienThiTheoPhien && dangNhap && !isStorePage ? (
+                {sanSangHienThiTheoPhien && dangNhap && nguoiDung?.vai_tro === 'chu_cua_hang' && !isStorePage ? (
                     <Link href="/store" className="ml-2 whitespace-nowrap rounded-full border border-[#ef4444]/15 bg-[#fff1ee] px-5 py-2.5 text-base font-bold text-[#d92d20] transition hover:-translate-y-0.5 hover:bg-[#ffe7e1]">
                         Vào cửa hàng
                     </Link>

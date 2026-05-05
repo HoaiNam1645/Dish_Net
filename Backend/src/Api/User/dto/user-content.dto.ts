@@ -101,6 +101,13 @@ export class TaoBaiVietDto {
 
 export class CapNhatBaiVietDto extends TaoBaiVietDto {}
 
+export class ChiaSeBaiVietDto {
+  @IsOptional()
+  @IsString()
+  @IsIn(['cong_khai', 'ban_be'])
+  muc_do_hien_thi?: string;
+}
+
 export class BaoCaoBaiVietDto {
   @IsString()
   @IsNotEmpty()

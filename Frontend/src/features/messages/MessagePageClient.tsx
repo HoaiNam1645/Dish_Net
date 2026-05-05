@@ -138,8 +138,14 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
                 let initialConversationId: number | null = null;
 
                 if (targetUserId) {
-                    const started: any = await userCommerceApi.batDauTroChuyen(targetUserId);
-                    initialConversationId = Number(started?.id_cuoc_tro_chuyen ?? 0) || null;
+                    try {
+                        const started: any = await userCommerceApi.batDauTroChuyen(targetUserId);
+                        initialConversationId = Number(started?.id_cuoc_tro_chuyen ?? 0) || null;
+                    } catch {
+                        // Fallback: conversation may already exist or target cannot be auto-started.
+                        // We still continue loading the existing conversation list.
+                        initialConversationId = null;
+                    }
                 }
 
                 await loadConversations(initialConversationId);
@@ -250,16 +256,7 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
 
     return (
         <div className="h-full min-h-0 overflow-hidden bg-[#f4f6f3] p-3 lg:p-4">
-            <section className="grid h-full min-h-0 w-full grid-cols-[64px_280px_minmax(0,1fr)] overflow-hidden rounded-[24px] border border-[#dfe9d9] bg-white shadow-[0_18px_40px_rgba(0,0,0,0.08)] lg:grid-cols-[72px_320px_minmax(0,1fr)]">
-                <aside className="flex min-h-0 flex-col items-center gap-6 border-r border-[#e4efe0] bg-[#fbfdf9] py-6 lg:gap-7 lg:py-7">
-                    <button type="button" className="text-[22px] text-[#202020] lg:text-[24px]">⌂</button>
-                    <button type="button" className="text-[22px] text-[#202020] lg:text-[24px]">◉</button>
-                    <button type="button" className="text-[22px] text-[#ff3158] lg:text-[24px]">➤</button>
-                    <button type="button" className="relative text-[22px] text-[#202020] lg:text-[24px]">
-                        ☏
-                    </button>
-                </aside>
-
+            <section className="grid h-full min-h-0 w-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden rounded-[24px] border border-[#dfe9d9] bg-white shadow-[0_18px_40px_rgba(0,0,0,0.08)] lg:grid-cols-[320px_minmax(0,1fr)]">
                 <aside className="flex min-h-0 flex-col border-r border-[#e4efe0] bg-white">
                     <div className="border-b border-[#eef3eb] px-5 py-5 lg:px-6 lg:py-6">
                         <h1 className="text-[34px] font-bold leading-none text-black lg:text-[40px]">Tin nhắn</h1>
