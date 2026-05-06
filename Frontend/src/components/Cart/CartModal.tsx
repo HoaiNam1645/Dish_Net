@@ -348,6 +348,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                                 disabled={selectedCount === 0}
                                 onClick={() => {
                                     onClose();
+                                    sessionStorage.setItem('checkout_back', window.location.pathname);
                                     router.push('/checkout');
                                 }}
                                 className="rounded-[12px] bg-[#e2231a] px-7 py-3 text-[18px] font-bold text-white transition hover:bg-[#cb1f17] disabled:cursor-not-allowed disabled:bg-[#efb2ae]"

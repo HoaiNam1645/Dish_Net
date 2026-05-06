@@ -14,6 +14,7 @@ import type { StoreDetailData } from './data';
 type MenuItem = StoreDetailData['menuItems'][number];
 type StoreCartSummaryItem = {
   id: number;
+  cartItemId: number;
   name: string;
   quantity: number;
   thanhTien: number;
@@ -30,6 +31,12 @@ type CartApiGroup = {
 type SearchDishCandidate = {
   id?: number | string;
   ten_mon?: string;
+};
+
+type ShareConv = {
+  id: number;
+  name: string;
+  avatar?: string | null;
 };
 
 type DishOption = {
@@ -130,6 +137,13 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
   const [cartActionError, setCartActionError] = useState<string | null>(null);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
+  const [shareDish, setShareDish] = useState<MenuItem | null>(null);
+  const [shareConversations, setShareConversations] = useState<ShareConv[]>([]);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareSelectedId, setShareSelectedId] = useState<number | null>(null);
+  const [shareSending, setShareSending] = useState(false);
+  const [shareDone, setShareDone] = useState(false);
+
   const menuCategories = useMemo(
     () => [{ id: 'tat-ca', label: 'Tất cả' }, ...store.menuCategories],
     [store.menuCategories],
@@ -184,6 +198,7 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
             const donGia = Number(item?.gia ?? parseCurrency(menuItem.price));
             return {
               id: Number(monAnId || String(item?.id ?? 0)),
+              cartItemId: Number(item?.id ?? 0),
               name: menuItem.name,
               quantity: soLuong,
               thanhTien: donGia * soLuong,
@@ -329,29 +344,45 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
     router.push(`/explore/store/${store.id}`);
   };
 
-  const handleShareDish = async (item: MenuItem) => {
-    const dishUrl =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/explore/store/${store.id}/menu?mon=${encodeURIComponent(item.id)}`
-        : `/explore/store/${store.id}/menu?mon=${encodeURIComponent(item.id)}`;
-
-    const shareData = {
-      title: `${item.name} - ${store.title}`,
-      text: `Món ${item.name} ở ${store.title}`,
-      url: dishUrl,
-    };
-
+  const openSharePopup = async (item: MenuItem) => {
+    if (!dangNhap) {
+      setIsLoginRequiredOpen(true);
+      return;
+    }
+    setShareDish(item);
+    setShareSelectedId(null);
+    setShareDone(false);
+    setShareLoading(true);
     try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share(shareData);
-      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(dishUrl);
-        setCartActionMessage('Đã sao chép link chia sẻ món ăn');
-      } else {
-        setCartActionMessage(`Link món ăn: ${dishUrl}`);
-      }
+      const payload: any = await userCommerceApi.layDanhSachTroChuyen({ trang: 1, so_luong: 50 });
+      const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+      setShareConversations(
+        rows.map((r: any) => ({
+          id: Number(r.id_cuoc_tro_chuyen),
+          name: String(r?.doi_tac?.ten_hien_thi ?? 'Người dùng'),
+          avatar: r?.doi_tac?.anh_dai_dien ?? null,
+        })),
+      );
     } catch {
-      // User cancelled share dialog: no error UI needed.
+      setShareConversations([]);
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleSendShare = async () => {
+    if (!shareSelectedId || !shareDish || shareSending) return;
+    const dishUrl = `${window.location.origin}/explore/store/${store.id}/menu?mon=${encodeURIComponent(shareDish.id)}`;
+    const message = `nguoi-dung đã chia sẻ một bài viết với bạn: ${dishUrl}`;
+    setShareSending(true);
+    try {
+      await userCommerceApi.guiTinNhan(shareSelectedId, message);
+      setShareDone(true);
+      setTimeout(() => setShareDish(null), 1200);
+    } catch {
+      // ignore
+    } finally {
+      setShareSending(false);
     }
   };
 
@@ -450,11 +481,11 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void handleShareDish(item)}
-                                  className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-[#d0d0d0] text-xs text-[#4b5563]"
+                                  onClick={() => void openSharePopup(item)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-[#d0d0d0] text-[#4b5563] transition hover:border-[#f59e0b] hover:text-[#f59e0b]"
                                   aria-label={`Chia sẻ ${item.name}`}
                                 >
-                                  ↪
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                                 </button>
                               </div>
                               <p className="mt-0.5 text-[12px] text-[#babbba]">{item.note || 'Chú thích về món ăn nếu có'}</p>
@@ -489,10 +520,28 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
                   <>
                     <div className="mt-4 space-y-3">
                       {cartSummary.map((item) => (
-                        <article key={`${item.id}-${item.name}`} className="rounded-[12px] border border-[#ececec] px-3 py-3">
-                          <p className="text-sm font-semibold text-[#1f2937]">{item.name}</p>
-                          <p className="text-sm text-[#6b7280]">SL: {item.quantity}</p>
-                          <p className="mt-1 text-base font-bold text-[#f59e0b]">{formatCurrency(item.thanhTien)}</p>
+                        <article key={`${item.id}-${item.name}`} className="flex items-start gap-2 rounded-[12px] border border-[#ececec] px-3 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#1f2937]">{item.name}</p>
+                            <p className="text-sm text-[#6b7280]">SL: {item.quantity}</p>
+                            <p className="mt-1 text-base font-bold text-[#f59e0b]">{formatCurrency(item.thanhTien)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Xoá ${item.name}`}
+                            onClick={async () => {
+                              try {
+                                await userCommerceApi.xoaItemGioHang(item.cartItemId);
+                                emitUserCartRefreshEvent();
+                                await loadStoreCartSummary();
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[#9ca3af] transition hover:bg-red-50 hover:text-red-500"
+                          >
+                            ×
+                          </button>
                         </article>
                       ))}
                     </div>
@@ -503,7 +552,7 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
                       </div>
                       <button
                         type="button"
-                        onClick={() => router.push('/checkout')}
+                        onClick={() => { sessionStorage.setItem('checkout_back', window.location.pathname); router.push('/checkout'); }}
                         className="mt-4 w-full rounded-[12px] bg-[#2f9e2f] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#257f25]"
                       >
                         Tiến hành đặt món
@@ -632,6 +681,70 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
       ) : null}
 
       <LoginRequiredModal isOpen={isLoginRequiredOpen} onClose={() => setIsLoginRequiredOpen(false)} />
+
+      {shareDish ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setShareDish(null)}
+        >
+          <div
+            className="w-full max-w-[360px] overflow-hidden rounded-[18px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#f0f0f0] px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-[13px] text-[#9ca3af]">Chia sẻ món ăn</p>
+                <p className="truncate text-[16px] font-semibold text-[#111827]">{shareDish.name}</p>
+              </div>
+              <button type="button" onClick={() => setShareDish(null)} className="ml-3 text-2xl leading-none text-[#6b7280] hover:text-black">×</button>
+            </div>
+
+            <div className="max-h-[280px] overflow-y-auto px-3 py-3">
+              {shareLoading ? (
+                <p className="py-6 text-center text-sm text-[#9ca3af]">Đang tải...</p>
+              ) : shareConversations.length === 0 ? (
+                <p className="py-6 text-center text-sm text-[#9ca3af]">Bạn chưa có cuộc trò chuyện nào</p>
+              ) : shareConversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  type="button"
+                  onClick={() => setShareSelectedId(conv.id === shareSelectedId ? null : conv.id)}
+                  className={`mb-1 flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition ${
+                    shareSelectedId === conv.id ? 'bg-[#fff7ed]' : 'hover:bg-[#f9fafb]'
+                  }`}
+                >
+                  <img
+                    src={conv.avatar || 'https://i.pravatar.cc/160'}
+                    alt={conv.name}
+                    className="h-9 w-9 rounded-full object-cover"
+                  />
+                  <span className="flex-1 truncate text-[15px] font-medium text-[#1f2937]">{conv.name}</span>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold ${
+                    shareSelectedId === conv.id
+                      ? 'border-[#f59e0b] bg-[#f59e0b] text-white'
+                      : 'border-[#d1d5db] bg-white text-transparent'
+                  }`}>✓</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="border-t border-[#f0f0f0] px-4 py-3">
+              {shareDone ? (
+                <p className="py-1 text-center text-sm font-medium text-[#16a34a]">Đã gửi thành công!</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleSendShare()}
+                  disabled={!shareSelectedId || shareSending}
+                  className="w-full rounded-[12px] bg-[#f59e0b] py-2.5 text-sm font-bold text-white transition hover:bg-[#d97706] disabled:opacity-40"
+                >
+                  {shareSending ? 'Đang gửi...' : 'Gửi'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -649,12 +649,6 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                     </aside>
 
                     <div className="space-y-8">
-                        <div className="flex flex-wrap items-center justify-end gap-4 bg-[#e9ece6] px-6 py-4">
-                            <QuickAction label="📞 Gọi điện thoại" />
-                            <QuickAction label="Danh Mục ⌄" />
-                            <QuickAction label="🔖 Lưu" onClick={openLoginRequired} />
-                            <QuickAction label="🔗 Chia Sẻ" />
-                        </div>
 
                         <section id="menu" className="overflow-hidden rounded-[22px] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
                             <div className="p-8">
@@ -663,15 +657,15 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                 <div className="mt-5 grid gap-x-10 gap-y-4 md:grid-cols-2">
                                     {visibleMenu.map((item) => (
                                         <article key={item.id} className="flex items-center gap-4 border-b border-[#f0f2ed] py-3">
-                                            <img src={item.image} alt={item.name} className="h-16 w-16 rounded-[8px] object-cover" />
-                                            <div className="min-w-0 flex-1">
+                                            <img src={item.image} alt={item.name} className="h-16 w-16 cursor-pointer rounded-[8px] object-cover" onClick={() => openDishDetail(item)} />
+                                            <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openDishDetail(item)}>
                                                 <h3 className="truncate text-[18px] font-bold text-[#1f2937]">{item.name}</h3>
                                                 <p className="text-sm text-[#9ca3af]">{item.note}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-[18px] font-bold text-[#2f71ff]">{item.price}</p>
                                                 <button
-                                                    onClick={() => openMenuModal(item)}
+                                                    onClick={() => openDishDetail(item)}
                                                     className="mt-2 h-8 w-8 rounded-[8px] bg-[#ff5a2c] text-lg font-bold text-white"
                                                 >
                                                     +
@@ -987,7 +981,7 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => router.push('/checkout')}
+                                                    onClick={() => { sessionStorage.setItem('checkout_back', window.location.pathname); router.push('/checkout'); }}
                                                     className="mt-4 w-full rounded-[12px] bg-[#2f9e2f] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#257f25]"
                                                 >
                                                     Tiến hành đặt món
