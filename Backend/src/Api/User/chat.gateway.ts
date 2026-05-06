@@ -153,6 +153,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  broadcastTinNhan(
+    conversationId: number,
+    payload: Record<string, unknown>,
+    senderUserId: number,
+  ) {
+    const room = this.conversationRoom(conversationId);
+    this.server
+      .to(room)
+      .except(this.userRoom(senderUserId))
+      .emit('chat:message:new', { ...payload, la_tin_cua_toi: false });
+    this.server
+      .to(this.userRoom(senderUserId))
+      .emit('chat:message:new', { ...payload, la_tin_cua_toi: true });
+  }
+
   private extractTokenFromCookie(rawCookie?: string) {
     if (!rawCookie) return null;
     const parts = rawCookie.split(';').map((item) => item.trim());

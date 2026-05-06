@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { userCommerceApi } from '@/shared/userCommerceApi';
 
@@ -50,6 +50,19 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
     const [messages, setMessages] = useState<MessageItem[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [socket, setSocket] = useState<Socket | null>(null);
+    const [socketConnected, setSocketConnected] = useState(false);
+    const activeConversationIdRef = useRef<number | null>(null);
+    const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        activeConversationIdRef.current = activeConversationId;
+    }, [activeConversationId]);
+
+    useEffect(() => {
+        const container = messagesScrollRef.current;
+        if (!container) return;
+        container.scrollTop = container.scrollHeight;
+    }, [messages, activeConversationId]);
 
     const activeConversation = useMemo(
         () =>
@@ -70,13 +83,7 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
                 thoi_gian_gui: String(item.thoi_gian_gui ?? ''),
                 la_tin_cua_toi: Boolean(item.la_tin_cua_toi),
             }));
-        setMessages((current) => {
-            if (current.length === 0) return mapped;
-            const byId = new Map<number, MessageItem>();
-            current.forEach((item) => byId.set(item.id, item));
-            mapped.forEach((item) => byId.set(item.id, item));
-            return [...byId.values()].sort((a, b) => a.id - b.id);
-        });
+        setMessages(mapped);
     };
 
     const loadConversations = async (initialConversationId?: number | null) => {
@@ -173,6 +180,13 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
         });
         setSocket(conn);
 
+        conn.on('connect', () => setSocketConnected(true));
+        conn.on('disconnect', () => setSocketConnected(false));
+        conn.on('connect_error', (err) => {
+            console.warn('[socket] connect_error', err.message);
+            setSocketConnected(false);
+        });
+
         conn.on('chat:message:new', (payload: any) => {
             const mapped: MessageItem = {
                 id: Number(payload?.id ?? 0),
@@ -181,20 +195,20 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
                 la_tin_cua_toi: Boolean(payload?.la_tin_cua_toi),
             };
             const roomId = Number(payload?.id_cuoc_tro_chuyen ?? 0);
-            if (roomId && activeConversationId && roomId === activeConversationId) {
+            const currentActive = activeConversationIdRef.current;
+            if (roomId && currentActive && roomId === currentActive) {
                 setMessages((current) => {
                     if (current.some((item) => item.id === mapped.id)) return current;
                     return [...current, mapped].sort((a, b) => a.id - b.id);
                 });
             }
-            void refreshConversationsMeta().catch(() => {
-                // ignore background refresh errors
-            });
+            void refreshConversationsMeta().catch(() => {});
         });
 
         return () => {
             conn.disconnect();
             setSocket(null);
+            setSocketConnected(false);
         };
     }, []);
 
@@ -206,36 +220,64 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
         };
     }, [socket, activeConversationId]);
 
+    useEffect(() => {
+        if (!activeConversationId) return;
+        const conversationId = activeConversationId;
+        const tick = async () => {
+            try {
+                const payload: any = await userCommerceApi.layTinNhan(conversationId, {
+                    so_luong: 100,
+                    trang: 1,
+                });
+                if (activeConversationIdRef.current !== conversationId) return;
+                const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+                const fresh: MessageItem[] = rows.map((item: any) => ({
+                    id: Number(item.id),
+                    noi_dung: String(item.noi_dung ?? ''),
+                    thoi_gian_gui: String(item.thoi_gian_gui ?? ''),
+                    la_tin_cua_toi: Boolean(item.la_tin_cua_toi),
+                }));
+                setMessages((current) => {
+                    if (
+                        current.length === fresh.length &&
+                        current.every((item, idx) => item.id === fresh[idx]?.id)
+                    ) {
+                        return current;
+                    }
+                    const byId = new Map<number, MessageItem>();
+                    current.forEach((item) => byId.set(item.id, item));
+                    fresh.forEach((item) => byId.set(item.id, item));
+                    return [...byId.values()].sort((a, b) => a.id - b.id);
+                });
+            } catch {
+                // ignore polling errors
+            }
+        };
+        const handle = window.setInterval(tick, 1500);
+        return () => window.clearInterval(handle);
+    }, [activeConversationId]);
+
     const handleSendMessage = async () => {
         const content = draft.trim();
         if (!activeConversationId || !content || isSending) return;
-        if (!socket) {
-            setError('Kết nối realtime chưa sẵn sàng, vui lòng thử lại');
-            return;
-        }
+        setDraft('');
+        setIsSending(true);
+        const conversationId = activeConversationId;
         try {
-            setIsSending(true);
-            await new Promise<void>((resolve, reject) => {
-                socket.emit(
-                    'chat:send',
-                    {
-                        conversationId: activeConversationId,
-                        noi_dung: content,
-                    },
-                    (ack: { ok?: boolean; message?: string }) => {
-                        if (ack?.ok) {
-                            resolve();
-                            return;
-                        }
-                        reject(new Error(ack?.message || 'Không gửi được tin nhắn'));
-                    },
-                );
+            const result: any = await userCommerceApi.guiTinNhan(conversationId, content);
+            const sent: MessageItem = {
+                id: Number(result?.id ?? Date.now()),
+                noi_dung: String(result?.noi_dung ?? content),
+                thoi_gian_gui: String(result?.thoi_gian_gui ?? new Date().toISOString()),
+                la_tin_cua_toi: true,
+            };
+            setMessages((current) => {
+                if (current.some((item) => item.id === sent.id)) return current;
+                return [...current, sent].sort((a, b) => a.id - b.id);
             });
-            setDraft('');
-            void refreshConversationsMeta().catch(() => {
-                // ignore background refresh errors
-            });
+            void refreshConversationsMeta().catch(() => {});
         } catch (err) {
+            console.error('[chat] send failed', err);
             setError(err instanceof Error ? err.message : 'Không gửi được tin nhắn');
         } finally {
             setIsSending(false);
@@ -332,7 +374,7 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
                         </div>
                     </header>
 
-                    <div className="min-h-0 overflow-y-auto px-5 py-5 lg:px-8 lg:py-6">
+                    <div ref={messagesScrollRef} className="min-h-0 overflow-y-auto px-5 py-5 lg:px-8 lg:py-6">
                         {conversations.length === 0 ? (
                             <div className="flex h-full min-h-[260px] items-center justify-center text-center text-[16px] text-[#7b8a78]">
                                 Bạn chưa có cuộc trò chuyện nào.
@@ -368,6 +410,13 @@ export default function MessagePageClient({ targetId }: { targetId?: string }) {
                             <textarea
                                 value={draft}
                                 onChange={(event) => setDraft(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.nativeEvent.isComposing) return;
+                                    if (event.key === 'Enter' && !event.shiftKey) {
+                                        event.preventDefault();
+                                        void handleSendMessage();
+                                    }
+                                }}
                                 placeholder="Gửi tin nhắn..."
                                 className="max-h-28 min-h-[44px] flex-1 resize-none bg-transparent px-1 py-2 text-[14px] text-[#202020] outline-none placeholder:text-[#9aa69a] lg:max-h-32 lg:min-h-[46px] lg:text-[15px]"
                             />

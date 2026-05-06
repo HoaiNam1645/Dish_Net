@@ -38,6 +38,7 @@ import {
   YeuCauHoanTienDto,
 } from './dto/user-commerce.dto';
 import { UserCommerceService } from './user-commerce.service';
+import { ChatGateway } from './chat.gateway';
 
 type AuthenticatedRequest = Request & {
   user?: { sub: number; email: string; vai_tro: string };
@@ -46,7 +47,10 @@ type AuthenticatedRequest = Request & {
 @Controller('user')
 @Roles('nguoi_dung', 'nha_sang_tao', 'chu_cua_hang')
 export class UserCommerceController {
-  constructor(private readonly userCommerceService: UserCommerceService) {}
+  constructor(
+    private readonly userCommerceService: UserCommerceService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   // PB14 - Hỗ trợ
   @Post('ho-tro')
@@ -389,10 +393,20 @@ export class UserCommerceController {
     @Param('idCuocTroChuyen') idCuocTroChuyen: number,
     @Body() dto: GuiTinNhanDto,
   ) {
-    return this.userCommerceService.guiTinNhan(
+    const result = await this.userCommerceService.guiTinNhan(
       req.user!.sub,
       idCuocTroChuyen,
       dto,
     );
+    try {
+      this.chatGateway.broadcastTinNhan(
+        idCuocTroChuyen,
+        result as Record<string, unknown>,
+        req.user!.sub,
+      );
+    } catch {
+      // socket broadcast best-effort; do not fail the REST request
+    }
+    return result;
   }
 }

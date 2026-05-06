@@ -261,6 +261,7 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
     const visibleMenu = useMemo(() => store.menuItems.slice(0, 10), [store.menuItems]);
+    const hasReviews = store.reviewCards.length > 0;
     const openLoginRequired = () => setIsLoginRequiredOpen(true);
 
     const menuCategories = useMemo(
@@ -491,11 +492,10 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
     };
 
     const openMenuModal = (item?: MenuItem) => {
-        setIsReviewModalOpen(false);
-        setIsMenuModalOpen(true);
         if (item) {
-            openDishDetail(item);
+            void item;
         }
+        router.push(`/explore/store/${store.id}/menu`);
     };
 
     const closeMenuModal = () => {
@@ -575,7 +575,9 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
             <section className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-5 md:px-8">
                 <article id="top" className="overflow-hidden rounded-[20px] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
                     <div className="grid lg:grid-cols-[1.15fr_1.65fr]">
-                        <img src={store.coverImage} alt={store.title} className="h-full min-h-[340px] w-full object-cover" />
+                        <div className="h-[260px] overflow-hidden sm:h-[340px] lg:h-[420px]">
+                            <img src={store.coverImage} alt={store.title} className="h-full w-full object-cover" />
+                        </div>
                         <div className="p-6 md:p-7">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
@@ -698,12 +700,14 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                     />
                                 ))}
                             </div>
-                            <button
-                                onClick={() => setIsReviewModalOpen(true)}
-                                className="w-full rounded-[8px] bg-[#d7f5cf] px-6 py-5 text-[22px] font-medium text-[#2e7d18]"
-                            >
-                                Xem Thêm Bài Review →
-                            </button>
+                            {hasReviews ? (
+                                <button
+                                    onClick={() => setIsReviewModalOpen(true)}
+                                    className="w-full rounded-[8px] bg-[#d7f5cf] px-6 py-5 text-[22px] font-medium text-[#2e7d18]"
+                                >
+                                    Xem Thêm Bài Review →
+                                </button>
+                            ) : null}
                         </section>
 
                         <section id="community" className="rounded-[22px] bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
