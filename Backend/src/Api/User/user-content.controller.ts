@@ -175,6 +175,42 @@ export class UserContentController {
   }
 
   /**
+   * GET /user/nguoi-dung/danh-sach-dang-theo-doi
+   */
+  @Get('nguoi-dung/danh-sach-dang-theo-doi')
+  @Roles('nguoi_dung', 'nha_sang_tao', 'chu_cua_hang')
+  async layDanhSachDangTheoDoi(
+    @Req() req: AuthenticatedRequest,
+    @Query('tu_khoa') tuKhoa?: string,
+  ) {
+    return this.userContentService.layDanhSachDangTheoDoi(req.user!.sub, tuKhoa);
+  }
+
+  /**
+   * GET /user/nguoi-dung/danh-sach-nguoi-theo-doi
+   */
+  @Get('nguoi-dung/danh-sach-nguoi-theo-doi')
+  @Roles('nguoi_dung', 'nha_sang_tao', 'chu_cua_hang')
+  async layDanhSachNguoiTheoDoi(
+    @Req() req: AuthenticatedRequest,
+    @Query('tu_khoa') tuKhoa?: string,
+  ) {
+    return this.userContentService.layDanhSachNguoiTheoDoi(req.user!.sub, tuKhoa);
+  }
+
+  /**
+   * DELETE /user/nguoi-dung/:idNguoiDung/xoa-nguoi-theo-doi
+   */
+  @Delete('nguoi-dung/:idNguoiDung/xoa-nguoi-theo-doi')
+  @Roles('nguoi_dung', 'nha_sang_tao', 'chu_cua_hang')
+  async xoaNguoiTheoDoi(
+    @Req() req: AuthenticatedRequest,
+    @Param('idNguoiDung') idNguoiDung: number,
+  ) {
+    return this.userContentService.xoaNguoiTheoDoi(idNguoiDung, req.user!.sub);
+  }
+
+  /**
    * PB12 - Chặn / bỏ chặn
    * POST /user/nguoi-dung/:idNguoiDung/chan
    */

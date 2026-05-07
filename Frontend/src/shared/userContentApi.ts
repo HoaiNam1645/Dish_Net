@@ -252,6 +252,15 @@ export const userContentApi = {
   layTrangThaiTuongTacNguoiDung: (idNguoiDung: number) =>
     request(`/user/nguoi-dung/${idNguoiDung}/tuong-tac`),
 
+  layDanhSachDangTheoDoi: (tuKhoa?: string) =>
+    request(`/user/nguoi-dung/danh-sach-dang-theo-doi${tuKhoa ? `?tu_khoa=${encodeURIComponent(tuKhoa)}` : ''}`),
+
+  layDanhSachNguoiTheoDoi: (tuKhoa?: string) =>
+    request(`/user/nguoi-dung/danh-sach-nguoi-theo-doi${tuKhoa ? `?tu_khoa=${encodeURIComponent(tuKhoa)}` : ''}`),
+
+  xoaNguoiTheoDoi: (idNguoiDung: number) =>
+    request(`/user/nguoi-dung/${idNguoiDung}/xoa-nguoi-theo-doi`, { method: 'DELETE' }),
+
   toggleTheoDoiNguoiDung: (idNguoiDung: number) =>
     request(`/user/nguoi-dung/${idNguoiDung}/theo-doi`, { method: 'POST' }),
 

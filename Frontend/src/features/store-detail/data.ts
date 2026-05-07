@@ -17,6 +17,8 @@ export type StoreDetailMenuCategory = {
 
 export type StoreDetailReviewCard = {
     id: string;
+    userId?: string;
+    avatar?: string;
     author: string;
     date: string;
     excerpt: string;
@@ -26,6 +28,8 @@ export type StoreDetailReviewCard = {
 
 export type StoreDetailComment = {
     id: string;
+    userId?: string;
+    avatar?: string;
     author: string;
     source: string;
     date: string;
@@ -211,8 +215,13 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
                 monRows[payloadIndex]?.hinh_anh ||
                 fallbackImage;
 
+            const reviewUserId = review?.id_nguoi_dung ? String(review.id_nguoi_dung) : undefined;
+            const reviewAvatar = review?.anh_nguoi_danh_gia ? String(review.anh_nguoi_danh_gia) : undefined;
+
             reviewCards.push({
                 id: String(review?.id ?? `${payloadIndex}-${reviewIndex}`),
+                userId: reviewUserId,
+                avatar: reviewAvatar,
                 author: String(review?.ten_nguoi_danh_gia ?? 'Người dùng'),
                 date: formatDate(String(review?.ngay_danh_gia ?? '')),
                 excerpt: String(review?.noi_dung ?? ''),
@@ -222,6 +231,8 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
 
             comments.push({
                 id: String(review?.id ?? `${payloadIndex}-${reviewIndex}`),
+                userId: reviewUserId,
+                avatar: reviewAvatar,
                 author: String(review?.ten_nguoi_danh_gia ?? 'Người dùng'),
                 source: String(monInfo?.ten_mon ?? 'DishNet'),
                 date: formatDate(String(review?.ngay_danh_gia ?? '')),

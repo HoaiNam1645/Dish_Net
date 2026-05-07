@@ -67,23 +67,17 @@ function normalizeText(value: string) {
         .trim();
 }
 
-function QuickAction({ label, onClick }: { label: string; onClick?: () => void }) {
-    const clickable = typeof onClick === 'function';
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            disabled={!clickable}
-            className={`rounded-[8px] bg-white px-6 py-3 text-[15px] font-medium text-[#4b5563] shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition ${
-                clickable ? 'hover:bg-[#f8fafc]' : 'cursor-not-allowed opacity-60'
-            }`}
-        >
-            {label}
-        </button>
-    );
-}
+
+const IconHeart = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+);
+const IconComment = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+);
 
 function ReviewerCard({
+    userId,
+    avatar,
     author,
     date,
     excerpt,
@@ -91,18 +85,35 @@ function ReviewerCard({
     gallery,
     onRequireLogin,
     onOrderNow,
+    onNavigateToProfile,
 }: StoreDetailData['reviewCards'][number] & {
     onRequireLogin?: () => void;
     onOrderNow?: () => void;
+    onNavigateToProfile?: (userId: string) => void;
 }) {
     return (
         <article className="rounded-[18px] border border-[#ebe5dd] bg-[#fff6ee] p-5 shadow-[0_8px_22px_rgba(0,0,0,0.05)]">
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ffe0b6] text-[20px]">👥</div>
+                    <button
+                        type="button"
+                        onClick={() => userId && onNavigateToProfile ? onNavigateToProfile(userId) : undefined}
+                        className={userId ? 'cursor-pointer' : 'cursor-default'}
+                    >
+                        {avatar
+                            ? <img src={avatar} alt={author} className="h-14 w-14 rounded-full object-cover" />
+                            : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ffe0b6] text-[20px]">👥</div>
+                        }
+                    </button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h3 className="text-[18px] font-bold text-[#172554]">{author}</h3>
+                            <button
+                                type="button"
+                                onClick={() => userId && onNavigateToProfile ? onNavigateToProfile(userId) : undefined}
+                                className={`text-[18px] font-bold text-[#172554] ${userId ? 'hover:underline' : ''}`}
+                            >
+                                {author}
+                            </button>
                             <span className="rounded-full bg-[#ffe9bd] px-3 py-1 text-xs font-bold text-[#6b4b00]">TOP REVIEWER</span>
                         </div>
                         <p className="text-sm text-[#6b7280]">{date}</p>
@@ -124,15 +135,18 @@ function ReviewerCard({
                 <span>⏰ Tốc độ phục vụ <b className="text-[#f59e0b]">4.7</b></span>
             </div>
 
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_90px_90px_48px] gap-2">
-                <img src={heroImage} alt={author} className="h-[146px] w-full rounded-[12px] object-cover" />
-                {gallery.slice(0, 3).map((image, index) => (
-                    <img key={index} src={image} alt="" className="h-[68px] w-full rounded-[12px] object-cover" />
-                ))}
-                <button onClick={onRequireLogin} className="row-span-2 rounded-[14px] bg-[#e85f5f] text-sm font-bold text-white">Xem thêm</button>
-                {gallery.slice(1, 3).map((image, index) => (
-                    <img key={`row-${index}`} src={image} alt="" className="h-[68px] w-full rounded-[12px] object-cover" />
-                ))}
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_90px_90px] gap-2">
+                <img src={heroImage} alt={author} className="row-span-2 h-full min-h-[146px] w-full rounded-[12px] object-cover" />
+                <img src={gallery[0] ?? heroImage} alt="" className="h-[68px] w-full rounded-[12px] object-cover" />
+                <img src={gallery[1] ?? heroImage} alt="" className="h-[68px] w-full rounded-[12px] object-cover" />
+                <img src={gallery[2] ?? heroImage} alt="" className="h-[68px] w-full rounded-[12px] object-cover" />
+                <button
+                    onClick={onRequireLogin}
+                    className="relative h-[68px] w-full overflow-hidden rounded-[12px]"
+                >
+                    <img src={gallery[3] ?? gallery[2] ?? heroImage} alt="" className="h-full w-full object-cover brightness-50" />
+                    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">Xem thêm</span>
+                </button>
             </div>
 
             <p className="mt-4 text-[15px] leading-8 text-[#3f3f46]">{excerpt}</p>
@@ -145,8 +159,12 @@ function ReviewerCard({
 
             <div className="mt-4 flex items-center justify-between border-t border-[#efe5d9] pt-4">
                 <div className="flex items-center gap-8 text-[15px] text-[#4b5563]">
-                    <button onClick={onRequireLogin}>♡ Yêu thích</button>
-                    <span>◔ Bình luận</span>
+                    <button type="button" onClick={onRequireLogin} className="flex items-center gap-1.5 hover:text-red-500">
+                        <IconHeart /> Yêu thích
+                    </button>
+                    <button type="button" onClick={onRequireLogin} className="flex items-center gap-1.5 hover:text-[#2f9e2f]">
+                        <IconComment /> Bình luận
+                    </button>
                 </div>
                 <button
                     onClick={onOrderNow}
@@ -159,14 +177,37 @@ function ReviewerCard({
     );
 }
 
-function UserCommentCard({ comment }: { comment: StoreDetailData['comments'][number] }) {
+function UserCommentCard({
+    comment,
+    onRequireLogin,
+    onNavigateToProfile,
+}: {
+    comment: StoreDetailData['comments'][number];
+    onRequireLogin?: () => void;
+    onNavigateToProfile?: (userId: string) => void;
+}) {
     return (
         <article className="rounded-[18px] bg-white p-8 shadow-[0_10px_28px_rgba(0,0,0,0.08)]">
             <div className="flex items-start justify-between gap-4 border-b border-[#e9efe6] pb-5">
                 <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ececec] text-xl">👤</div>
+                    <button
+                        type="button"
+                        onClick={() => comment.userId && onNavigateToProfile ? onNavigateToProfile(comment.userId) : undefined}
+                        className={comment.userId ? 'cursor-pointer' : 'cursor-default'}
+                    >
+                        {comment.avatar
+                            ? <img src={comment.avatar} alt={comment.author} className="h-14 w-14 rounded-full object-cover" />
+                            : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ececec] text-xl">👤</div>
+                        }
+                    </button>
                     <div>
-                        <h3 className="text-[18px] font-bold text-[#1f2937]">{comment.author}</h3>
+                        <button
+                            type="button"
+                            onClick={() => comment.userId && onNavigateToProfile ? onNavigateToProfile(comment.userId) : undefined}
+                            className={`text-[18px] font-bold text-[#1f2937] ${comment.userId ? 'hover:underline' : ''}`}
+                        >
+                            {comment.author}
+                        </button>
                         <p className="text-sm text-[#6b7280]">{comment.source} • {comment.date}</p>
                     </div>
                 </div>
@@ -188,9 +229,16 @@ function UserCommentCard({ comment }: { comment: StoreDetailData['comments'][num
             </div>
 
             <div className="mt-5 flex items-center gap-8 text-[15px] text-[#6b7280]">
-                <span>♥ Thích</span>
-                <span>💬 Thảo luận</span>
-                <span>⚠ Báo lỗi</span>
+                <button type="button" onClick={onRequireLogin} className="flex items-center gap-1.5 hover:text-red-500">
+                    <IconHeart /> Thích
+                </button>
+                <button type="button" onClick={onRequireLogin} className="flex items-center gap-1.5 hover:text-[#2f9e2f]">
+                    <IconComment /> Thảo luận
+                </button>
+                <button type="button" onClick={onRequireLogin} className="flex items-center gap-1.5 hover:text-[#f59e0b]">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Báo lỗi
+                </button>
             </div>
         </article>
     );
@@ -691,6 +739,7 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                         {...review}
                                         onRequireLogin={openLoginRequired}
                                         onOrderNow={() => openMenuModal()}
+                                        onNavigateToProfile={(userId) => router.push(`/profile/${userId}`)}
                                     />
                                 ))}
                             </div>
@@ -732,7 +781,12 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                             </article>
 
                             {store.comments.map((comment) => (
-                                <UserCommentCard key={comment.id} comment={comment} />
+                                <UserCommentCard
+                                    key={comment.id}
+                                    comment={comment}
+                                    onRequireLogin={openLoginRequired}
+                                    onNavigateToProfile={(userId) => router.push(`/profile/${userId}`)}
+                                />
                             ))}
                         </section>
                     </div>

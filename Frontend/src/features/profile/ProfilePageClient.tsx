@@ -121,6 +121,278 @@ function SearchImageIcon() {
     );
 }
 
+type Follower = {
+    id: number;
+    ten_hien_thi: string;
+    ten_dang_nhap: string;
+    anh_dai_dien: string | null;
+};
+
+function FollowersModal({ onClose }: { onClose: () => void }) {
+    const [keyword, setKeyword] = useState('');
+    const [followers, setFollowers] = useState<Follower[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [confirmTarget, setConfirmTarget] = useState<Follower | null>(null);
+    const [removing, setRemoving] = useState(false);
+
+    const load = async (kw?: string) => {
+        setLoading(true);
+        try {
+            const res = (await userContentApi.layDanhSachNguoiTheoDoi(kw)) as Follower[];
+            setFollowers(Array.isArray(res) ? res : []);
+        } catch {
+            setFollowers([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { void load(); }, []);
+
+    const handleSearch = (value: string) => {
+        setKeyword(value);
+        void load(value || undefined);
+    };
+
+    const handleRemove = async () => {
+        if (!confirmTarget || removing) return;
+        setRemoving(true);
+        try {
+            await userContentApi.xoaNguoiTheoDoi(confirmTarget.id);
+            setFollowers((current) => current.filter((f) => f.id !== confirmTarget.id));
+            setConfirmTarget(null);
+        } finally {
+            setRemoving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+            <div
+                className="relative w-full max-w-[500px] overflow-hidden rounded-[20px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-[#efefef] px-6 py-5">
+                    <h2 className="text-[20px] font-bold text-black">Người theo dõi</h2>
+                    <button type="button" onClick={onClose} className="text-[30px] leading-none text-[#888] transition hover:text-black">×</button>
+                </div>
+
+                <div className="px-6 py-4">
+                    <label className="flex items-center gap-2 rounded-full bg-[#f3f3f3] px-4 py-2.5">
+                        <SearchIcon />
+                        <input
+                            type="text"
+                            value={keyword}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder="Tìm kiếm"
+                            className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#aaa]"
+                        />
+                    </label>
+                </div>
+
+                <div className="max-h-[420px] overflow-y-auto px-4 pb-5">
+                    {loading ? (
+                        <p className="py-8 text-center text-sm text-[#888]">Đang tải...</p>
+                    ) : followers.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-[#888]">Chưa có người theo dõi nào.</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {followers.map((f) => (
+                                <div key={f.id} className="flex items-center gap-3 rounded-[12px] px-2 py-3 transition hover:bg-[#fafafa]">
+                                    {f.anh_dai_dien
+                                        ? <img src={f.anh_dai_dien} alt={f.ten_hien_thi} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+                                        : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e5e7eb] text-lg">👤</div>
+                                    }
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[16px] font-semibold text-[#1f2937]">{f.ten_hien_thi}</p>
+                                        <p className="text-sm text-[#9ca3af]">@{f.ten_dang_nhap}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmTarget(f)}
+                                        className="shrink-0 rounded-[10px] border border-[#e5e7eb] bg-white px-4 py-1.5 text-[14px] font-semibold text-[#374151] transition hover:bg-[#f9fafb]"
+                                    >
+                                        Xóa
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {confirmTarget ? (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4" onClick={() => setConfirmTarget(null)}>
+                    <div
+                        className="w-full max-w-[360px] overflow-hidden rounded-[24px] bg-white shadow-[0_24px_60px_rgba(0,0,0,0.25)]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center px-6 pt-8 pb-2">
+                            {confirmTarget.anh_dai_dien
+                                ? <img src={confirmTarget.anh_dai_dien} alt={confirmTarget.ten_hien_thi} className="h-20 w-20 rounded-full object-cover" />
+                                : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#e5e7eb] text-3xl">👤</div>
+                            }
+                            <h3 className="mt-4 text-[20px] font-bold text-black">Xóa người theo dõi?</h3>
+                            <p className="mt-2 text-center text-sm text-[#6b7280]">
+                                DishNet sẽ không thông báo cho <strong>{confirmTarget.ten_hien_thi}</strong> rằng bạn đã xóa họ khỏi danh sách người theo dõi.
+                            </p>
+                        </div>
+                        <div className="mt-4 divide-y divide-[#f0f0f0] border-t border-[#f0f0f0]">
+                            <button
+                                type="button"
+                                onClick={() => void handleRemove()}
+                                disabled={removing}
+                                className="w-full py-4 text-[16px] font-semibold text-[#ef4444] transition hover:bg-[#fff5f5]"
+                            >
+                                {removing ? 'Đang xóa...' : 'Xóa'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setConfirmTarget(null)}
+                                className="w-full py-4 text-[16px] text-[#374151] transition hover:bg-[#fafafa]"
+                            >
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function FollowingModal({ onClose }: { onClose: () => void }) {
+    const [keyword, setKeyword] = useState('');
+    const [following, setFollowing] = useState<Follower[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [confirmTarget, setConfirmTarget] = useState<Follower | null>(null);
+    const [unfollowing, setUnfollowing] = useState(false);
+
+    const load = async (kw?: string) => {
+        setLoading(true);
+        try {
+            const res = (await userContentApi.layDanhSachDangTheoDoi(kw)) as Follower[];
+            setFollowing(Array.isArray(res) ? res : []);
+        } catch {
+            setFollowing([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { void load(); }, []);
+
+    const handleSearch = (value: string) => {
+        setKeyword(value);
+        void load(value || undefined);
+    };
+
+    const handleUnfollow = async () => {
+        if (!confirmTarget || unfollowing) return;
+        setUnfollowing(true);
+        try {
+            await userContentApi.toggleTheoDoiNguoiDung(confirmTarget.id);
+            setFollowing((current) => current.filter((f) => f.id !== confirmTarget.id));
+            setConfirmTarget(null);
+        } finally {
+            setUnfollowing(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+            <div
+                className="relative w-full max-w-[500px] overflow-hidden rounded-[20px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between border-b border-[#efefef] px-6 py-5">
+                    <h2 className="text-[20px] font-bold text-black">Đang theo dõi</h2>
+                    <button type="button" onClick={onClose} className="text-[30px] leading-none text-[#888] transition hover:text-black">×</button>
+                </div>
+
+                <div className="px-6 py-4">
+                    <label className="flex items-center gap-2 rounded-full bg-[#f3f3f3] px-4 py-2.5">
+                        <SearchIcon />
+                        <input
+                            type="text"
+                            value={keyword}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder="Tìm kiếm"
+                            className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#aaa]"
+                        />
+                    </label>
+                </div>
+
+                <div className="max-h-[420px] overflow-y-auto px-4 pb-5">
+                    {loading ? (
+                        <p className="py-8 text-center text-sm text-[#888]">Đang tải...</p>
+                    ) : following.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-[#888]">Chưa theo dõi ai.</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {following.map((f) => (
+                                <div key={f.id} className="flex items-center gap-3 rounded-[12px] px-2 py-3 transition hover:bg-[#fafafa]">
+                                    {f.anh_dai_dien
+                                        ? <img src={f.anh_dai_dien} alt={f.ten_hien_thi} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+                                        : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e5e7eb] text-lg">👤</div>
+                                    }
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[16px] font-semibold text-[#1f2937]">{f.ten_dang_nhap}</p>
+                                        <p className="text-sm text-[#9ca3af]">{f.ten_hien_thi}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmTarget(f)}
+                                        className="shrink-0 rounded-[10px] border border-[#e5e7eb] bg-white px-4 py-1.5 text-[14px] font-semibold text-[#374151] transition hover:bg-[#f9fafb]"
+                                    >
+                                        Đang theo dõi
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {confirmTarget ? (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4" onClick={() => setConfirmTarget(null)}>
+                    <div
+                        className="w-full max-w-[360px] overflow-hidden rounded-[24px] bg-white shadow-[0_24px_60px_rgba(0,0,0,0.25)]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center px-6 pt-8 pb-6">
+                            {confirmTarget.anh_dai_dien
+                                ? <img src={confirmTarget.anh_dai_dien} alt={confirmTarget.ten_hien_thi} className="h-20 w-20 rounded-full object-cover" />
+                                : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#e5e7eb] text-3xl">👤</div>
+                            }
+                            <p className="mt-5 text-center text-[16px] text-[#1f2937]">
+                                Bỏ theo dõi @{confirmTarget.ten_dang_nhap}?
+                            </p>
+                        </div>
+                        <div className="divide-y divide-[#f0f0f0] border-t border-[#f0f0f0]">
+                            <button
+                                type="button"
+                                onClick={() => void handleUnfollow()}
+                                disabled={unfollowing}
+                                className="w-full py-4 text-[16px] font-bold text-[#ef4444] transition hover:bg-[#fff5f5]"
+                            >
+                                {unfollowing ? 'Đang xử lý...' : 'Bỏ theo dõi'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setConfirmTarget(null)}
+                                className="w-full py-4 text-[16px] text-[#374151] transition hover:bg-[#fafafa]"
+                            >
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 function RevenuePostDetailModal({
     postId,
     onClose,
@@ -1117,6 +1389,17 @@ export default function ProfilePageClient({
     const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
     const [activeRevenuePostId, setActiveRevenuePostId] = useState<number | null>(null);
+    const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+    const [isFollowingModalOpen, setIsFollowingModalOpen] = useState(false);
+    const [isSharePopupOpen, setIsSharePopupOpen] = useState(false);
+    const [copyDone, setCopyDone] = useState(false);
+
+    useEffect(() => {
+        if (!isSharePopupOpen) return;
+        const close = () => setIsSharePopupOpen(false);
+        document.addEventListener('click', close);
+        return () => document.removeEventListener('click', close);
+    }, [isSharePopupOpen]);
 
     const visiblePosts = sortMode === 'latest' ? posts : [...posts].reverse();
     const visibleReposts = sortMode === 'latest' ? reposts : [...reposts].reverse();
@@ -1294,8 +1577,20 @@ export default function ProfilePageClient({
 
                                 <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[14px] text-[#222]">
                                     <span><strong className="font-semibold">{profile.postsCount}</strong> bài viết</span>
-                                    <span><strong className="font-semibold">{profile.followers}</strong> người theo dõi</span>
-                                    <span>Đang theo dõi <strong className="font-semibold">{profile.following}</strong> người dùng</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsFollowersModalOpen(true)}
+                                        className="transition hover:underline"
+                                    >
+                                        <strong className="font-semibold">{profile.followers}</strong> người theo dõi
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsFollowingModalOpen(true)}
+                                        className="transition hover:underline"
+                                    >
+                                        Đang theo dõi <strong className="font-semibold">{profile.following}</strong> người dùng
+                                    </button>
                                 </div>
 
                                 <div className="flex items-center gap-3">
@@ -1315,13 +1610,36 @@ export default function ProfilePageClient({
                                             Rút tiền
                                         </button>
                                     ) : null}
-                                    <button
-                                        type="button"
-                                        className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#d9d9d9] text-[#484848] transition hover:bg-[#f7f7f7]"
-                                        aria-label="Chia sẻ trang cá nhân"
-                                    >
-                                        <ShareIcon />
-                                    </button>
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsSharePopupOpen((c) => !c); setCopyDone(false); }}
+                                            className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#d9d9d9] text-[#484848] transition hover:bg-[#f7f7f7]"
+                                            aria-label="Chia sẻ trang cá nhân"
+                                        >
+                                            <ShareIcon />
+                                        </button>
+                                        {isSharePopupOpen ? (
+                                            <div
+                                                className="absolute right-0 top-[calc(100%+8px)] z-20 w-[220px] overflow-hidden rounded-[14px] border border-[#e5e7eb] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.14)]"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void navigator.clipboard.writeText(window.location.href).then(() => {
+                                                            setCopyDone(true);
+                                                            setTimeout(() => { setIsSharePopupOpen(false); setCopyDone(false); }, 1500);
+                                                        });
+                                                    }}
+                                                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[14px] text-[#1f2937] transition hover:bg-[#f9fafb]"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                                    {copyDone ? 'Đã sao chép!' : 'Sao chép liên kết'}
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1761,6 +2079,14 @@ export default function ProfilePageClient({
                 postId={activeRevenuePostId}
                 onClose={() => setActiveRevenuePostId(null)}
             />
+
+            {isFollowersModalOpen ? (
+                <FollowersModal onClose={() => setIsFollowersModalOpen(false)} />
+            ) : null}
+
+            {isFollowingModalOpen ? (
+                <FollowingModal onClose={() => setIsFollowingModalOpen(false)} />
+            ) : null}
         </div>
     );
 }

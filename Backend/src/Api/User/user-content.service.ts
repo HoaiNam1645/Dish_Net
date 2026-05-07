@@ -515,6 +515,10 @@ export class UserContentService {
       .createQueryBuilder('bv')
       .innerJoin(NguoiDungEntity, 'nd', 'nd.id = bv.id_nguoi_dang')
       .leftJoin(CuaHangEntity, 'ch', 'ch.id = bv.id_cua_hang')
+      .addSelect('nd.id', 'nd_id')
+      .addSelect('nd.ten_hien_thi', 'nd_ten_hien_thi')
+      .addSelect('nd.ten_dang_nhap', 'nd_ten_dang_nhap')
+      .addSelect('nd.anh_dai_dien', 'nd_anh_dai_dien')
       .where('bv.trang_thai_duyet = :trangThai', { trangThai: 'hien_thi' })
       .andWhere('bv.muc_do_hien_thi = :mucDoHienThi', {
         mucDoHienThi: 'cong_khai',
@@ -556,14 +560,15 @@ export class UserContentService {
 
     qb.addOrderBy('bv.ngay_dang', 'DESC').skip(skip).take(take);
 
-    const [items, tongSo] = await qb.getManyAndCount();
+    const { entities: items, raw: rawItems } = await qb.getRawAndEntities();
+    const tongSo = await qb.getCount();
 
     const postIds = items.map((item) => Number(item.id));
     const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
     const originalMap = await this.buildBaiVietGocMap(items as Array<{ id_bai_viet_goc?: number | null }>);
 
     return {
-      du_lieu: items.map((item) => ({
+      du_lieu: items.map((item, index) => ({
         id: Number(item.id),
         loai_bai_viet: item.loai_bai_viet,
         noi_dung: item.noi_dung,
@@ -574,6 +579,10 @@ export class UserContentService {
         tong_luot_luu: Number(item.tong_luot_luu),
         ngay_dang: item.ngay_dang,
         tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+        id_nguoi_dang: rawItems[index]?.nd_id != null ? Number(rawItems[index].nd_id) : null,
+        ten_nguoi_dang: rawItems[index]?.nd_ten_hien_thi ?? null,
+        ten_dang_nhap: rawItems[index]?.nd_ten_dang_nhap ?? null,
+        anh_dai_dien: rawItems[index]?.nd_anh_dai_dien ?? null,
         id_bai_viet_goc:
           item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
         bai_viet_goc:
@@ -691,6 +700,7 @@ export class UserContentService {
       },
       du_lieu: items.map((item) => ({
         id: Number(item.id),
+        id_nguoi_dung: item.an_danh ? null : (Number(item.nguoi_danh_gia?.id) || null),
         ten_nguoi_danh_gia: item.an_danh
           ? 'Người dùng ẩn danh'
           : item.nguoi_danh_gia?.ten_hien_thi ?? 'Người dùng',
@@ -1713,6 +1723,76 @@ export class UserContentService {
       ngay_tao: new Date(),
     });
     return { dang_theo_doi: true, hanh_dong: 'theo_doi' };
+  }
+
+  async layDanhSachDangTheoDoi(idNguoiXem: number, keyword?: string) {
+    const qb = this.quanHeNguoiDungRepo
+      .createQueryBuilder('qh')
+      .innerJoin(NguoiDungEntity, 'nd', 'nd.id = qh.id_nguoi_nhan_quan_he')
+      .where('qh.id_nguoi_tao_quan_he = :idNguoiXem', { idNguoiXem })
+      .andWhere('qh.loai_quan_he = :loai', { loai: 'theo_doi' })
+      .andWhere('qh.trang_thai = :trangThai', { trangThai: 'hieu_luc' })
+      .addSelect('nd.id', 'nd_id')
+      .addSelect('nd.ten_hien_thi', 'nd_ten_hien_thi')
+      .addSelect('nd.ten_dang_nhap', 'nd_ten_dang_nhap')
+      .addSelect('nd.anh_dai_dien', 'nd_anh_dai_dien')
+      .orderBy('qh.ngay_tao', 'DESC');
+
+    if (keyword) {
+      qb.andWhere(
+        '(nd.ten_hien_thi LIKE :kw OR nd.ten_dang_nhap LIKE :kw)',
+        { kw: `%${keyword}%` },
+      );
+    }
+
+    const raw = await qb.getRawMany();
+    return raw.map((r) => ({
+      id: Number(r.nd_id),
+      ten_hien_thi: r.nd_ten_hien_thi ?? '',
+      ten_dang_nhap: r.nd_ten_dang_nhap ?? '',
+      anh_dai_dien: r.nd_anh_dai_dien ?? null,
+    }));
+  }
+
+  async layDanhSachNguoiTheoDoi(idNguoiXem: number, keyword?: string) {
+    const qb = this.quanHeNguoiDungRepo
+      .createQueryBuilder('qh')
+      .innerJoin(NguoiDungEntity, 'nd', 'nd.id = qh.id_nguoi_tao_quan_he')
+      .where('qh.id_nguoi_nhan_quan_he = :idNguoiXem', { idNguoiXem })
+      .andWhere('qh.loai_quan_he = :loai', { loai: 'theo_doi' })
+      .andWhere('qh.trang_thai = :trangThai', { trangThai: 'hieu_luc' })
+      .addSelect('nd.id', 'nd_id')
+      .addSelect('nd.ten_hien_thi', 'nd_ten_hien_thi')
+      .addSelect('nd.ten_dang_nhap', 'nd_ten_dang_nhap')
+      .addSelect('nd.anh_dai_dien', 'nd_anh_dai_dien')
+      .orderBy('qh.ngay_tao', 'DESC');
+
+    if (keyword) {
+      qb.andWhere(
+        '(nd.ten_hien_thi LIKE :kw OR nd.ten_dang_nhap LIKE :kw)',
+        { kw: `%${keyword}%` },
+      );
+    }
+
+    const raw = await qb.getRawMany();
+    return raw.map((r) => ({
+      id: Number(r.nd_id),
+      ten_hien_thi: r.nd_ten_hien_thi ?? '',
+      ten_dang_nhap: r.nd_ten_dang_nhap ?? '',
+      anh_dai_dien: r.nd_anh_dai_dien ?? null,
+    }));
+  }
+
+  async xoaNguoiTheoDoi(idNguoiTheoDoi: number, idChuSoHuu: number) {
+    if (idNguoiTheoDoi === idChuSoHuu) {
+      throw new BadRequestException('Không thể xóa chính mình');
+    }
+    await this.quanHeNguoiDungRepo.delete({
+      id_nguoi_tao_quan_he: idNguoiTheoDoi,
+      id_nguoi_nhan_quan_he: idChuSoHuu,
+      loai_quan_he: 'theo_doi',
+    });
+    return { thanh_cong: true };
   }
 
   async toggleChanNguoiDung(idNguoiDung: number, idNguoiXem: number) {
