@@ -56,7 +56,6 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
     const [address, setAddress] = useState(profile.address);
     const [showBadge, setShowBadge] = useState(profile.showBadge);
     const [showTrustScore, setShowTrustScore] = useState(profile.showTrustScore);
-    const [isPrivate, setIsPrivate] = useState(profile.isPrivate);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -71,7 +70,6 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
         setAddress(profile.address);
         setShowBadge(profile.showBadge);
         setShowTrustScore(profile.showTrustScore);
-        setIsPrivate(profile.isPrivate);
         setSaveError(null);
         setSaveSuccess(null);
     };
@@ -97,7 +95,6 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
                 dia_chi: address.trim() || undefined,
                 cho_hien_thi_huy_hieu: showBadge,
                 cho_hien_thi_diem_uy_tin: showTrustScore,
-                la_tai_khoan_rieng_tu: isPrivate,
             });
             setSaveSuccess('Đã lưu thông tin cá nhân.');
         } catch (error) {
@@ -151,24 +148,26 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
 
                 {/* Giới tính */}
                 <div className="flex items-center gap-3 rounded-[10px] border border-[#e0ddd6] bg-white px-4 py-3.5">
-                    <input
-                        type="text"
-                        value={gender}
+                    <select
+                        value={normalizeGender(gender)}
                         onChange={(e) => setGender(e.target.value)}
-                        placeholder="Giới tính"
-                        className="flex-1 bg-transparent text-center text-[16px] text-black outline-none placeholder:text-[#999]"
+                        className="flex-1 cursor-pointer bg-transparent text-[16px] text-black outline-none"
                         id="settings-input-gender"
-                    />
+                    >
+                        <option value="">-- Chọn giới tính --</option>
+                        <option value="nu">Nữ</option>
+                        <option value="nam">Nam</option>
+                        <option value="khac">Khác</option>
+                    </select>
                 </div>
 
                 {/* Ngày sinh */}
                 <div className="flex items-center gap-3 rounded-[10px] border border-[#e0ddd6] bg-white px-4 py-3.5">
                     <input
-                        type="text"
-                        value={birthday}
+                        type="date"
+                        value={parseBirthdateToIso(birthday) ?? ''}
                         onChange={(e) => setBirthday(e.target.value)}
-                        placeholder="dd/mm/yyyy"
-                        className="flex-1 bg-transparent text-center text-[16px] text-black outline-none placeholder:text-[#999]"
+                        className="flex-1 cursor-pointer bg-transparent text-[16px] text-black outline-none placeholder:text-[#999]"
                         id="settings-input-birthday"
                     />
                 </div>
@@ -232,12 +231,6 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
                     <span className="text-[15px] text-black">Hiển thị độ uy tín</span>
                     <ToggleSwitch checked={showTrustScore} onChange={setShowTrustScore} id="toggle-trust-settings" />
                 </div>
-            </div>
-
-            {/* Chế độ tài khoản riêng tư */}
-            <div className="mt-6 flex items-center justify-between">
-                <span className="text-[16px] font-semibold text-black">Chế độ tài khoản riêng tư</span>
-                <ToggleSwitch checked={isPrivate} onChange={setIsPrivate} id="toggle-private-settings" />
             </div>
 
             {/* Action buttons */}
@@ -577,7 +570,19 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
     const isEarnFormLocked = isEarnApproved || isEarnPending;
     return (
         <div>
-            <h2 className="text-[22px] font-bold text-black">Thông tin cơ bản</h2>
+            <div className="flex items-center gap-3">
+                <button
+                    type="button"
+                    onClick={() => setStep('menu')}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-[#555] transition hover:bg-[#f4f4f4]"
+                    aria-label="Quay lại"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m15 18-6-6 6-6" />
+                    </svg>
+                </button>
+                <h2 className="text-[22px] font-bold text-black">Thông tin cơ bản</h2>
+            </div>
             {isEarnApproved ? (
                 <p className="mt-3 rounded-[8px] border border-[#d9f0dc] bg-[#edf9ef] px-3 py-2 text-sm text-[#2e7d32]">
                     Bạn đã đăng ký kiếm tiền từ nội dung. Không cần gửi đăng ký lại.
@@ -610,24 +615,26 @@ function ProfessionalTab({ profile }: { profile: UserProfile }) {
                 {/* Giới tính + Ngày sinh */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="rounded-[10px] border border-[#e0ddd6] bg-white px-4 py-3.5">
-                        <input
-                            type="text"
-                            value={gender}
+                        <select
+                            value={normalizeGender(gender)}
                             onChange={(e) => setGender(e.target.value)}
                             disabled={isEarnFormLocked}
-                            placeholder="Giới tính"
-                            className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
+                            className="w-full cursor-pointer bg-transparent text-[15px] text-black outline-none"
                             id="pro-input-gender"
-                        />
+                        >
+                            <option value="">-- Giới tính --</option>
+                            <option value="nu">Nữ</option>
+                            <option value="nam">Nam</option>
+                            <option value="khac">Khác</option>
+                        </select>
                     </div>
                     <div className="rounded-[10px] border border-[#e0ddd6] bg-white px-4 py-3.5">
                         <input
-                            type="text"
-                            value={birthday}
+                            type="date"
+                            value={parseBirthdateToIso(birthday) ?? ''}
                             onChange={(e) => setBirthday(e.target.value)}
                             disabled={isEarnFormLocked}
-                            placeholder="dd/mm/yyyy"
-                            className="w-full bg-transparent text-center text-[15px] text-black outline-none placeholder:text-[#999]"
+                            className="w-full cursor-pointer bg-transparent text-[15px] text-black outline-none placeholder:text-[#999]"
                             id="pro-input-birthday"
                         />
                     </div>

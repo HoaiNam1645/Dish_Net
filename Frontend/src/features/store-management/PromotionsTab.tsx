@@ -210,7 +210,12 @@ function PromoModal({
   const [name, setName] = useState(promo?.name || '');
   const [code, setCode] = useState(promo?.code || '');
   const [type, setType] = useState<PromoType>(promo?.type || 'phan_tram');
-  const [discountValue, setDiscountValue] = useState(promo ? String(promo.rawDiscountValue) : '');
+  const [percentValue, setPercentValue] = useState(
+    promo?.type === 'phan_tram' ? String(promo.rawDiscountValue) : '',
+  );
+  const [amountValue, setAmountValue] = useState(
+    promo?.type === 'so_tien' ? String(promo.rawDiscountValue) : '',
+  );
   const [maxDiscount, setMaxDiscount] = useState(promo?.gia_tri_toi_da ? String(promo.gia_tri_toi_da) : '');
   const [minOrder, setMinOrder] = useState(promo ? String(promo.rawMinOrder) : '');
   const [maxUse, setMaxUse] = useState(promo?.rawMaxUse ? String(promo.rawMaxUse) : '');
@@ -233,7 +238,9 @@ function PromoModal({
     if (!startDate || !endDate) { setError('Vui lòng chọn đầy đủ thời gian bắt đầu và kết thúc'); return; }
     setError('');
 
-    const giaTri = Number(discountValue.replace(/\D/g, '')) || 0;
+    const activeValue =
+      type === 'phan_tram' ? percentValue : type === 'so_tien' ? amountValue : '0';
+    const giaTri = Number(activeValue.replace(/\D/g, '')) || 0;
     const maxDa = maxDiscount ? Number(maxDiscount.replace(/\D/g, '')) : undefined;
     const donToiThieu = Number(minOrder.replace(/\D/g, '')) || 0;
     const luotToiDa = maxUse ? Number(maxUse) : undefined;
@@ -293,7 +300,7 @@ function PromoModal({
                   {t.key === 'phan_tram' && (
                     <div className="flex items-center gap-1">
                       <input
-                        type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
+                        type="number" value={percentValue} onChange={(e) => setPercentValue(e.target.value)}
                         disabled={type !== 'phan_tram'} placeholder="VD: 20"
                         className="w-[80px] rounded-[8px] border border-[#ddd] px-3 py-1.5 text-[14px] text-black outline-none disabled:bg-[#f8f8f8]" />
                       <span className="text-[13px] text-[#555]">%</span>
@@ -308,7 +315,7 @@ function PromoModal({
                   {t.key === 'so_tien' && (
                     <div className="flex items-center gap-1">
                       <input
-                        type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
+                        type="number" value={amountValue} onChange={(e) => setAmountValue(e.target.value)}
                         disabled={type !== 'so_tien'} placeholder="VD: 15000"
                         className="w-full rounded-[8px] border border-[#ddd] px-3 py-1.5 text-[14px] text-black outline-none disabled:bg-[#f8f8f8]" />
                       <span className="text-[13px] text-[#555]">đ</span>

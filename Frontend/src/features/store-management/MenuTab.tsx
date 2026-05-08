@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   storeMenuApi,
   MonAnItem,
@@ -12,6 +12,7 @@ import {
   fmt,
   mapDbStatusToUi,
 } from '@/shared/storeMenuApi';
+import { userContentApi } from '@/shared/userContentApi';
 import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -249,12 +250,40 @@ function AddItemModal({
   const [desc, setDesc] = useState('');
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [idDanhMuc, setIdDanhMuc] = useState('');
+  const [danhMucInput, setDanhMucInput] = useState('');
   const [toppings, setToppings] = useState([{ name: '', price: '' }]);
   const [statusOpen, setStatusOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredDanhMuc = danhMucList.filter((d) =>
+    d.ten_danh_muc.toLowerCase().includes(danhMucInput.trim().toLowerCase()),
+  );
+  const danhMucExactMatch = danhMucList.find(
+    (d) => d.ten_danh_muc.trim().toLowerCase() === danhMucInput.trim().toLowerCase(),
+  );
+
+  const handlePickFile = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const res = await userContentApi.uploadTepBaiViet(file);
+      setImageUrl(res.url);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Tải ảnh thất bại'));
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleAdd = async () => {
     if (!name.trim()) { setError('Tên món không được để trống'); return; }
@@ -263,11 +292,20 @@ function AddItemModal({
     setSaving(true);
     setError('');
     try {
+      let resolvedDanhMucId: string | undefined = idDanhMuc || undefined;
+      const trimmedCat = danhMucInput.trim();
+      if (trimmedCat && !danhMucExactMatch) {
+        const created = await storeMenuApi.taoDanhMuc({ ten_danh_muc: trimmedCat });
+        resolvedDanhMucId = String(created.id);
+      } else if (trimmedCat && danhMucExactMatch) {
+        resolvedDanhMucId = String(danhMucExactMatch.id);
+      }
+
       const result = await storeMenuApi.taoMonAn({
         ten_mon: name.trim(),
         mo_ta: desc,
         gia_ban: priceNum,
-        id_danh_muc: idDanhMuc || undefined,
+        id_danh_muc: resolvedDanhMucId,
         hinh_anh_dai_dien: imageUrl || undefined,
         trang_thai_ban: status,
         toppings: toppings.filter((t) => t.name.trim()).map((t) => ({
@@ -288,8 +326,10 @@ function AddItemModal({
         diem_danh_gia: 0,
         tong_danh_gia: 0,
         la_mon_noi_bat: false,
-        id_danh_muc: idDanhMuc ? Number(idDanhMuc) : null,
-        ten_danh_muc: danhMucList.find((d) => d.id.toString() === idDanhMuc)?.ten_danh_muc ?? null,
+        id_danh_muc: resolvedDanhMucId ? Number(resolvedDanhMucId) : null,
+        ten_danh_muc:
+          danhMucList.find((d) => d.id.toString() === resolvedDanhMucId)?.ten_danh_muc ??
+          (trimmedCat || null),
         toppings: [],
       });
       onClose();
@@ -309,23 +349,31 @@ function AddItemModal({
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-[18px] text-[#555] transition hover:bg-[#e0e0e0]">×</button>
         </div>
         <div className="px-6 pb-6 pt-4">
-          <div className="flex items-center gap-4 rounded-[10px] border border-dashed border-[#ccc] p-4">
+          <button
+            type="button"
+            onClick={handlePickFile}
+            disabled={uploading || saving}
+            className="flex w-full items-center gap-4 rounded-[10px] border border-dashed border-[#ccc] p-4 text-left transition hover:border-[#2e7d32] hover:bg-[#fafdf9] disabled:cursor-not-allowed disabled:opacity-70"
+          >
             {imageUrl ? (
               <img src={imageUrl} alt="preview" className="h-16 w-16 rounded-[8px] object-cover" />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-[8px] bg-[#f0f0f0] text-[24px] text-[#999]">+</div>
             )}
             <div className="flex-1">
-              <label className="text-[13px] font-medium text-black">Hình ảnh món</label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Dán URL hình ảnh"
-                className="mt-1 w-full rounded-[8px] border border-[#e0e0e0] px-3 py-2 text-[13px] text-black outline-none focus:border-[#2e7d32]"
-              />
+              <p className="text-[13px] font-medium text-black">Hình ảnh món</p>
+              <p className="mt-1 text-[12px] text-[#888]">
+                {uploading ? 'Đang tải ảnh...' : imageUrl ? 'Bấm để đổi ảnh khác' : 'Bấm để chọn ảnh từ máy'}
+              </p>
             </div>
-          </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <label className="text-[13px] font-medium text-black">Tên Món <span className="text-[#d32f2f]">*</span></label>
@@ -358,16 +406,53 @@ function AddItemModal({
             </div>
             <div className="relative">
               <label className="text-[13px] font-medium text-black">Danh mục</label>
-              <button type="button" onClick={() => setCatOpen(!catOpen)} className="mt-1 flex w-full items-center justify-between rounded-[8px] border border-[#e0e0e0] px-3 py-2 text-[14px] text-black">
-                <span className={idDanhMuc ? '' : 'text-[#bbb]'}>{danhMucList.find((d) => d.id.toString() === idDanhMuc)?.ten_danh_muc || 'Chọn danh mục'}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
-              </button>
+              <div className="relative mt-1">
+                <input
+                  type="text"
+                  value={danhMucInput}
+                  onChange={(e) => {
+                    setDanhMucInput(e.target.value);
+                    setIdDanhMuc('');
+                    setCatOpen(true);
+                  }}
+                  onFocus={() => setCatOpen(true)}
+                  onBlur={() => setTimeout(() => setCatOpen(false), 150)}
+                  placeholder="Chọn hoặc nhập tên danh mục mới"
+                  className="w-full rounded-[8px] border border-[#e0e0e0] px-3 py-2 pr-8 text-[14px] text-black outline-none placeholder:text-[#bbb] focus:border-[#2e7d32]"
+                />
+                <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+              </div>
               {catOpen && (
-                <div className="absolute left-0 top-full z-10 mt-1 w-full rounded-[8px] border border-[#ddd] bg-white shadow-lg">
-                  <button key="none" type="button" onClick={() => { setIdDanhMuc(''); setCatOpen(false); }} className="block w-full px-3 py-2 text-left text-[13px] text-black transition hover:bg-[#f6faf4]">Không phân loại</button>
-                  {danhMucList.map((d) => (
-                    <button key={d.id} type="button" onClick={() => { setIdDanhMuc(d.id.toString()); setCatOpen(false); }} className="block w-full px-3 py-2 text-left text-[13px] text-black transition hover:bg-[#f6faf4]">{d.ten_danh_muc}</button>
-                  ))}
+                <div className="absolute left-0 top-full z-10 mt-1 max-h-[180px] w-full overflow-y-auto rounded-[8px] border border-[#ddd] bg-white shadow-lg">
+                  {filteredDanhMuc.length > 0 ? (
+                    filteredDanhMuc.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setIdDanhMuc(d.id.toString());
+                          setDanhMucInput(d.ten_danh_muc);
+                          setCatOpen(false);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-[13px] text-black transition hover:bg-[#f6faf4]"
+                      >
+                        {d.ten_danh_muc}
+                      </button>
+                    ))
+                  ) : null}
+                  {danhMucInput.trim() && !danhMucExactMatch ? (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setCatOpen(false);
+                      }}
+                      className="block w-full border-t border-[#eee] bg-[#fafdf9] px-3 py-2 text-left text-[13px] text-[#2e7d32] transition hover:bg-[#f0f9ed]"
+                    >
+                      + Tạo mới &quot;{danhMucInput.trim()}&quot;
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -635,7 +720,7 @@ export default function MenuTab() {
           <div className="flex items-center gap-3">
             {/* Sort */}
             <div className="relative">
-              <button type="button" onClick={() => setSortDropdown(!sortDropdown)} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
+              <button type="button" onClick={() => { setSortDropdown((c) => !c); setStatusDropdown(false); }} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
                 <span>{SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label ?? 'Sắp xếp'}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
               </button>
@@ -649,7 +734,7 @@ export default function MenuTab() {
             </div>
             {/* Status filter */}
             <div className="relative">
-              <button type="button" onClick={() => setStatusDropdown(!statusDropdown)} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
+              <button type="button" onClick={() => { setStatusDropdown((c) => !c); setSortDropdown(false); }} className="flex items-center gap-1 rounded-[8px] border border-[#ddd] bg-white px-3 py-1.5 text-[13px] text-black">
                 <span>{statusFilter === 'Tất cả' ? 'Tất cả' : mapDbStatusToUi(statusFilter)}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
               </button>

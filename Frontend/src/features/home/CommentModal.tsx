@@ -194,7 +194,7 @@ export default function CommentModal({
   postId?: number | null;
   onCommentPosted?: (postId: number) => void;
 }) {
-  const { dangNhap } = useAuth();
+  const { dangNhap, nguoiDung } = useAuth();
   const [activeTab, setActiveTab] = useState<CommentTab>('all');
   const [draftComment, setDraftComment] = useState('');
   const [isComposerOpen, setIsComposerOpen] = useState(startComposerOpen);
@@ -632,9 +632,17 @@ export default function CommentModal({
                   </p>
                 ) : (
                   <div className="flex gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#275d18] text-sm font-bold text-white">
-                      N
-                    </div>
+                    {nguoiDung?.anh_dai_dien ? (
+                      <img
+                        src={nguoiDung.anh_dai_dien}
+                        alt={nguoiDung.ten_hien_thi}
+                        className="h-11 w-11 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#275d18] text-sm font-bold text-white">
+                        {nguoiDung?.ten_hien_thi?.charAt(0)?.toUpperCase() ?? 'U'}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <textarea
                         value={draftComment}
@@ -856,9 +864,17 @@ export default function CommentModal({
                             </p>
                           ) : (
                             <div className="flex gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#275d18] text-sm font-bold text-white">
-                                N
-                              </div>
+                              {nguoiDung?.anh_dai_dien ? (
+                                <img
+                                  src={nguoiDung.anh_dai_dien}
+                                  alt={nguoiDung.ten_hien_thi}
+                                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#275d18] text-sm font-bold text-white">
+                                  {nguoiDung?.ten_hien_thi?.charAt(0)?.toUpperCase() ?? 'U'}
+                                </div>
+                              )}
                               <div className="min-w-0 flex-1">
                                 <textarea
                                   value={replyDrafts[comment.id] ?? ''}
