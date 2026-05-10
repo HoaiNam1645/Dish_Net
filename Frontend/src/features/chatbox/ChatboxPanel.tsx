@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { chatboxApi, type ChatbotMessage } from '@/shared/chatboxApi';
+import { chatboxApi, type ChatbotMessage, type ChatbotPhien } from '@/shared/chatboxApi';
 import { useAuth } from '@/shared/AuthContext';
 
 type Props = {
     variant?: 'bubble' | 'page';
     initialPhienId?: number;
+    showSessionMenu?: boolean;
     onClose?: () => void;
 };
 
@@ -36,30 +37,65 @@ function formatTime(value?: string) {
     return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClose }: Props) {
+function formatPhienDate(value?: string) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+}
+
+export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showSessionMenu, onClose }: Props) {
     const { nguoiDung, dangNhap } = useAuth();
     const [tinNhan, setTinNhan] = useState<ChatbotMessage[]>([]);
     const [draft, setDraft] = useState('');
     const [dangGui, setDangGui] = useState(false);
     const [idPhien, setIdPhien] = useState<number | undefined>(initialPhienId);
     const [loi, setLoi] = useState<string | null>(null);
+    const [phienList, setPhienList] = useState<ChatbotPhien[]>([]);
+    const [showPhienMenu, setShowPhienMenu] = useState(false);
     const scrollRef = useRef<HTMLDivElement | null>(null);
+    const showMenu = showSessionMenu ?? variant === 'bubble';
 
     useEffect(() => {
-        if (!initialPhienId) return;
+        setIdPhien(initialPhienId);
+    }, [initialPhienId]);
+
+    useEffect(() => {
+        if (!idPhien) {
+            setTinNhan([]);
+            return;
+        }
         let huy = false;
         chatboxApi
-            .layLichSu(initialPhienId)
+            .layLichSu(idPhien)
             .then((data) => {
                 if (huy) return;
                 setTinNhan(data.tin_nhan);
-                setIdPhien(data.phien.id);
             })
             .catch((err: Error) => setLoi(err.message));
         return () => {
             huy = true;
         };
-    }, [initialPhienId]);
+    }, [idPhien]);
+
+    const refreshPhienList = async () => {
+        if (!dangNhap) {
+            setPhienList([]);
+            return;
+        }
+        try {
+            const list = await chatboxApi.danhSachPhien();
+            setPhienList(list);
+        } catch {
+            setPhienList([]);
+        }
+    };
+
+    useEffect(() => {
+        if (!showMenu) return;
+        void refreshPhienList();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dangNhap, showMenu]);
 
     useEffect(() => {
         const el = scrollRef.current;
@@ -85,6 +121,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClo
         setDraft('');
         setDangGui(true);
         try {
+            const wasNew = !idPhien;
             const res = await chatboxApi.gui(text, idPhien);
             setIdPhien(res.id_phien);
             setTinNhan((prev) => [
@@ -93,6 +130,9 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClo
                 ),
                 res.tin_nhan,
             ]);
+            if (showMenu && (wasNew || !phienList.some((p) => p.id === res.id_phien))) {
+                void refreshPhienList();
+            }
         } catch (err) {
             setLoi(err instanceof Error ? err.message : 'Có lỗi xảy ra');
             setTinNhan((prev) => prev.filter((m) => m.id !== tempId));
@@ -111,7 +151,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClo
                     : 'flex h-[560px] w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10'
             }
         >
-            <header className="flex items-center justify-between gap-2 border-b border-gray-200 bg-gradient-to-r from-[#2f6f25] to-[#56c194] px-4 py-3 text-white">
+            <header className="relative flex items-center justify-between gap-2 border-b border-gray-200 bg-gradient-to-r from-[#2f6f25] to-[#56c194] px-4 py-3 text-white">
                 <div className="flex items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-lg">🍜</div>
                     <div>
@@ -120,6 +160,33 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClo
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
+                    {showMenu && dangNhap && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setShowPhienMenu((v) => !v)}
+                                className="rounded px-2 py-1 text-xs hover:bg-white/15"
+                                title="Phiên đã lưu"
+                                aria-label="Phiên"
+                            >
+                                Phiên
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIdPhien(undefined);
+                                    setTinNhan([]);
+                                    setLoi(null);
+                                    setShowPhienMenu(false);
+                                }}
+                                className="rounded px-2 py-1 text-xs hover:bg-white/15"
+                                title="Tạo phiên mới"
+                                aria-label="Phiên mới"
+                            >
+                                + Mới
+                            </button>
+                        </>
+                    )}
                     {!isPage && (
                         <Link
                             href="/chatbox"
@@ -140,6 +207,72 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, onClo
                         </button>
                     )}
                 </div>
+
+                {showMenu && dangNhap && showPhienMenu && (
+                    <div className="absolute right-3 top-full z-10 mt-1 max-h-72 w-72 overflow-y-auto rounded-xl bg-white text-gray-800 shadow-lg ring-1 ring-black/10">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                            <span className="text-xs font-semibold text-gray-600">Phiên đã lưu</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowPhienMenu(false)}
+                                className="rounded p-1 text-sm leading-none text-gray-400 hover:bg-gray-100"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        {phienList.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-xs text-gray-500">Chưa có phiên nào.</div>
+                        ) : (
+                            <ul className="py-1">
+                                {phienList.map((p) => (
+                                    <li key={p.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIdPhien(p.id);
+                                                setShowPhienMenu(false);
+                                            }}
+                                            className={`flex w-full items-start gap-2 px-3 py-2 text-left text-xs transition ${
+                                                idPhien === p.id ? 'bg-[#eef8ea]' : 'hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <span className="flex-1 overflow-hidden">
+                                                <span className="block truncate font-medium text-gray-800">
+                                                    {p.tieu_de || 'Phiên không tiêu đề'}
+                                                </span>
+                                                <span className="block text-[10px] text-gray-400">
+                                                    {formatPhienDate(p.ngay_cap_nhat)}
+                                                </span>
+                                            </span>
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (!confirm('Xóa phiên này?')) return;
+                                                    try {
+                                                        await chatboxApi.xoaPhien(p.id);
+                                                        if (idPhien === p.id) {
+                                                            setIdPhien(undefined);
+                                                            setTinNhan([]);
+                                                        }
+                                                        await refreshPhienList();
+                                                    } catch (err) {
+                                                        setLoi(err instanceof Error ? err.message : 'Không xóa được');
+                                                    }
+                                                }}
+                                                className="text-gray-400 hover:text-red-500"
+                                                aria-label="Xóa"
+                                            >
+                                                🗑
+                                            </span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
             </header>
 
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-gray-50 px-3 py-4">
