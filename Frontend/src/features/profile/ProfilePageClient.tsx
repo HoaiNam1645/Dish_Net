@@ -1044,6 +1044,8 @@ function WithdrawModal({
     summary,
     amount,
     selectedAccountId,
+    errorMessage,
+    isSubmitting,
     onAmountChange,
     onAccountChange,
     onConfirm,
@@ -1053,6 +1055,8 @@ function WithdrawModal({
     summary: EarningsProfile['withdrawSummary'];
     amount: string;
     selectedAccountId: string;
+    errorMessage: string | null;
+    isSubmitting: boolean;
     onAmountChange: (value: string) => void;
     onAccountChange: (value: string) => void;
     onConfirm: () => void;
@@ -1124,18 +1128,26 @@ function WithdrawModal({
                         <p>Thời gian xử lý có thể mất từ 1 - 3 ngày làm việc.</p>
                     </div>
 
+                    {errorMessage ? (
+                        <div className="rounded-[12px] border border-[#f5c2c2] bg-[#fdecec] px-4 py-3 text-[13px] font-medium text-[#b42318]">
+                            {errorMessage}
+                        </div>
+                    ) : null}
+
                     <div className="grid gap-3 sm:grid-cols-2">
                         <button
                             type="button"
                             onClick={onConfirm}
-                            className="h-11 rounded-[12px] bg-[linear-gradient(90deg,#2ea57d_0%,#56c194_100%)] text-[16px] font-bold text-white transition hover:opacity-95"
+                            disabled={isSubmitting}
+                            className="h-11 rounded-[12px] bg-[linear-gradient(90deg,#2ea57d_0%,#56c194_100%)] text-[16px] font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            Xác nhận
+                            {isSubmitting ? 'Đang gửi…' : 'Xác nhận'}
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="h-11 rounded-[12px] border border-[#d6d1c8] bg-white text-[16px] font-semibold text-[#303030] transition hover:bg-[#fafafa]"
+                            disabled={isSubmitting}
+                            className="h-11 rounded-[12px] border border-[#d6d1c8] bg-white text-[16px] font-semibold text-[#303030] transition hover:bg-[#fafafa] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Hủy
                         </button>
@@ -1362,12 +1374,14 @@ export default function ProfilePageClient({
     profile,
     editHref = '/user/profile/edit',
     editLabel = 'Chỉnh sửa trang cá nhân',
+    canEdit = true,
 }: {
     profile: UserProfile;
     editHref?: string;
     editLabel?: string;
+    canEdit?: boolean;
 }) {
-    const hasEarnings = Boolean(profile.isMonetized && profile.earnings);
+    const hasEarnings = canEdit && Boolean(profile.isMonetized && profile.earnings);
     const [earnings, setEarnings] = useState(profile.earnings);
 
     const [activeTab, setActiveTab] = useState<ProfileTab>(hasEarnings ? 'revenue' : 'posts');
@@ -1382,6 +1396,8 @@ export default function ProfilePageClient({
     const [isWithdrawSuccessOpen, setIsWithdrawSuccessOpen] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('1,000,000');
     const [selectedWithdrawAccountId, setSelectedWithdrawAccountId] = useState(profile.earnings?.withdrawalAccounts[0]?.id ?? '');
+    const [withdrawError, setWithdrawError] = useState<string | null>(null);
+    const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
     const [posts, setPosts] = useState(profile.posts);
     const [editingPost, setEditingPost] = useState<UserProfile['posts'][number] | null>(null);
     const [reposts, setReposts] = useState(profile.reposts ?? []);
@@ -1420,12 +1436,32 @@ export default function ProfilePageClient({
     const showSortControls = activeTab === 'posts' || activeTab === 'videos' || activeTab === 'reposts';
 
     const handleWithdrawConfirm = async () => {
+        if (isSubmittingWithdraw) return;
         const amountNumber = Number(String(withdrawAmount).replace(/[^\d]/g, ''));
         const accountId = Number(selectedWithdrawAccountId);
-        if (!Number.isFinite(accountId) || accountId <= 0) {
-            setActionMessage('Vui lòng chọn tài khoản nhận tiền hợp lệ');
+        const availableBalance = Number(
+            String(earnings?.withdrawSummary.availableBalance ?? '0').replace(/[^\d]/g, ''),
+        );
+
+        if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+            setWithdrawError('Vui lòng nhập số tiền hợp lệ');
             return;
         }
+        if (amountNumber < 100000) {
+            setWithdrawError('Số tiền tối thiểu để rút là 100,000đ');
+            return;
+        }
+        if (availableBalance > 0 && amountNumber > availableBalance) {
+            setWithdrawError('Số dư không đủ để thực hiện yêu cầu này');
+            return;
+        }
+        if (!Number.isFinite(accountId) || accountId <= 0) {
+            setWithdrawError('Vui lòng chọn tài khoản nhận tiền hợp lệ');
+            return;
+        }
+
+        setWithdrawError(null);
+        setIsSubmittingWithdraw(true);
         try {
             await userCommerceApi.taoYeuCauRutTien({
                 id_tai_khoan_rut_tien: accountId,
@@ -1435,7 +1471,9 @@ export default function ProfilePageClient({
             setIsWithdrawSuccessOpen(true);
             setActionMessage('Đã gửi yêu cầu rút tiền');
         } catch (e) {
-            setActionMessage(e instanceof Error ? e.message : 'Không thể gửi yêu cầu rút tiền');
+            setWithdrawError(e instanceof Error ? e.message : 'Không thể gửi yêu cầu rút tiền');
+        } finally {
+            setIsSubmittingWithdraw(false);
         }
     };
 
@@ -1594,17 +1632,22 @@ export default function ProfilePageClient({
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <Link
-                                        href={editHref}
-                                        id="btn-edit-profile"
-                                        className="flex h-10 flex-1 items-center justify-center rounded-[10px] bg-black px-4 text-[14px] font-bold text-white transition hover:bg-[#262626]"
-                                    >
-                                        {editLabel}
-                                    </Link>
+                                    {canEdit ? (
+                                        <Link
+                                            href={editHref}
+                                            id="btn-edit-profile"
+                                            className="flex h-10 flex-1 items-center justify-center rounded-[10px] bg-black px-4 text-[14px] font-bold text-white transition hover:bg-[#262626]"
+                                        >
+                                            {editLabel}
+                                        </Link>
+                                    ) : null}
                                     {hasEarnings ? (
                                         <button
                                             type="button"
-                                            onClick={() => setIsWithdrawModalOpen(true)}
+                                            onClick={() => {
+                                                setWithdrawError(null);
+                                                setIsWithdrawModalOpen(true);
+                                            }}
                                             className="flex h-10 flex-1 items-center justify-center rounded-[10px] bg-[#1f89cf] px-4 text-[14px] font-bold text-white transition hover:bg-[#1777b5]"
                                         >
                                             Rút tiền
@@ -2061,10 +2104,21 @@ export default function ProfilePageClient({
                     summary={earnings.withdrawSummary}
                     amount={withdrawAmount}
                     selectedAccountId={selectedWithdrawAccountId}
-                    onAmountChange={setWithdrawAmount}
-                    onAccountChange={setSelectedWithdrawAccountId}
+                    errorMessage={withdrawError}
+                    isSubmitting={isSubmittingWithdraw}
+                    onAmountChange={(value) => {
+                        setWithdrawAmount(value);
+                        if (withdrawError) setWithdrawError(null);
+                    }}
+                    onAccountChange={(value) => {
+                        setSelectedWithdrawAccountId(value);
+                        if (withdrawError) setWithdrawError(null);
+                    }}
                     onConfirm={handleWithdrawConfirm}
-                    onClose={() => setIsWithdrawModalOpen(false)}
+                    onClose={() => {
+                        setIsWithdrawModalOpen(false);
+                        setWithdrawError(null);
+                    }}
                 />
             ) : null}
 
