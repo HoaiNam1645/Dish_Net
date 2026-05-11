@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 import { userContentApi } from '@/shared/userContentApi';
+import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
+
+const DEFAULT_FOOD_IMAGE = figmaFallbackAssets.feedDishImage;
+const DEFAULT_STORE_IMAGE = figmaFallbackAssets.storeImage;
+const DEFAULT_AVATAR = figmaFallbackAssets.reviewerAvatarA;
 
 type SearchData = {
   thong_bao?: string;
@@ -188,7 +193,7 @@ export default function SearchResultsClient({ query }: { query: string }) {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {monAn.map((item: any) => (
                   <Link key={item.id} href={`/ranking/food/${item.id}`} className="overflow-hidden rounded-[12px] bg-[#fafafa] shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)]">
-                    <img src={item.hinh_anh || ''} alt={item.ten_mon} className="h-[140px] w-full object-cover" />
+                    <img src={item.hinh_anh || DEFAULT_FOOD_IMAGE} alt={item.ten_mon} className="h-[140px] w-full object-cover" />
                     <div className="p-3">
                       <h3 className="truncate text-[16px] font-semibold text-[#1f2937]">{item.ten_mon}</h3>
                       <p className="mt-1 text-sm text-[#6b7280]">★ {Number(item.diem_danh_gia || 0).toFixed(1)} • {item.tong_danh_gia} đánh giá</p>
@@ -206,7 +211,7 @@ export default function SearchResultsClient({ query }: { query: string }) {
               <div className="grid gap-4 lg:grid-cols-2">
                 {cuaHang.map((item: any) => (
                   <Link key={item.id} href={`/explore/store/${item.id}`} className="flex items-center gap-4 rounded-[12px] bg-[#fafafa] p-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)]">
-                    <img src={item.anh_dai_dien || ''} alt={item.ten_cua_hang} className="h-[72px] w-[72px] shrink-0 rounded-[10px] object-cover" />
+                    <img src={item.anh_dai_dien || DEFAULT_STORE_IMAGE} alt={item.ten_cua_hang} className="h-[72px] w-[72px] shrink-0 rounded-[10px] object-cover" />
                     <div className="min-w-0">
                       <h3 className="truncate text-[16px] font-bold text-[#1f2937]">{item.ten_cua_hang}</h3>
                       <p className="mt-0.5 truncate text-sm text-[#6b7280]">{item.dia_chi || item.khu_vuc || ''}</p>
@@ -288,7 +293,7 @@ export default function SearchResultsClient({ query }: { query: string }) {
               <div className="grid gap-4 sm:grid-cols-2">
                 {nguoiDung.map((item: any) => (
                   <Link key={item.id} href={`/profile/${item.id}`} className="flex items-center gap-4 rounded-[12px] bg-[#fafafa] p-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)]">
-                    <img src={item.anh_dai_dien || ''} alt={item.ten_hien_thi} className="h-[52px] w-[52px] shrink-0 rounded-full object-cover" />
+                    <img src={item.anh_dai_dien || DEFAULT_AVATAR} alt={item.ten_hien_thi} className="h-[52px] w-[52px] shrink-0 rounded-full object-cover" />
                     <div className="min-w-0">
                       <p className="truncate text-[16px] font-semibold text-[#1f2937]">{item.ten_hien_thi}</p>
                       <p className="text-sm text-[#6b7280]">@{item.ten_dang_nhap} • uy tín {Number(item.diem_uy_tin || 0).toFixed(1)}</p>

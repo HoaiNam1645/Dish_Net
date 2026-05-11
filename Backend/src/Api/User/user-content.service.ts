@@ -2353,6 +2353,7 @@ export class UserContentService {
                 id: Number(cuaHang.id),
                 ten_cua_hang: cuaHang.ten_cua_hang,
                 anh_dai_dien: cuaHang.anh_dai_dien,
+                dia_chi_kinh_doanh: cuaHang.dia_chi_kinh_doanh,
               }
             : null,
           mon_goi_y: monDaiDien
