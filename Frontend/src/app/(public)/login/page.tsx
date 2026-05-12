@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, type ReactNode, useMemo, useRef, useState } from 'react';
+import { FormEvent, Suspense, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/shared/AuthContext';
 import { authApi } from '@/shared/authApi';
 
@@ -133,6 +133,18 @@ function LoginPageContent() {
     const [form, setForm] = useState({ email: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('dishnet_remember_account');
+            if (saved) {
+                setForm((prev) => ({ ...prev, email: saved }));
+                setRememberMe(true);
+            }
+        } catch {
+            // ignore (localStorage có thể không khả dụng)
+        }
+    }, []);
     const [loading, setLoading] = useState(false);
     const [serverError, setServerError] = useState('');
     const [submitted, setSubmitted] = useState(false);
@@ -167,6 +179,15 @@ function LoginPageContent() {
             }
 
             if (res.nguoi_dung) {
+                try {
+                    if (rememberMe) {
+                        localStorage.setItem('dishnet_remember_account', form.email.trim());
+                    } else {
+                        localStorage.removeItem('dishnet_remember_account');
+                    }
+                } catch {
+                    // ignore
+                }
                 capNhatNguoiDung({
                     ...res.nguoi_dung,
                     vai_tro: res.vai_tro!,
@@ -190,6 +211,15 @@ function LoginPageContent() {
                 vai_tro: selectedVaiTro,
                 luu_dang_nhap: rememberMe,
             });
+            try {
+                if (rememberMe) {
+                    localStorage.setItem('dishnet_remember_account', chonVaiTro.email);
+                } else {
+                    localStorage.removeItem('dishnet_remember_account');
+                }
+            } catch {
+                // ignore
+            }
             capNhatNguoiDung({ ...res.nguoi_dung, vai_tro: res.vai_tro });
             setChonVaiTro(null);
             const defaultRoute = res.vai_tro === 'admin' ? '/admin' : res.vai_tro === 'chu_cua_hang' ? '/store' : '/';
@@ -209,6 +239,15 @@ function LoginPageContent() {
                 credential,
                 luu_dang_nhap: rememberMe,
             });
+            try {
+                if (rememberMe && res.nguoi_dung?.email) {
+                    localStorage.setItem('dishnet_remember_account', res.nguoi_dung.email);
+                } else {
+                    localStorage.removeItem('dishnet_remember_account');
+                }
+            } catch {
+                // ignore
+            }
             capNhatNguoiDung({ ...res.nguoi_dung, vai_tro: res.vai_tro });
             const defaultRoute = res.vai_tro === 'admin' ? '/admin' : res.vai_tro === 'chu_cua_hang' ? '/store' : '/';
             router.push(redirectTo || defaultRoute);

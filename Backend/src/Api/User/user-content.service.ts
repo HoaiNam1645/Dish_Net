@@ -2932,12 +2932,11 @@ export class UserContentService {
     const batKiemTien = Boolean(dto.bat_kiem_tien);
 
     let idMonAnGanLink: number | null = null;
-    let linkMonAn: string | null = null;
+    let linkMonAn: string | null = dto.link_mon_an?.trim() || null;
     if (batKiemTien) {
       if (!user.la_nha_sang_tao && user.trang_thai_kiem_tien_noi_dung !== 'da_duyet') {
         throw new ForbiddenException('Tài khoản chưa được phê duyệt kiếm tiền từ nội dung');
       }
-      linkMonAn = dto.link_mon_an?.trim() ?? '';
       if (!linkMonAn) {
         throw new BadRequestException('Vui lòng nhập link món hợp lệ');
       }
@@ -2955,6 +2954,15 @@ export class UserContentService {
         throw new BadRequestException('Món ăn không tồn tại hoặc không còn khả dụng');
       }
       idMonAnGanLink = Number(monAn.id);
+    } else if (linkMonAn) {
+      // Bài thường có gắn link bất kỳ: nếu link trỏ tới món trên DishNet thì map sang id_mon_an để hỗ trợ "Đặt món"
+      const monId = this.parseMonAnIdTuLink(linkMonAn);
+      if (monId) {
+        const monAn = await this.monAnRepo.findOne({
+          where: { id: monId, trang_thai_ban: 'dang_ban' },
+        });
+        if (monAn) idMonAnGanLink = Number(monAn.id);
+      }
     }
 
     const baiViet = await this.baiVietRepo.save({
@@ -3047,12 +3055,11 @@ export class UserContentService {
     const batKiemTien = Boolean(dto.bat_kiem_tien);
 
     let idMonAnGanLink: number | null = null;
-    let linkMonAn: string | null = null;
+    let linkMonAn: string | null = dto.link_mon_an?.trim() || null;
     if (batKiemTien) {
       if (!user.la_nha_sang_tao && user.trang_thai_kiem_tien_noi_dung !== 'da_duyet') {
         throw new ForbiddenException('Tài khoản chưa được phê duyệt kiếm tiền từ nội dung');
       }
-      linkMonAn = dto.link_mon_an?.trim() ?? '';
       if (!linkMonAn) {
         throw new BadRequestException('Vui lòng nhập link món hợp lệ');
       }
@@ -3065,6 +3072,12 @@ export class UserContentService {
         throw new BadRequestException('Món ăn không tồn tại hoặc không còn khả dụng');
       }
       idMonAnGanLink = Number(monAn.id);
+    } else if (linkMonAn) {
+      const monId = this.parseMonAnIdTuLink(linkMonAn);
+      if (monId) {
+        const monAn = await this.monAnRepo.findOne({ where: { id: monId, trang_thai_ban: 'dang_ban' } });
+        if (monAn) idMonAnGanLink = Number(monAn.id);
+      }
     }
 
     baiViet.noi_dung = noiDung || null;

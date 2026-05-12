@@ -549,8 +549,8 @@ function CreatePostModal({
             await onSubmit({
                 content: content.trim(),
                 mediaUrls,
-                monetize: isOrderLink,
-                dishLink: dishLink.trim(),
+                monetize: false,
+                dishLink: isOrderLink ? dishLink.trim() : '',
                 visibility,
             });
             onClose();
@@ -764,6 +764,7 @@ function PostMenu({
 function PostCard({
     post,
     profile,
+    canShare = true,
     onLike,
     onComment,
     onShare,
@@ -774,6 +775,7 @@ function PostCard({
 }: {
     post: UserProfile['posts'][number];
     profile: UserProfile;
+    canShare?: boolean;
     onLike: () => void;
     onComment: () => void;
     onShare: () => void;
@@ -784,6 +786,7 @@ function PostCard({
 }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isRepost = post.type === 'repost' || Boolean(post.sharedPost);
+    const shareDisabled = isRepost || !canShare;
     const isVideoUrl = (url: string) => /\.(mp4|mov|avi|mkv)(\?|#|$)/i.test(url);
 
     return (
@@ -869,8 +872,9 @@ function PostCard({
                         <button
                             type="button"
                             onClick={onShare}
-                            disabled={isRepost}
-                            className={`transition ${isRepost ? 'cursor-not-allowed text-[#b5b5b5]' : 'hover:text-[#285e19]'}`}
+                            disabled={shareDisabled}
+                            title={!canShare && !isRepost ? 'Không thể đăng lại bài viết của chính mình' : undefined}
+                            className={`transition ${shareDisabled ? 'cursor-not-allowed text-[#b5b5b5]' : 'hover:text-[#285e19]'}`}
                         >
                             ↺ {post.shares}
                         </button>
@@ -1399,6 +1403,10 @@ export default function ProfilePageClient({
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
     const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
     const [posts, setPosts] = useState(profile.posts);
+    const [postsCount, setPostsCount] = useState<number>(() => {
+        const initial = Number(profile.postsCount);
+        return Number.isFinite(initial) ? initial : profile.posts.length;
+    });
     const [editingPost, setEditingPost] = useState<UserProfile['posts'][number] | null>(null);
     const [reposts, setReposts] = useState(profile.reposts ?? []);
     const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -1522,7 +1530,7 @@ export default function ProfilePageClient({
                 tep_dinh_kem: mediaUrls,
                 muc_do_hien_thi: visibility,
                 bat_kiem_tien: monetize,
-                link_mon_an: monetize ? dishLink : undefined,
+                link_mon_an: dishLink ? dishLink : undefined,
             });
             setPosts((current) =>
                 current.map((item) =>
@@ -1568,6 +1576,7 @@ export default function ProfilePageClient({
             dishLink: created.link_mon_an ?? null,
         };
         setPosts((current) => [newPost, ...current]);
+        setPostsCount((current) => current + 1);
         setActionMessage('Đã đăng bài viết');
     };
 
@@ -1614,7 +1623,7 @@ export default function ProfilePageClient({
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[14px] text-[#222]">
-                                    <span><strong className="font-semibold">{profile.postsCount}</strong> bài viết</span>
+                                    <span><strong className="font-semibold">{postsCount}</strong> bài viết</span>
                                     <button
                                         type="button"
                                         onClick={() => setIsFollowersModalOpen(true)}
@@ -1744,6 +1753,7 @@ export default function ProfilePageClient({
                                     key={post.id}
                                     post={post}
                                     profile={profile}
+                                    canShare={!canEdit}
                                     onLike={() => {
                                         const id = Number(post.id);
                                         if (!Number.isFinite(id)) return;
@@ -1854,6 +1864,7 @@ export default function ProfilePageClient({
                                             .xoaBaiViet(id)
                                             .then(() => {
                                                 setPosts((current) => current.filter((item) => Number(item.id) !== id));
+                                                setPostsCount((current) => Math.max(0, current - 1));
                                                 setActionMessage('Đã xóa bài viết');
                                             })
                                             .catch((e) =>
@@ -1896,6 +1907,7 @@ export default function ProfilePageClient({
                                     key={post.id}
                                     post={post}
                                     profile={profile}
+                                    canShare={!canEdit}
                                     onLike={() => {
                                         const id = Number(post.id);
                                         if (!Number.isFinite(id)) return;

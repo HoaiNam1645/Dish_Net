@@ -287,6 +287,8 @@ function GalleryModal({
 
 function FeedPostCard({
     post,
+    canFollow = true,
+    canShare = true,
     onComment,
     onOrder,
     onFollow,
@@ -297,6 +299,8 @@ function FeedPostCard({
     onOpenAuthorProfile,
 }: {
     post: FeedPost;
+    canFollow?: boolean;
+    canShare?: boolean;
     onComment: () => void;
     onOrder: () => void;
     onFollow: () => void;
@@ -354,19 +358,21 @@ function FeedPostCard({
                             {post.rating}
                         </span>
                     ) : null}
-                    <button
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onFollow();
-                        }}
-                        className={`rounded-full px-6 py-2 text-sm font-bold transition ${
-                            post.followLabel === 'Đang theo dõi'
-                                ? 'border border-[#258f22] bg-[#e8f4e7] text-[#1f771d] hover:bg-[#dcf0db]'
-                                : 'bg-[#258f22] text-white hover:bg-[#1f771d]'
-                        }`}
-                    >
-                        {post.followLabel}
-                    </button>
+                    {canFollow ? (
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onFollow();
+                            }}
+                            className={`rounded-full px-6 py-2 text-sm font-bold transition ${
+                                post.followLabel === 'Đang theo dõi'
+                                    ? 'border border-[#258f22] bg-[#e8f4e7] text-[#1f771d] hover:bg-[#dcf0db]'
+                                    : 'bg-[#258f22] text-white hover:bg-[#1f771d]'
+                            }`}
+                        >
+                            {post.followLabel}
+                        </button>
+                    ) : null}
                 </div>
             </div>
 
@@ -467,11 +473,12 @@ function FeedPostCard({
                     <button
                         onClick={(event) => {
                             event.stopPropagation();
-                            if (isRepost) return;
+                            if (isRepost || !canShare) return;
                             onShare();
                         }}
-                        disabled={isRepost}
-                        className={`inline-flex items-center gap-2 transition ${isRepost ? 'cursor-not-allowed text-[#b6b6b6]' : 'hover:text-[#285e19]'}`}
+                        disabled={isRepost || !canShare}
+                        title={!canShare && !isRepost ? 'Không thể chia sẻ bài viết của chính mình' : undefined}
+                        className={`inline-flex items-center gap-2 transition ${(isRepost || !canShare) ? 'cursor-not-allowed text-[#b6b6b6]' : 'hover:text-[#285e19]'}`}
                     >
                         Chia sẻ · {post.shareCount}
                     </button>
@@ -1470,6 +1477,8 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                     <FeedPostCard
                                         key={post.id}
                                         post={post}
+                                        canFollow={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
+                                        canShare={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
                                         onComment={() => {
                                             setActiveCommentStore(post.storeName || post.author || 'Bài viết');
                                             setActiveCommentPostId(Number(post.id) || null);

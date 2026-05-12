@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 import { userContentApi } from '@/shared/userContentApi';
+import { userCommerceApi } from '@/shared/userCommerceApi';
+import { emitUserCartRefreshEvent } from '@/shared/cartEvents';
+import { useAuth } from '@/shared/AuthContext';
 import { figmaFallbackAssets } from '@/shared/assets/figmaFallback';
 
 const DEFAULT_FOOD_IMAGE = figmaFallbackAssets.feedDishImage;
@@ -43,6 +46,9 @@ function formatPrice(v?: number) {
 }
 
 export default function SearchResultsClient({ query }: { query: string }) {
+  const { dangNhap } = useAuth();
+  const [addingId, setAddingId] = useState<number | null>(null);
+  const [cartMessage, setCartMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [filters, setFilters] = useState({
     food: true,
     store: true,
@@ -120,6 +126,34 @@ export default function SearchResultsClient({ query }: { query: string }) {
   const hasAnyResult = monAn.length > 0 || cuaHang.length > 0 || baiViet.length > 0 || nguoiDung.length > 0;
   const totalInPage = monAn.length + cuaHang.length + baiViet.length + nguoiDung.length;
 
+  useEffect(() => {
+    if (!cartMessage) return;
+    const timer = setTimeout(() => setCartMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [cartMessage]);
+
+  const handleAddToCart = async (item: any) => {
+    if (!dangNhap) {
+      setCartMessage({ kind: 'error', text: 'Vui lòng đăng nhập để thêm vào giỏ hàng' });
+      return;
+    }
+    const monAnId = Number(item?.id);
+    if (!Number.isFinite(monAnId) || monAnId <= 0) {
+      setCartMessage({ kind: 'error', text: 'Món không hợp lệ' });
+      return;
+    }
+    setAddingId(monAnId);
+    try {
+      await userCommerceApi.themVaoGioHang({ id_mon_an: monAnId, so_luong: 1 });
+      emitUserCartRefreshEvent();
+      setCartMessage({ kind: 'success', text: `Đã thêm "${item.ten_mon}" vào giỏ hàng` });
+    } catch (err) {
+      setCartMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Không thêm được vào giỏ hàng' });
+    } finally {
+      setAddingId(null);
+    }
+  };
+
   return (
     <div className="bg-[#fafaf9]">
       <section className="grid w-full gap-10 px-4 pb-8 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-0">
@@ -190,17 +224,52 @@ export default function SearchResultsClient({ query }: { query: string }) {
           {monAn.length > 0 ? (
             <section className="rounded-[16px] bg-white p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
               <h2 className="mb-5 text-[22px] font-bold text-[#1f2937]">Món ăn</h2>
+              {cartMessage ? (
+                <div
+                  className={`mb-4 rounded-[10px] px-4 py-2.5 text-sm font-medium ${
+                    cartMessage.kind === 'success'
+                      ? 'bg-[#eaf8eb] text-[#285e19]'
+                      : 'bg-[#fdecec] text-[#b42318]'
+                  }`}
+                >
+                  {cartMessage.text}
+                </div>
+              ) : null}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {monAn.map((item: any) => (
-                  <Link key={item.id} href={`/ranking/food/${item.id}`} className="overflow-hidden rounded-[12px] bg-[#fafafa] shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)]">
-                    <img src={item.hinh_anh || DEFAULT_FOOD_IMAGE} alt={item.ten_mon} className="h-[140px] w-full object-cover" />
-                    <div className="p-3">
-                      <h3 className="truncate text-[16px] font-semibold text-[#1f2937]">{item.ten_mon}</h3>
-                      <p className="mt-1 text-sm text-[#6b7280]">★ {Number(item.diem_danh_gia || 0).toFixed(1)} • {item.tong_danh_gia} đánh giá</p>
-                      <p className="mt-1 text-[16px] font-bold text-[#d71414]">{formatPrice(item.gia_ban)}</p>
+                {monAn.map((item: any) => {
+                  const monAnId = Number(item.id);
+                  const isAdding = addingId === monAnId;
+                  return (
+                    <div key={item.id} className="group relative overflow-hidden rounded-[12px] bg-[#fafafa] shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)]">
+                      <Link href={`/ranking/food/${item.id}`} className="block">
+                        <img src={item.hinh_anh || DEFAULT_FOOD_IMAGE} alt={item.ten_mon} className="h-[140px] w-full object-cover" />
+                        <div className="p-3 pr-12">
+                          <h3 className="truncate text-[16px] font-semibold text-[#1f2937]">{item.ten_mon}</h3>
+                          <p className="mt-1 text-sm text-[#6b7280]">★ {Number(item.diem_danh_gia || 0).toFixed(1)} • {item.tong_danh_gia} đánh giá</p>
+                          <p className="mt-1 text-[16px] font-bold text-[#d71414]">{formatPrice(item.gia_ban)}</p>
+                        </div>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void handleAddToCart(item);
+                        }}
+                        disabled={isAdding}
+                        title="Thêm vào giỏ hàng"
+                        aria-label="Thêm vào giỏ hàng"
+                        className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#2f6f25] text-2xl font-bold leading-none text-white shadow-md transition hover:bg-[#245a1c] disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {isAdding ? (
+                          <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        ) : (
+                          <span className="-mt-0.5">+</span>
+                        )}
+                      </button>
                     </div>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ) : null}

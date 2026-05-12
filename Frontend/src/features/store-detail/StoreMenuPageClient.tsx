@@ -45,11 +45,6 @@ type DishOption = {
   extraPrice: number;
 };
 
-const NOODLE_OPTIONS: DishOption[] = [
-  { id: 'bun-to', label: 'Sợi bún to', extraPrice: 0 },
-  { id: 'bun-nho', label: 'Sợi bún nhỏ', extraPrice: 0 },
-];
-
 const PACKAGING_OPTIONS: DishOption[] = [
   { id: 'dong-goi-thuong', label: 'Đựng túi bóng', extraPrice: 0 },
   { id: 'dong-goi-to-dua', label: 'Đựng túi bóng + Tô đũa muỗng', extraPrice: 2000 },
@@ -129,7 +124,6 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
   const [activeMenuCategory, setActiveMenuCategory] = useState('tat-ca');
   const [selectedDish, setSelectedDish] = useState<MenuItem | null>(null);
   const [dishQuantity, setDishQuantity] = useState(1);
-  const [selectedNoodle, setSelectedNoodle] = useState(NOODLE_OPTIONS[0].id);
   const [selectedPackaging, setSelectedPackaging] = useState(PACKAGING_OPTIONS[0].id);
   const [dishNote, setDishNote] = useState('');
   const [cartSummary, setCartSummary] = useState<StoreCartSummaryItem[]>([]);
@@ -232,9 +226,8 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
   }, [loadStoreCartSummary]);
 
   const selectedDishBasePrice = selectedDish ? parseCurrency(selectedDish.price) : 0;
-  const selectedNoodlePrice = NOODLE_OPTIONS.find((option) => option.id === selectedNoodle)?.extraPrice ?? 0;
   const selectedPackagingPrice = PACKAGING_OPTIONS.find((option) => option.id === selectedPackaging)?.extraPrice ?? 0;
-  const selectedDishTotal = (selectedDishBasePrice + selectedNoodlePrice + selectedPackagingPrice) * dishQuantity;
+  const selectedDishTotal = (selectedDishBasePrice + selectedPackagingPrice) * dishQuantity;
 
   const resolveBackendMonAnId = async (item: MenuItem) => {
     const numericId = Number(item.id);
@@ -331,7 +324,6 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
   const openDishDetail = (item: MenuItem) => {
     setSelectedDish(item);
     setDishQuantity(1);
-    setSelectedNoodle(NOODLE_OPTIONS[0].id);
     setSelectedPackaging(PACKAGING_OPTIONS[0].id);
     setDishNote('');
   };
@@ -594,20 +586,14 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h3 className="text-[26px] font-semibold leading-tight text-black">{selectedDish.name}</h3>
-                    <p className="mt-1 text-[13px] text-[#616462]">Bún sợi to. Bún sợi nhỏ ghi chú giúp quán</p>
-                    <p className="text-[13px] text-[#616462]">400+ đã bán | 1 lượt thích</p>
+                    {selectedDish.note ? (
+                      <p className="mt-1 line-clamp-2 text-[13px] text-[#616462]">{selectedDish.note}</p>
+                    ) : null}
                   </div>
                   <p className="text-[28px] font-semibold leading-none text-[#f59e0b]">{selectedDish.price}</p>
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <DishOptionGroup
-                    title="Sợi bún (Vui lòng chọn 1 trong 2)"
-                    options={NOODLE_OPTIONS}
-                    selected={selectedNoodle}
-                    onChange={setSelectedNoodle}
-                  />
-
                   <DishOptionGroup
                     title="Cách đóng gói (Vui lòng chọn 1 trong 2)"
                     options={PACKAGING_OPTIONS}

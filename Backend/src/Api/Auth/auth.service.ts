@@ -291,7 +291,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!nguoiDung) {
-      throw new NotFoundException("Email khong ton tai trong he thong");
+      throw new NotFoundException("Email không tồn tại trong hệ thống");
     }
 
     await this.maXacThucRepo.update(
@@ -324,7 +324,7 @@ export class AuthService {
       nguoiDung.ten_hien_thi,
     );
 
-    return { message: "Ma OTP da duoc gui ve email cua ban" };
+    return { message: "Mã OTP đã được gửi về email của bạn" };
   }
 
   async xacNhanQuenMatKhau(dto: XacNhanOtpDto) {
@@ -332,12 +332,12 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!nguoiDung) {
-      throw new NotFoundException("Email khong ton tai");
+      throw new NotFoundException("Email không tồn tại");
     }
 
     await this.timOtpHieuLuc(nguoiDung.id, "quen_mat_khau", dto.ma_otp);
 
-    return { message: "Ma OTP hop le" };
+    return { message: "Mã OTP hợp lệ" };
   }
 
   async datLaiMatKhau(dto: DatLaiMatKhauDto) {
@@ -351,7 +351,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!nguoiDung) {
-      throw new NotFoundException("Email khong ton tai");
+      throw new NotFoundException("Email không tồn tại");
     }
 
     const otp = await this.timOtpHieuLuc(
@@ -385,7 +385,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!nguoiDung) {
-      throw new NotFoundException("Email khong ton tai");
+      throw new NotFoundException("Email không tồn tại");
     }
 
     await this.maXacThucRepo.update(
@@ -426,7 +426,7 @@ export class AuthService {
       );
     }
 
-    return { message: "Ma OTP moi da duoc gui ve email cua ban" };
+    return { message: "Mã OTP mới đã được gửi về email của bạn" };
   }
 
   async doiMatKhau(
@@ -442,7 +442,7 @@ export class AuthService {
 
     const nguoiDung = await this.nguoiDungRepo.findOne({ where: { id: userId } });
     if (!nguoiDung) {
-      throw new NotFoundException("Nguoi dung khong ton tai");
+      throw new NotFoundException("Người dùng không tồn tại");
     }
 
     const matKhauCuDung = await compare(
@@ -450,7 +450,7 @@ export class AuthService {
       nguoiDung.mat_khau_bam,
     );
     if (!matKhauCuDung) {
-      throw new BadRequestException("Mat khau hien tai khong dung");
+      throw new BadRequestException("Mật khẩu hiện tại không đúng");
     }
 
     const laMatKhauCu = await compare(dto.mat_khau_moi, nguoiDung.mat_khau_bam);
@@ -489,7 +489,7 @@ export class AuthService {
       where: { id: userId },
     });
     if (!nguoiDung) {
-      throw new NotFoundException("Nguoi dung khong ton tai");
+      throw new NotFoundException("Người dùng không tồn tại");
     }
 
     const { mat_khau_bam, ...thongTin } = nguoiDung;
@@ -523,13 +523,13 @@ export class AuthService {
     });
 
     if (!otp) {
-      throw new BadRequestException("Ma OTP khong dung");
+      throw new BadRequestException("Mã OTP không đúng");
     }
 
     if (new Date() > otp.thoi_gian_het_han) {
       otp.trang_thai = "het_han";
       await this.maXacThucRepo.save(otp);
-      throw new BadRequestException("Ma OTP da het han");
+      throw new BadRequestException("Mã OTP đã hết hạn");
     }
 
     return otp;
