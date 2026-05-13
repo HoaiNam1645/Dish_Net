@@ -1,7 +1,8 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import OrderDetailView from './OrderDetailView';
 import type { OrderDetailData } from './OrderDetailView';
 import { fmt, storeOrderApi, type StoreOrderDetail } from '@/shared/storeOrderApi';
@@ -162,6 +163,17 @@ export default function OverviewTab() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderDetailData | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [actionMessage, setActionMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  useEffect(() => {
+    if (!actionMessage) return;
+    const t = setTimeout(() => setActionMessage(null), 3500);
+    return () => clearTimeout(t);
+  }, [actionMessage]);
 
   const loadOverview = useCallback(
     async (silent = false) => {
@@ -339,6 +351,117 @@ export default function OverviewTab() {
             </div>
           </div>
         </div>
+      </div>
+
+      {actionMessage ? (
+        <div
+          className={`mt-4 rounded-[12px] px-4 py-2.5 text-[14px] font-medium ${
+            actionMessage.kind === 'success'
+              ? 'bg-[#eaf8eb] text-[#285e19]'
+              : 'bg-[#fdecec] text-[#b42318]'
+          }`}
+        >
+          {actionMessage.text}
+        </div>
+      ) : null}
+
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          setIsUploadingAvatar(true);
+          try {
+            await storeOverviewApi.uploadAnhDaiDien(file);
+            setActionMessage({ kind: 'success', text: 'Đã cập nhật ảnh đại diện cửa hàng' });
+            await loadOverview(true);
+          } catch (err) {
+            setActionMessage({
+              kind: 'error',
+              text: err instanceof Error ? err.message : 'Không thể đổi ảnh đại diện',
+            });
+          } finally {
+            setIsUploadingAvatar(false);
+          }
+        }}
+      />
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={isUploadingAvatar}
+          className="inline-flex items-center gap-2 rounded-[10px] bg-[#1f89cf] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#1777b5] disabled:cursor-wait disabled:opacity-60"
+        >
+          {isUploadingAvatar ? '⏳ Đang tải…' : '📷 Đổi ảnh đại diện'}
+        </button>
+
+        <Link
+          href="/store/menu"
+          className="inline-flex items-center gap-2 rounded-[10px] border border-[#d6d6d6] bg-white px-4 py-2 text-[13px] font-bold text-[#1d1d1d] shadow-sm transition hover:bg-[#fafafa]"
+        >
+          ➕ Thêm món
+        </Link>
+
+        <Link
+          href="/store/promotion"
+          className="inline-flex items-center gap-2 rounded-[10px] bg-[#f0a050] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#e08e3a]"
+        >
+          🎁 Tạo khuyến mãi
+        </Link>
+
+        {thongTin?.trang_thai_hoat_dong === 'hoat_dong' ? (
+          <button
+            type="button"
+            disabled={isTogglingStatus}
+            onClick={async () => {
+              if (!confirm('Tạm nghỉ bán cửa hàng? Khách sẽ không thể đặt món trong thời gian này.')) return;
+              setIsTogglingStatus(true);
+              try {
+                await storeOverviewApi.capNhatTrangThai('tam_nghi');
+                setActionMessage({ kind: 'success', text: 'Đã chuyển sang trạng thái Tạm nghỉ bán' });
+                await loadOverview(true);
+              } catch (err) {
+                setActionMessage({
+                  kind: 'error',
+                  text: err instanceof Error ? err.message : 'Không thể đổi trạng thái',
+                });
+              } finally {
+                setIsTogglingStatus(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#d32f2f] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#b71c1c] disabled:cursor-wait disabled:opacity-60"
+          >
+            ⏸ {isTogglingStatus ? 'Đang xử lý…' : 'Tạm nghỉ bán'}
+          </button>
+        ) : thongTin?.trang_thai_hoat_dong === 'tam_nghi' ? (
+          <button
+            type="button"
+            disabled={isTogglingStatus}
+            onClick={async () => {
+              setIsTogglingStatus(true);
+              try {
+                await storeOverviewApi.capNhatTrangThai('hoat_dong');
+                setActionMessage({ kind: 'success', text: 'Đã mở bán trở lại' });
+                await loadOverview(true);
+              } catch (err) {
+                setActionMessage({
+                  kind: 'error',
+                  text: err instanceof Error ? err.message : 'Không thể đổi trạng thái',
+                });
+              } finally {
+                setIsTogglingStatus(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-[10px] bg-[#2e7d32] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#256628] disabled:cursor-wait disabled:opacity-60"
+          >
+            ▶ {isTogglingStatus ? 'Đang xử lý…' : 'Mở bán trở lại'}
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

@@ -20,6 +20,7 @@ export type UserProfile = {
     showBadge: boolean;
     showTrustScore: boolean;
     isPrivate: boolean;
+    isFollowingByMe?: boolean;
     posts: ProfilePost[];
     reposts: ProfilePost[];
     videos: ProfileVideo[];
@@ -448,6 +449,7 @@ export async function getUserProfileById(id: number): Promise<UserProfile | null
             showBadge: Boolean(basic.cho_hien_thi_huy_hieu ?? true),
             showTrustScore: Boolean(basic.cho_hien_thi_diem_uy_tin ?? true),
             isPrivate: Boolean(basic.la_tai_khoan_rieng_tu),
+            isFollowingByMe: Boolean(basic.dang_theo_doi),
             isMonetized: false,
             posts: apiPosts,
             reposts: apiReposts,

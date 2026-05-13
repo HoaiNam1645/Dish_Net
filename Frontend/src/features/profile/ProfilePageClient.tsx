@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import CommentModal from '@/features/home/CommentModal';
 import { userContentApi } from '@/shared/userContentApi';
 import { userCommerceApi } from '@/shared/userCommerceApi';
+import { useAuth } from '@/shared/AuthContext';
 
 import type {
     EarningsItem,
@@ -527,6 +528,12 @@ function CreatePostModal({
         visibility: 'cong_khai' | 'ban_be';
     };
 }) {
+    const { nguoiDung } = useAuth();
+    // Chỉ "Nhà sáng tạo" (đã đăng ký kiếm tiền nội dung & được duyệt) mới được gắn link đặt món
+    const canAttachLink = Boolean(
+        nguoiDung?.la_nha_sang_tao ||
+        nguoiDung?.trang_thai_kiem_tien_noi_dung === 'da_duyet',
+    );
     const [isOrderLink, setIsOrderLink] = useState(Boolean(initialData?.monetize));
     const [content, setContent] = useState(initialData?.content ?? '');
     const [mediaUrls, setMediaUrls] = useState<string[]>(initialData?.mediaUrls ?? []);
@@ -549,8 +556,8 @@ function CreatePostModal({
             await onSubmit({
                 content: content.trim(),
                 mediaUrls,
-                monetize: false,
-                dishLink: isOrderLink ? dishLink.trim() : '',
+                monetize: canAttachLink && isOrderLink,
+                dishLink: canAttachLink && isOrderLink ? dishLink.trim() : '',
                 visibility,
             });
             onClose();
@@ -660,25 +667,29 @@ function CreatePostModal({
                 </div>
 
                 <div className="flex items-center justify-between p-5 pt-8">
-                    <div className="flex items-center gap-3">
-                        <span className="font-bold text-[#1a6e14]">Đặt món</span>
-                        <button
-                            type="button"
-                            onClick={() => setIsOrderLink(!isOrderLink)}
-                            className={`relative flex h-[22px] w-10 items-center rounded-full transition-colors ${isOrderLink ? 'bg-[#1a6e14]' : 'bg-[#8a8d91]'}`}
-                        >
-                            <span className={`inline-block h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${isOrderLink ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                        </button>
-                        <input
-                            type="text"
-                            placeholder="Link món"
-                            value={dishLink}
-                            onChange={(event) => setDishLink(event.target.value)}
-                            className="h-[34px] w-[180px] rounded-[6px] border border-[#ced0d4] px-3 text-[14px] outline-none transition focus:border-[#1a6e14]"
-                            disabled={!isOrderLink}
-                            style={{ opacity: isOrderLink ? 1 : 0.6 }}
-                        />
-                    </div>
+                    {canAttachLink ? (
+                        <div className="flex items-center gap-3">
+                            <span className="font-bold text-[#1a6e14]">Đặt món</span>
+                            <button
+                                type="button"
+                                onClick={() => setIsOrderLink(!isOrderLink)}
+                                className={`relative flex h-[22px] w-10 items-center rounded-full transition-colors ${isOrderLink ? 'bg-[#1a6e14]' : 'bg-[#8a8d91]'}`}
+                            >
+                                <span className={`inline-block h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${isOrderLink ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                            </button>
+                            <input
+                                type="text"
+                                placeholder="Link món"
+                                value={dishLink}
+                                onChange={(event) => setDishLink(event.target.value)}
+                                className="h-[34px] w-[180px] rounded-[6px] border border-[#ced0d4] px-3 text-[14px] outline-none transition focus:border-[#1a6e14]"
+                                disabled={!isOrderLink}
+                                style={{ opacity: isOrderLink ? 1 : 0.6 }}
+                            />
+                        </div>
+                    ) : (
+                        <div />
+                    )}
 
                     <button
                         type="button"
@@ -765,6 +776,7 @@ function PostCard({
     post,
     profile,
     canShare = true,
+    canEditPost = true,
     onLike,
     onComment,
     onShare,
@@ -776,6 +788,7 @@ function PostCard({
     post: UserProfile['posts'][number];
     profile: UserProfile;
     canShare?: boolean;
+    canEditPost?: boolean;
     onLike: () => void;
     onComment: () => void;
     onShare: () => void;
@@ -805,19 +818,21 @@ function PostCard({
                                 <span className="text-[11px] text-[#8c8c8c]">{post.date}</span>
                             </div>
                         </div>
-                        <PostMenu
-                            isOpen={isMenuOpen}
-                            onToggle={() => setIsMenuOpen((current) => !current)}
-                            onClose={() => setIsMenuOpen(false)}
-                            onEdit={() => {
-                                setIsMenuOpen(false);
-                                onEditPost();
-                            }}
-                            onDelete={() => {
-                                setIsMenuOpen(false);
-                                onDeletePost();
-                            }}
-                        />
+                        {canEditPost ? (
+                            <PostMenu
+                                isOpen={isMenuOpen}
+                                onToggle={() => setIsMenuOpen((current) => !current)}
+                                onClose={() => setIsMenuOpen(false)}
+                                onEdit={() => {
+                                    setIsMenuOpen(false);
+                                    onEditPost();
+                                }}
+                                onDelete={() => {
+                                    setIsMenuOpen(false);
+                                    onDeletePost();
+                                }}
+                            />
+                        ) : null}
                     </div>
 
                     <div className="mt-3 space-y-2 text-[13px] leading-7 text-[#535353]">
@@ -1386,7 +1401,55 @@ export default function ProfilePageClient({
     canEdit?: boolean;
 }) {
     const hasEarnings = canEdit && Boolean(profile.isMonetized && profile.earnings);
+    const { nguoiDung, dangNhap } = useAuth();
     const [earnings, setEarnings] = useState(profile.earnings);
+    const [isFollowingTarget, setIsFollowingTarget] = useState<boolean>(
+        Boolean(profile.isFollowingByMe),
+    );
+    const [isFollowProcessing, setIsFollowProcessing] = useState(false);
+    const [isOpeningChat, setIsOpeningChat] = useState(false);
+
+    const handleToggleFollow = async () => {
+        if (!dangNhap) {
+            setActionMessage('Vui lòng đăng nhập để theo dõi người dùng.');
+            return;
+        }
+        const targetId = Number(profile.id);
+        if (!Number.isFinite(targetId) || targetId <= 0) return;
+        setIsFollowProcessing(true);
+        try {
+            const res = (await userContentApi.toggleTheoDoiNguoiDung(targetId)) as {
+                dang_theo_doi?: boolean;
+            };
+            setIsFollowingTarget(Boolean(res?.dang_theo_doi));
+        } catch (err) {
+            setActionMessage(
+                err instanceof Error ? err.message : 'Không thể cập nhật theo dõi',
+            );
+        } finally {
+            setIsFollowProcessing(false);
+        }
+    };
+
+    const handleOpenChat = async () => {
+        if (!dangNhap) {
+            setActionMessage('Vui lòng đăng nhập để nhắn tin.');
+            return;
+        }
+        const targetId = Number(profile.id);
+        if (!Number.isFinite(targetId) || targetId <= 0) return;
+        if (nguoiDung && Number(nguoiDung.id) === targetId) return;
+        setIsOpeningChat(true);
+        try {
+            await userCommerceApi.batDauTroChuyen(targetId);
+            window.location.href = '/messages';
+        } catch (err) {
+            setActionMessage(
+                err instanceof Error ? err.message : 'Không thể bắt đầu trò chuyện',
+            );
+            setIsOpeningChat(false);
+        }
+    };
 
     const [activeTab, setActiveTab] = useState<ProfileTab>(hasEarnings ? 'revenue' : 'posts');
     const [sortMode, setSortMode] = useState<SortMode>('latest');
@@ -1557,7 +1620,7 @@ export default function ProfilePageClient({
             tep_dinh_kem: mediaUrls,
             muc_do_hien_thi: visibility,
             bat_kiem_tien: monetize,
-            link_mon_an: monetize ? dishLink : undefined,
+            link_mon_an: dishLink ? dishLink : undefined,
         });
         const newPost: ProfilePost = {
             id: String(created.id),
@@ -1649,7 +1712,34 @@ export default function ProfilePageClient({
                                         >
                                             {editLabel}
                                         </Link>
-                                    ) : null}
+                                    ) : (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={handleToggleFollow}
+                                                disabled={isFollowProcessing}
+                                                className={`flex h-10 flex-1 items-center justify-center rounded-[10px] px-4 text-[14px] font-bold transition disabled:cursor-wait disabled:opacity-60 ${
+                                                    isFollowingTarget
+                                                        ? 'border border-[#258f22] bg-[#e8f4e7] text-[#1f771d] hover:bg-[#dcf0db]'
+                                                        : 'bg-[#2e7d32] text-white hover:bg-[#256b28]'
+                                                }`}
+                                            >
+                                                {isFollowProcessing
+                                                    ? 'Đang xử lý…'
+                                                    : isFollowingTarget
+                                                        ? 'Đang theo dõi'
+                                                        : 'Follow +'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleOpenChat}
+                                                disabled={isOpeningChat}
+                                                className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] border border-[#1f89cf] bg-white px-4 text-[14px] font-bold text-[#1f89cf] transition hover:bg-[#eaf4fb] disabled:cursor-wait disabled:opacity-60"
+                                            >
+                                                {isOpeningChat ? 'Đang mở…' : '💬 Nhắn tin'}
+                                            </button>
+                                        </>
+                                    )}
                                     {hasEarnings ? (
                                         <button
                                             type="button"
@@ -1740,10 +1830,12 @@ export default function ProfilePageClient({
                     </div>
                 </div>
 
-                {activeTab === 'posts' ? <CreatePostBox profile={profile} onClick={() => {
-                    setEditingPost(null);
-                    setIsCreatePostModalOpen(true);
-                }} /> : null}
+                {activeTab === 'posts' && canEdit ? (
+                    <CreatePostBox profile={profile} onClick={() => {
+                        setEditingPost(null);
+                        setIsCreatePostModalOpen(true);
+                    }} />
+                ) : null}
 
                 {activeTab === 'posts' ? (
                     <div>
@@ -1754,6 +1846,7 @@ export default function ProfilePageClient({
                                     post={post}
                                     profile={profile}
                                     canShare={!canEdit}
+                                    canEditPost={canEdit}
                                     onLike={() => {
                                         const id = Number(post.id);
                                         if (!Number.isFinite(id)) return;
@@ -1908,6 +2001,7 @@ export default function ProfilePageClient({
                                     post={post}
                                     profile={profile}
                                     canShare={!canEdit}
+                                    canEditPost={canEdit}
                                     onLike={() => {
                                         const id = Number(post.id);
                                         if (!Number.isFinite(id)) return;
@@ -2075,7 +2169,7 @@ export default function ProfilePageClient({
                 ) : null}
             </section>
 
-                {isCreatePostModalOpen ? (
+                {isCreatePostModalOpen && canEdit ? (
                     <CreatePostModal
                         profile={profile}
                         onClose={() => {

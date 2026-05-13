@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import LoginRequiredModal from '@/components/Auth/LoginRequiredModal';
@@ -620,7 +621,16 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                         <div className="p-6 md:p-7">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <h1 className="text-[32px] font-bold leading-tight text-black md:text-[36px]">{store.title}</h1>
+                                    {store.ownerId ? (
+                                        <Link
+                                            href={`/profile/${store.ownerId}`}
+                                            className="text-[32px] font-bold leading-tight text-black hover:underline md:text-[36px]"
+                                        >
+                                            {store.title}
+                                        </Link>
+                                    ) : (
+                                        <h1 className="text-[32px] font-bold leading-tight text-black md:text-[36px]">{store.title}</h1>
+                                    )}
                                     <p className="mt-3 text-[16px] text-[#4b5563]">{store.subtitle}</p>
                                 </div>
                                 <div className="text-right">
@@ -808,7 +818,16 @@ export default function StoreDetailPageClient({ store }: { store: StoreDetailDat
                                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f59e0b] text-[20px] font-bold text-white">
                                     {store.score}
                                 </div>
-                                <h2 className="text-[28px] font-bold leading-tight text-black">{store.title}</h2>
+                                {store.ownerId ? (
+                                    <Link
+                                        href={`/profile/${store.ownerId}`}
+                                        className="text-[28px] font-bold leading-tight text-black hover:underline"
+                                    >
+                                        {store.title}
+                                    </Link>
+                                ) : (
+                                    <h2 className="text-[28px] font-bold leading-tight text-black">{store.title}</h2>
+                                )}
                             </div>
                         </aside>
 

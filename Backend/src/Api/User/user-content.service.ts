@@ -114,7 +114,12 @@ export class UserContentService {
     const tuQuery = (() => {
       try {
         const url = new URL(trimmed, 'https://dishnet.local');
-        const direct = Number(url.searchParams.get('id_mon_an') || url.searchParams.get('id') || 0);
+        const direct = Number(
+          url.searchParams.get('mon') ||
+          url.searchParams.get('id_mon_an') ||
+          url.searchParams.get('id') ||
+          0,
+        );
         if (Number.isFinite(direct) && direct > 0) return direct;
       } catch {
         return null;
@@ -1051,6 +1056,19 @@ export class UserContentService {
       };
     }
 
+    let dangTheoDoi = false;
+    if (idNguoiXem && idNguoiXem !== idNguoiDung) {
+      const followCount = await this.quanHeNguoiDungRepo.count({
+        where: {
+          id_nguoi_tao_quan_he: idNguoiXem,
+          id_nguoi_nhan_quan_he: idNguoiDung,
+          loai_quan_he: 'theo_doi',
+          trang_thai: 'hieu_luc',
+        },
+      });
+      dangTheoDoi = followCount > 0;
+    }
+
     return {
       thong_tin_co_ban: {
         id: Number(user.id),
@@ -1063,6 +1081,7 @@ export class UserContentService {
         so_nguoi_dang_theo_doi: soDangTheoDoi,
         la_tai_khoan_rieng_tu: Boolean(user.la_tai_khoan_rieng_tu),
         noi_dung_bi_han_che: biHanCheDoRiengTu,
+        dang_theo_doi: dangTheoDoi,
       },
       thong_tin_kiem_tien_noi_dung: thongTinKiemTien,
       tabs: [
@@ -2084,6 +2103,7 @@ export class UserContentService {
 
     return {
       id: Number(cuaHang.id),
+      id_chu_so_huu: cuaHang.id_chu_so_huu != null ? Number(cuaHang.id_chu_so_huu) : null,
       ten_cua_hang: cuaHang.ten_cua_hang,
       slug: cuaHang.slug,
       mo_ta: cuaHang.mo_ta,

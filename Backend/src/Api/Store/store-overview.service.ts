@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { CuaHangEntity } from '../Admin/entities/cua-hang.entity';
@@ -200,6 +200,27 @@ export class StoreOverviewService {
       },
       tong_thu_nhap_trong_ngay: tongThuNhapTrongNgay,
     };
+  }
+
+  async capNhatTrangThaiHoatDong(nguoiDungId: number, trangThai?: string) {
+    const allowed = new Set(['hoat_dong', 'tam_nghi']);
+    if (!trangThai || !allowed.has(trangThai)) {
+      throw new BadRequestException('Trạng thái không hợp lệ');
+    }
+    const cuaHang = await this.layCuaHangCuaNguoiDung(nguoiDungId);
+    if (cuaHang.trang_thai_hoat_dong === 'cho_duyet' || cuaHang.trang_thai_hoat_dong === 'bi_khoa') {
+      throw new ForbiddenException('Cửa hàng đang chờ duyệt hoặc bị khóa, không thể đổi trạng thái');
+    }
+    cuaHang.trang_thai_hoat_dong = trangThai;
+    await this.cuaHangRepo.save(cuaHang);
+    return { trang_thai_hoat_dong: cuaHang.trang_thai_hoat_dong };
+  }
+
+  async capNhatAnhDaiDien(nguoiDungId: number, url: string) {
+    const cuaHang = await this.layCuaHangCuaNguoiDung(nguoiDungId);
+    cuaHang.anh_dai_dien = url;
+    await this.cuaHangRepo.save(cuaHang);
+    return { anh_dai_dien: cuaHang.anh_dai_dien };
   }
 
   private async layCuaHangCuaNguoiDung(

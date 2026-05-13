@@ -125,4 +125,27 @@ export const storeOverviewApi = {
     if (params.so_luong) sp.set('so_luong', String(params.so_luong));
     return request<StoreOverviewResponse>(`${BASE}?${sp.toString()}`);
   },
+
+  capNhatTrangThai(trang_thai: 'hoat_dong' | 'tam_nghi') {
+    return request<{ trang_thai_hoat_dong: string }>(`${BASE}/trang-thai`, {
+      method: 'PATCH',
+      body: JSON.stringify({ trang_thai }),
+    });
+  },
+
+  async uploadAnhDaiDien(file: File): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/upload-anh-dai-dien`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message = isApiEnvelope(body) ? body.message : (body as any)?.message;
+      throw new Error(message || `Lỗi ${res.status}`);
+    }
+    return (isApiEnvelope<{ url: string }>(body) ? body.data : body) as { url: string };
+  },
 };

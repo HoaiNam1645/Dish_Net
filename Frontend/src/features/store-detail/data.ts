@@ -41,6 +41,7 @@ export type StoreDetailComment = {
 
 export type StoreDetailData = {
     id: string;
+    ownerId: number | null;
     title: string;
     subtitle: string;
     coverImage: string;
@@ -262,6 +263,8 @@ export async function getStoreDetailById(id: string): Promise<StoreDetailData | 
 
     return {
         id: String(resolvedStoreId ?? storeId),
+        ownerId:
+            storeDetail?.id_chu_so_huu != null ? Number(storeDetail.id_chu_so_huu) : null,
         title: String(matchedStore?.ten_cua_hang ?? storeDetail?.ten_cua_hang ?? 'Cửa hàng'),
         subtitle: 'Cửa hàng trên DishNet',
         coverImage,

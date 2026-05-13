@@ -213,11 +213,8 @@ export default function CheckoutPageClient() {
 
     if (!soDienThoai) {
       nextErrors.phone = 'Vui lòng nhập số điện thoại nhận hàng.';
-    } else {
-      const digitsOnly = soDienThoai.replace(/\D/g, '');
-      if (digitsOnly.length < 9 || digitsOnly.length > 11) {
-        nextErrors.phone = 'Số điện thoại không hợp lệ.';
-      }
+    } else if (!/^0\d{9}$/.test(soDienThoai)) {
+      nextErrors.phone = 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.';
     }
 
     if (!diaChi) {
@@ -579,10 +576,36 @@ export default function CheckoutPageClient() {
                     Số điện thoại
                   </div>
                   <input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    maxLength={11}
+                    placeholder="Ví dụ: 0901234567"
                     value={phone}
                     onChange={(event) => {
-                      setPhone(event.target.value);
+                      // Chỉ giữ lại chữ số, loại bỏ chữ cái và ký tự khác
+                      const onlyDigits = event.target.value.replace(/\D/g, '');
+                      setPhone(onlyDigits);
                       setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                    }}
+                    onKeyDown={(event) => {
+                      // Chặn các phím chữ ở keyboard layout không có inputMode-aware
+                      if (
+                        event.key.length === 1 &&
+                        !/[0-9]/.test(event.key) &&
+                        !event.ctrlKey &&
+                        !event.metaKey
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onPaste={(event) => {
+                      const text = event.clipboardData.getData('text');
+                      if (/\D/.test(text)) {
+                        event.preventDefault();
+                        const onlyDigits = text.replace(/\D/g, '').slice(0, 11);
+                        setPhone(onlyDigits);
+                      }
                     }}
                     className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
                       fieldErrors.phone

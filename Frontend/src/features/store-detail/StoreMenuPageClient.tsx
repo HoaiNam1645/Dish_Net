@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import LoginRequiredModal from '@/components/Auth/LoginRequiredModal';
@@ -400,9 +401,18 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
               />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
-                  <h1 className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#151737] sm:text-[28px] lg:text-[32px]">
-                    {store.title}
-                  </h1>
+                  {store.ownerId ? (
+                    <Link
+                      href={`/profile/${store.ownerId}`}
+                      className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#151737] hover:underline sm:text-[28px] lg:text-[32px]"
+                    >
+                      {store.title}
+                    </Link>
+                  ) : (
+                    <h1 className="min-w-0 flex-1 truncate text-[22px] font-bold leading-tight text-[#151737] sm:text-[28px] lg:text-[32px]">
+                      {store.title}
+                    </h1>
+                  )}
                   <span className="shrink-0 rounded-full bg-[#f4f8f3] px-3 py-1 text-[14px] font-semibold text-[#2f9e2f] sm:px-4 sm:text-[16px]">
                     {store.views}
                   </span>
