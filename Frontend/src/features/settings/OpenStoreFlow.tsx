@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
 import { userCommerceApi } from '@/shared/userCommerceApi';
+import ExploreAddressMap from '@/features/explore/ExploreAddressMap';
 
 type StoreStep = 'form' | 'contract' | 'payment' | 'pending';
 type StoreRequestStatus = 'cho_duyet' | 'da_duyet' | 'da_tu_choi';
@@ -436,6 +437,15 @@ export default function OpenStoreFlow({
                         maxLength={100}
                         error={fieldErrors.storeAddress}
                     />
+                    <div className="flex items-start gap-4">
+                        <span className="hidden w-[140px] shrink-0 text-[15px] text-[#333] sm:block" />
+                        <div className="flex-1">
+                            <ExploreAddressMap
+                                address={storeAddress}
+                                onAddressChange={(next) => { setStoreAddress(next); clearFieldError('storeAddress'); }}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Thông tin cửa hàng ── */}

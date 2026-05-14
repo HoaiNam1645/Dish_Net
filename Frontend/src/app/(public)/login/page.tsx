@@ -150,6 +150,8 @@ function LoginPageContent() {
     const [submitted, setSubmitted] = useState(false);
     const [chonVaiTro, setChonVaiTro] = useState<{ email: string; danhSach: string[] } | null>(null);
     const [selectedVaiTro, setSelectedVaiTro] = useState('');
+    const [chuaXacThucEmail, setChuaXacThucEmail] = useState<string | null>(null);
+    const [resendingOtp, setResendingOtp] = useState(false);
     const googleButtonRef = useRef<HTMLDivElement | null>(null);
     const isGoogleInitializedRef = useRef(false);
 
@@ -196,9 +198,31 @@ function LoginPageContent() {
                 router.push(redirectTo || defaultRoute);
             }
         } catch (err: unknown) {
-            setServerError(getErrorMessage(err, 'Đăng nhập thất bại'));
+            const message = getErrorMessage(err, 'Đăng nhập thất bại');
+            if (/chưa được xác thực/i.test(message)) {
+                setChuaXacThucEmail(form.email.trim());
+                setServerError('');
+            } else {
+                setServerError(message);
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleXacNhanLaiOtp = async () => {
+        if (!chuaXacThucEmail || resendingOtp) return;
+        setResendingOtp(true);
+        try {
+            await authApi.guiLaiOtp({ email: chuaXacThucEmail, loai_xac_thuc: 'dang_ky' });
+            sessionStorage.setItem('register_email', chuaXacThucEmail);
+            setChuaXacThucEmail(null);
+            router.push('/register/verify');
+        } catch (err: unknown) {
+            setServerError(getErrorMessage(err, 'Gửi lại mã OTP thất bại'));
+            setChuaXacThucEmail(null);
+        } finally {
+            setResendingOtp(false);
         }
     };
 
@@ -365,6 +389,43 @@ function LoginPageContent() {
                 </div>
             </div>
             <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onLoad={initGoogleSignIn} />
+
+            {chuaXacThucEmail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#fff7e6]">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#faad14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 9v4" />
+                                <path d="M12 17h.01" />
+                                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                            </svg>
+                        </div>
+                        <h2 className="mb-2 text-lg font-bold text-[#111827]">Tài khoản chưa xác thực</h2>
+                        <p className="mb-5 text-[14px] leading-6 text-[#6b7280]">
+                            Email <span className="font-semibold text-[#111827]">{chuaXacThucEmail}</span> chưa được xác thực OTP.
+                            Bạn có muốn nhận mã OTP mới để xác nhận lại không?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setChuaXacThucEmail(null)}
+                                disabled={resendingOtp}
+                                className="flex-1 h-[44px] rounded-[8px] border border-[#dfe3e8] text-[14px] font-semibold text-[#6b7280] transition hover:bg-[#f5f6f7] disabled:opacity-60"
+                            >
+                                Để sau
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleXacNhanLaiOtp}
+                                disabled={resendingOtp}
+                                className="flex-1 h-[44px] rounded-[8px] bg-[#61AF5E] text-[14px] font-bold text-white transition hover:bg-[#4e9a4b] disabled:opacity-60"
+                            >
+                                {resendingOtp ? 'Đang gửi...' : 'Xác nhận lại OTP'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {chonVaiTro && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { emitUserCartRefreshEvent } from '@/shared/cartEvents';
 import { userCommerceApi } from '@/shared/userCommerceApi';
+import AddressPickerMap from '@/features/checkout/AddressPickerMap';
 
 type CheckoutItem = {
   id_gio_hang: number;
@@ -618,26 +619,14 @@ export default function CheckoutPageClient() {
                   ) : null}
                 </label>
 
-                <label className="block">
-                  <div className="mb-2 text-[13px] font-semibold text-[#a8adb7]">
-                    Địa chỉ giao hàng
-                  </div>
-                  <input
-                    value={address}
-                    onChange={(event) => {
-                      setAddress(event.target.value);
-                      setFieldErrors((prev) => ({ ...prev, address: undefined }));
-                    }}
-                    className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
-                      fieldErrors.address
-                        ? 'border-[#ef4444] bg-[#fff7f7] focus:border-[#ef4444]'
-                        : 'border-[#e3e6eb] focus:border-[#cfd6df]'
-                    }`}
-                  />
-                  {fieldErrors.address ? (
-                    <p className="mt-1 text-[12px] text-[#ef4444]">{fieldErrors.address}</p>
-                  ) : null}
-                </label>
+                <AddressPickerMap
+                  address={address}
+                  onAddressChange={(next) => {
+                    setAddress(next);
+                    setFieldErrors((prev) => ({ ...prev, address: undefined }));
+                  }}
+                  error={fieldErrors.address}
+                />
 
                 <label className="block">
                   <div className="mb-2 text-[13px] font-semibold text-[#a8adb7]">

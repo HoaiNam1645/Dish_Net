@@ -51,7 +51,7 @@ export class AuthService {
     const emailTonTai = await this.nguoiDungRepo.findOne({
       where: { email: dto.email },
     });
-    if (emailTonTai) {
+    if (emailTonTai && emailTonTai.trang_thai_tai_khoan !== "cho_xac_thuc") {
       throw new ConflictException("Email đã được sử dụng");
     }
 
@@ -59,29 +59,53 @@ export class AuthService {
       const sdtTonTai = await this.nguoiDungRepo.findOne({
         where: { so_dien_thoai: dto.so_dien_thoai },
       });
-      if (sdtTonTai) {
+      if (sdtTonTai && sdtTonTai.id !== emailTonTai?.id) {
         throw new ConflictException("Số điện thoại đã được sử dụng");
       }
     }
 
-    const tenDangNhap =
-      dto.email.split("@")[0] + "_" + Date.now().toString().slice(-4);
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
     const matKhauBam = await hash(dto.mat_khau, saltRounds);
 
-    const nguoiDung = this.nguoiDungRepo.create({
-      ten_dang_nhap: tenDangNhap,
-      email: dto.email,
-      so_dien_thoai: dto.so_dien_thoai ?? null,
-      mat_khau_bam: matKhauBam,
-      ten_hien_thi: dto.ten_hien_thi,
-      khu_vuc: dto.khu_vuc ?? null,
-      dia_chi: dto.dia_chi ?? null,
-      trang_thai_tai_khoan: "cho_xac_thuc",
-      nguon_dang_ky: "email",
-    });
+    let savedUser: NguoiDungEntity;
+    let tenDangNhap: string;
 
-    const savedUser = await this.nguoiDungRepo.save(nguoiDung);
+    if (emailTonTai) {
+      tenDangNhap = emailTonTai.ten_dang_nhap;
+      emailTonTai.so_dien_thoai = dto.so_dien_thoai ?? null;
+      emailTonTai.mat_khau_bam = matKhauBam;
+      emailTonTai.ten_hien_thi = dto.ten_hien_thi;
+      emailTonTai.khu_vuc = dto.khu_vuc ?? null;
+      emailTonTai.dia_chi = dto.dia_chi ?? null;
+      emailTonTai.kieu_khoa_tai_khoan = null;
+      emailTonTai.thoi_gian_mo_khoa = null;
+      emailTonTai.ly_do_khoa_hien_tai = null;
+      savedUser = await this.nguoiDungRepo.save(emailTonTai);
+
+      await this.maXacThucRepo.update(
+        {
+          id_nguoi_dung: savedUser.id,
+          loai_xac_thuc: "dang_ky",
+          trang_thai: "hieu_luc",
+        },
+        { trang_thai: "da_huy" },
+      );
+    } else {
+      tenDangNhap =
+        dto.email.split("@")[0] + "_" + Date.now().toString().slice(-4);
+      const nguoiDung = this.nguoiDungRepo.create({
+        ten_dang_nhap: tenDangNhap,
+        email: dto.email,
+        so_dien_thoai: dto.so_dien_thoai ?? null,
+        mat_khau_bam: matKhauBam,
+        ten_hien_thi: dto.ten_hien_thi,
+        khu_vuc: dto.khu_vuc ?? null,
+        dia_chi: dto.dia_chi ?? null,
+        trang_thai_tai_khoan: "cho_xac_thuc",
+        nguon_dang_ky: "email",
+      });
+      savedUser = await this.nguoiDungRepo.save(nguoiDung);
+    }
 
     const maOtp = this.taoMaOtp();
     const thoiGianHetHan = new Date(
@@ -369,6 +393,10 @@ export class AuthService {
 
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
     nguoiDung.mat_khau_bam = await hash(dto.mat_khau_moi, saltRounds);
+    if (nguoiDung.trang_thai_tai_khoan === "cho_xac_thuc") {
+      nguoiDung.trang_thai_tai_khoan = "hoat_dong";
+      nguoiDung.thoi_gian_xac_thuc_email = new Date();
+    }
     await this.nguoiDungRepo.save(nguoiDung);
 
     otp.trang_thai = "da_dung";
