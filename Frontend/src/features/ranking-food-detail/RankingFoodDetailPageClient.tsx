@@ -10,20 +10,6 @@ import { useAuth } from '@/shared/AuthContext';
 
 import type { FoodCommentCard, FoodReviewCard, RankingFoodDetailData } from './data';
 
-function ToolbarSelect({ label }: { label: string }) {
-    return (
-        <div className="relative">
-            <button
-                type="button"
-                className="flex min-w-[136px] items-center justify-between gap-4 bg-white px-5 py-3 text-[15px] text-[#5f6660]"
-            >
-                <span>{label}</span>
-                <span>⌄</span>
-            </button>
-        </div>
-    );
-}
-
 function TagPill({ label, tone }: { label: string; tone: 'gold' | 'red' }) {
     return (
         <span
@@ -362,18 +348,6 @@ export default function RankingFoodDetailPageClient({ food }: { food: RankingFoo
                                     </div>
                                 </div>
                             ) : null}
-
-                            <div className="flex flex-wrap items-center gap-3 bg-[#e7e9e2] p-4">
-                                <button type="button" className="flex min-w-[230px] items-center justify-between bg-white px-5 py-3 text-[15px] text-[#666666]">
-                                    <span>Đánh giá</span>
-                                    <span className="text-[#ffb31a]">★★★★☆</span>
-                                </button>
-                                <ToolbarSelect label="Thời gian" />
-                                <ToolbarSelect label="Lượng Thích" />
-                                <ToolbarSelect label="Bình luận" />
-                                <ToolbarSelect label="Đăng lại" />
-                                <ToolbarSelect label="Đã gửi" />
-                            </div>
 
                             <div className="grid gap-6 xl:grid-cols-2">
                                 {food.reviews.slice(0, visibleReviewCount).map((review) => (

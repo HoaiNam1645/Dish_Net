@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 
 import type { UserProfile } from '@/features/profile/data';
 import { useToast } from '@/shared/toast';
+import { useAuth } from '@/shared/AuthContext';
 import { userContentApi } from '@/shared/userContentApi';
 
 function Toggle({
@@ -67,6 +68,7 @@ export default function EditProfilePageClient({
 }) {
     const router = useRouter();
     const toast = useToast();
+    const { kiemTraPhien } = useAuth();
     const toInputDate = (value: string): string => {
         if (!value) return '';
         const v = value.trim();
@@ -184,6 +186,7 @@ export default function EditProfilePageClient({
                 cho_hien_thi_huy_hieu: showBadge,
                 cho_hien_thi_diem_uy_tin: showTrustScore,
             });
+            await kiemTraPhien();
             setIsSaving(false);
             setSaved(true);
             toast.success('Đã lưu thông tin cá nhân');

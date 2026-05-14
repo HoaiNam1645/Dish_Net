@@ -580,12 +580,12 @@ export default function CheckoutPageClient() {
                     type="tel"
                     inputMode="numeric"
                     autoComplete="tel"
-                    maxLength={11}
+                    maxLength={10}
                     placeholder="Ví dụ: 0901234567"
                     value={phone}
                     onChange={(event) => {
-                      // Chỉ giữ lại chữ số, loại bỏ chữ cái và ký tự khác
-                      const onlyDigits = event.target.value.replace(/\D/g, '');
+                      // Chỉ giữ lại chữ số, loại bỏ chữ cái và ký tự khác, tối đa 10 ký tự
+                      const onlyDigits = event.target.value.replace(/\D/g, '').slice(0, 10);
                       setPhone(onlyDigits);
                       setFieldErrors((prev) => ({ ...prev, phone: undefined }));
                     }}
@@ -601,12 +601,11 @@ export default function CheckoutPageClient() {
                       }
                     }}
                     onPaste={(event) => {
+                      event.preventDefault();
                       const text = event.clipboardData.getData('text');
-                      if (/\D/.test(text)) {
-                        event.preventDefault();
-                        const onlyDigits = text.replace(/\D/g, '').slice(0, 11);
-                        setPhone(onlyDigits);
-                      }
+                      const onlyDigits = text.replace(/\D/g, '').slice(0, 10);
+                      setPhone(onlyDigits);
+                      setFieldErrors((prev) => ({ ...prev, phone: undefined }));
                     }}
                     className={`h-[42px] w-full rounded-[10px] border px-4 text-[14px] text-black outline-none transition ${
                       fieldErrors.phone

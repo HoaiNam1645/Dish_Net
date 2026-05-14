@@ -117,12 +117,6 @@ const vaiTroConfig: Record<string, { title: string; subtitle: string; descriptio
         description: 'Quản lý cửa hàng, menu, đơn hàng và doanh thu.',
         gradient: 'from-orange-300 to-red-400',
     },
-    nha_sang_tao: {
-        title: 'Tài khoản nhà sáng tạo',
-        subtitle: 'Nhà sáng tạo',
-        description: 'Tạo nội dung, kiếm tiền từ bài viết và review.',
-        gradient: 'from-blue-300 to-blue-500',
-    },
 };
 
 function LoginPageContent() {
@@ -136,9 +130,18 @@ function LoginPageContent() {
 
     useEffect(() => {
         try {
-            const saved = localStorage.getItem('dishnet_remember_account');
-            if (saved) {
-                setForm((prev) => ({ ...prev, email: saved }));
+            const savedEmail = localStorage.getItem('dishnet_remember_account');
+            const savedPassword = localStorage.getItem('dishnet_remember_password');
+            if (savedEmail) {
+                let decodedPassword = '';
+                if (savedPassword) {
+                    try {
+                        decodedPassword = atob(savedPassword);
+                    } catch {
+                        decodedPassword = '';
+                    }
+                }
+                setForm((prev) => ({ ...prev, email: savedEmail, password: decodedPassword }));
                 setRememberMe(true);
             }
         } catch {
@@ -184,8 +187,10 @@ function LoginPageContent() {
                 try {
                     if (rememberMe) {
                         localStorage.setItem('dishnet_remember_account', form.email.trim());
+                        localStorage.setItem('dishnet_remember_password', btoa(form.password));
                     } else {
                         localStorage.removeItem('dishnet_remember_account');
+                        localStorage.removeItem('dishnet_remember_password');
                     }
                 } catch {
                     // ignore
@@ -238,8 +243,12 @@ function LoginPageContent() {
             try {
                 if (rememberMe) {
                     localStorage.setItem('dishnet_remember_account', chonVaiTro.email);
+                    if (form.password) {
+                        localStorage.setItem('dishnet_remember_password', btoa(form.password));
+                    }
                 } else {
                     localStorage.removeItem('dishnet_remember_account');
+                    localStorage.removeItem('dishnet_remember_password');
                 }
             } catch {
                 // ignore
@@ -269,6 +278,8 @@ function LoginPageContent() {
                 } else {
                     localStorage.removeItem('dishnet_remember_account');
                 }
+                // Google login không có password nên luôn xóa password đã lưu
+                localStorage.removeItem('dishnet_remember_password');
             } catch {
                 // ignore
             }

@@ -1609,6 +1609,14 @@ export class UserCommerceService {
       });
     }
 
+    if (snapshot.khuyen_mai && snapshot.tong_tien.giam_gia > 0) {
+      await this.khuyenMaiRepo.increment(
+        { id: snapshot.khuyen_mai.id },
+        'so_luot_da_dung',
+        1,
+      );
+    }
+
     const cartItemIds = [
       ...new Set(
         snapshot.groups

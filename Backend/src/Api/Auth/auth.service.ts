@@ -529,8 +529,9 @@ export class AuthService {
   }
 
   private layDanhSachVaiTro(nguoiDung: NguoiDungEntity): string[] {
+    // Vai trò "nha_sang_tao" được gộp vào "nguoi_dung" vì nhà sáng tạo
+    // cũng là người dùng thường, chỉ khác là được duyệt kiếm tiền nội dung.
     const vaiTro: string[] = ["nguoi_dung"];
-    if (nguoiDung.la_nha_sang_tao) vaiTro.push("nha_sang_tao");
     if (nguoiDung.la_chu_cua_hang) vaiTro.push("chu_cua_hang");
     if (nguoiDung.la_admin) vaiTro.push("admin");
     return vaiTro;
@@ -663,10 +664,29 @@ export class AuthService {
     if (nguoiDung.thoi_gian_mo_khoa.getTime() <= Date.now()) {
       nguoiDung.kieu_khoa_tai_khoan = null;
       nguoiDung.thoi_gian_mo_khoa = null;
+      if (nguoiDung.trang_thai_tai_khoan === "bi_khoa") {
+        nguoiDung.trang_thai_tai_khoan = "hoat_dong";
+        nguoiDung.ly_do_khoa_hien_tai = null;
+      }
       this.setFailedAttempts(nguoiDung, 0);
       await this.nguoiDungRepo.save(nguoiDung);
       return;
     }
+
+    const laAdminKhoa = nguoiDung.trang_thai_tai_khoan === "bi_khoa";
+    if (laAdminKhoa) {
+      const thoiGianMoKhoa = nguoiDung.thoi_gian_mo_khoa.toLocaleString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      throw new UnauthorizedException(
+        `Tài khoản của bạn đã bị tạm khóa. Vui lòng đăng nhập lại sau ${thoiGianMoKhoa}.`,
+      );
+    }
+
     throw new UnauthorizedException(
       `Bạn đã nhập sai quá ${AuthService.MAX_LOGIN_ATTEMPTS} lần. Vui lòng thử lại sau ${AuthService.LOGIN_BLOCK_MINUTES} phút.`,
     );

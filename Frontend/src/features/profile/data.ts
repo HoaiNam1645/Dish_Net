@@ -243,6 +243,10 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
                 type: item.loai_bai_viet ?? 'bai_viet',
                 monetized: Boolean(item.bat_kiem_tien),
                 dishLink: item.link_mon_an ?? null,
+                dishImage: typeof item.hinh_anh_mon_an === 'string' ? item.hinh_anh_mon_an : null,
+                storeAvatar: typeof item.anh_dai_dien_cua_hang_lien_ket === 'string'
+                    ? item.anh_dai_dien_cua_hang_lien_ket
+                    : null,
             }))
             : [];
         const apiReposts = Array.isArray(repostPayload?.du_lieu)
@@ -296,7 +300,11 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
                     .map((post: any) => ({
                         id: post.id,
                         title: post.content ? post.content.slice(0, 50) : 'Bài viết kiếm tiền',
-                        image: post.images[0] ?? DEFAULT_AVATAR,
+                        image:
+                            (post.images?.[0] as string | undefined) ||
+                            (post.dishImage as string | null) ||
+                            (post.storeAvatar as string | null) ||
+                            DEFAULT_AVATAR,
                         views: String(post.views ?? '0'),
                         interactions: String(Number(post.likes) + Number(post.comments) + Number(post.shares)),
                         revenue: '0đ',
@@ -396,6 +404,10 @@ export async function getUserProfileById(id: number): Promise<UserProfile | null
                 type: item.loai_bai_viet ?? 'bai_viet',
                 monetized: Boolean(item.bat_kiem_tien),
                 dishLink: item.link_mon_an ?? null,
+                dishImage: typeof item.hinh_anh_mon_an === 'string' ? item.hinh_anh_mon_an : null,
+                storeAvatar: typeof item.anh_dai_dien_cua_hang_lien_ket === 'string'
+                    ? item.anh_dai_dien_cua_hang_lien_ket
+                    : null,
             }))
             : [];
         const apiReposts = Array.isArray(repostPayload?.du_lieu)

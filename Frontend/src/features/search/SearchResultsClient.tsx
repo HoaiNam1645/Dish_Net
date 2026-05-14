@@ -14,6 +14,19 @@ const DEFAULT_FOOD_IMAGE = figmaFallbackAssets.feedDishImage;
 const DEFAULT_STORE_IMAGE = figmaFallbackAssets.storeImage;
 const DEFAULT_AVATAR = figmaFallbackAssets.reviewerAvatarA;
 
+const VIETNAM_PROVINCES = [
+  'An Giang', 'Bà Rịa - Vũng Tàu', 'Bạc Liêu', 'Bắc Giang', 'Bắc Kạn', 'Bắc Ninh',
+  'Bến Tre', 'Bình Dương', 'Bình Định', 'Bình Phước', 'Bình Thuận', 'Cà Mau',
+  'Cao Bằng', 'Cần Thơ', 'Đà Nẵng', 'Đắk Lắk', 'Đắk Nông', 'Điện Biên', 'Đồng Nai',
+  'Đồng Tháp', 'Gia Lai', 'Hà Giang', 'Hà Nam', 'Hà Nội', 'Hà Tĩnh', 'Hải Dương',
+  'Hải Phòng', 'Hậu Giang', 'Hòa Bình', 'Hưng Yên', 'Khánh Hòa', 'Kiên Giang',
+  'Kon Tum', 'Lai Châu', 'Lạng Sơn', 'Lào Cai', 'Lâm Đồng', 'Long An', 'Nam Định',
+  'Nghệ An', 'Ninh Bình', 'Ninh Thuận', 'Phú Thọ', 'Phú Yên', 'Quảng Bình',
+  'Quảng Nam', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị', 'Sóc Trăng', 'Sơn La',
+  'Tây Ninh', 'Thái Bình', 'Thái Nguyên', 'Thanh Hóa', 'Thừa Thiên Huế', 'Tiền Giang',
+  'TP. Hồ Chí Minh', 'Trà Vinh', 'Tuyên Quang', 'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
+];
+
 type SearchData = {
   thong_bao?: string;
   phan_trang?: { trang?: number; so_luong?: number };
@@ -54,7 +67,6 @@ export default function SearchResultsClient({ query }: { query: string }) {
     store: true,
     review: true,
     user: true,
-    nearby: false,
     hot: false,
     bestSelling: false,
     mostReviewed: false,
@@ -82,10 +94,9 @@ export default function SearchResultsClient({ query }: { query: string }) {
   }, [filters.bestSelling, filters.hot, filters.mostReviewed]);
 
   const boLocKhuVuc = useMemo(() => {
-    if (filters.nearby) return 'gan_ban';
     if (locationInput) return districtMode ? 'quan_huyen' : 'dia_diem';
     return undefined;
-  }, [districtMode, filters.nearby, locationInput]);
+  }, [districtMode, locationInput]);
 
   useEffect(() => {
     let mounted = true;
@@ -176,9 +187,8 @@ export default function SearchResultsClient({ query }: { query: string }) {
             <div>
               <h2 className="mb-4 text-[18px] font-bold text-[#679d55]">Khu vực</h2>
               <div className="space-y-4 px-2">
-                <div className="flex items-center justify-between gap-4 text-[18px] text-[#30362f]"><span>Gần bạn</span><Toggle checked={filters.nearby} onChange={() => setFilters((c) => ({ ...c, nearby: !c.nearby }))} /></div>
                 <button type="button" onClick={() => setDistrictMode((c) => !c)} className="flex w-full items-center justify-between gap-4 text-left text-[18px] text-[#30362f]">
-                  <span>Theo quận/ khu vực</span>
+                  <span>Theo tỉnh/ thành phố</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="18"
@@ -197,7 +207,16 @@ export default function SearchResultsClient({ query }: { query: string }) {
               </div>
               {districtMode ? (
                 <div className="px-2 pt-4">
-                  <input value={locationInput} onChange={(event) => setLocationInput(event.target.value)} placeholder="Nhập địa điểm" className="w-full rounded-full border border-[#d4d5d4] bg-white px-5 py-3 text-[16px]" />
+                  <select
+                    value={locationInput}
+                    onChange={(event) => setLocationInput(event.target.value)}
+                    className="w-full rounded-full border border-[#d4d5d4] bg-white px-5 py-3 text-[16px] text-[#30362f] focus:border-[#679d55] focus:outline-none"
+                  >
+                    <option value="">Tất cả tỉnh/ thành</option>
+                    {VIETNAM_PROVINCES.map((province) => (
+                      <option key={province} value={province}>{province}</option>
+                    ))}
+                  </select>
                 </div>
               ) : null}
             </div>
@@ -298,55 +317,109 @@ export default function SearchResultsClient({ query }: { query: string }) {
               <div className="space-y-4">
                 {baiViet.map((item: any) => {
                   const images: string[] = Array.isArray(item.tep_dinh_kem) ? item.tep_dinh_kem.filter(Boolean) : [];
+                  const authorHref = item.id_nguoi_dang ? `/profile/${item.id_nguoi_dang}` : null;
                   return (
                     <article key={item.id} className="overflow-hidden rounded-[16px] bg-[#fff6ee] shadow-[0_4px_16px_rgba(0,0,0,0.07)]">
                       <div className="p-5">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            {item.anh_dai_dien
-                              ? <img src={item.anh_dai_dien} alt={item.ten_nguoi_dang ?? ''} className="h-11 w-11 rounded-full object-cover" />
-                              : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ffe0b6] text-lg">👤</div>
-                            }
-                            <div>
-                              <p className="text-[16px] font-bold text-[#172554]">{item.ten_nguoi_dang ?? 'Người dùng'}</p>
-                              {item.ten_dang_nhap ? <p className="text-xs text-[#6b7280]">@{item.ten_dang_nhap}</p> : null}
+                          {authorHref ? (
+                            <Link href={authorHref} className="flex items-center gap-3 rounded-lg transition hover:bg-[#fdebd9]/60">
+                              {item.anh_dai_dien
+                                ? <img src={item.anh_dai_dien} alt={item.ten_nguoi_dang ?? ''} className="h-11 w-11 rounded-full object-cover" />
+                                : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ffe0b6] text-lg">👤</div>
+                              }
+                              <div>
+                                <p className="text-[16px] font-bold text-[#172554] hover:underline">{item.ten_nguoi_dang ?? 'Người dùng'}</p>
+                                {item.ten_dang_nhap ? <p className="text-xs text-[#6b7280]">@{item.ten_dang_nhap}</p> : null}
+                              </div>
+                            </Link>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              {item.anh_dai_dien
+                                ? <img src={item.anh_dai_dien} alt={item.ten_nguoi_dang ?? ''} className="h-11 w-11 rounded-full object-cover" />
+                                : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ffe0b6] text-lg">👤</div>
+                              }
+                              <div>
+                                <p className="text-[16px] font-bold text-[#172554]">{item.ten_nguoi_dang ?? 'Người dùng'}</p>
+                                {item.ten_dang_nhap ? <p className="text-xs text-[#6b7280]">@{item.ten_dang_nhap}</p> : null}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           {item.ngay_dang ? (
                             <p className="shrink-0 text-xs text-[#9ca3af]">{new Date(item.ngay_dang).toLocaleDateString('vi-VN')}</p>
                           ) : null}
                         </div>
 
-                        <p className="mt-4 line-clamp-4 text-[15px] leading-7 text-[#3f3f46]">{item.noi_dung}</p>
-
-                        {images.length > 0 ? (
-                          <div className={`mt-4 grid gap-2 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                            {images.slice(0, 3).map((src: string, idx: number) => (
-                              <div key={idx} className="relative overflow-hidden rounded-[10px]">
-                                <img src={src} alt="" className={`w-full object-cover ${images.length === 1 ? 'h-[200px]' : 'h-[120px]'}`} />
-                                {idx === 2 && images.length > 3 ? (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-[15px] font-bold text-white">
-                                    +{images.length - 3}
+                        {authorHref ? (
+                          <Link href={authorHref} className="mt-4 block">
+                            <p className="line-clamp-4 text-[15px] leading-7 text-[#3f3f46] transition hover:text-[#1f2937]">{item.noi_dung}</p>
+                            {images.length > 0 ? (
+                              <div className={`mt-4 grid gap-2 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                {images.slice(0, 3).map((src: string, idx: number) => (
+                                  <div key={idx} className="relative overflow-hidden rounded-[10px]">
+                                    <img src={src} alt="" className={`w-full object-cover ${images.length === 1 ? 'h-[200px]' : 'h-[120px]'}`} />
+                                    {idx === 2 && images.length > 3 ? (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-[15px] font-bold text-white">
+                                        +{images.length - 3}
+                                      </div>
+                                    ) : null}
                                   </div>
-                                ) : null}
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        ) : null}
+                            ) : null}
+                          </Link>
+                        ) : (
+                          <>
+                            <p className="mt-4 line-clamp-4 text-[15px] leading-7 text-[#3f3f46]">{item.noi_dung}</p>
+                            {images.length > 0 ? (
+                              <div className={`mt-4 grid gap-2 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                {images.slice(0, 3).map((src: string, idx: number) => (
+                                  <div key={idx} className="relative overflow-hidden rounded-[10px]">
+                                    <img src={src} alt="" className={`w-full object-cover ${images.length === 1 ? 'h-[200px]' : 'h-[120px]'}`} />
+                                    {idx === 2 && images.length > 3 ? (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-[15px] font-bold text-white">
+                                        +{images.length - 3}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </>
+                        )}
 
                         <div className="mt-4 flex items-center gap-6 border-t border-[#efe5d9] pt-4 text-[14px] text-[#6b7280]">
-                          <span className="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                            {item.tong_luot_thich ?? 0}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                            {item.tong_luot_binh_luan ?? 0}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                            {item.tong_luot_chia_se ?? 0}
-                          </span>
+                          {authorHref ? (
+                            <>
+                              <Link href={authorHref} className="flex items-center gap-1.5 transition hover:text-[#e53935]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                {item.tong_luot_thich ?? 0}
+                              </Link>
+                              <Link href={authorHref} className="flex items-center gap-1.5 transition hover:text-[#285e19]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                {item.tong_luot_binh_luan ?? 0}
+                              </Link>
+                              <Link href={authorHref} className="flex items-center gap-1.5 transition hover:text-[#285e19]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                {item.tong_luot_chia_se ?? 0}
+                              </Link>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                {item.tong_luot_thich ?? 0}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                {item.tong_luot_binh_luan ?? 0}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                {item.tong_luot_chia_se ?? 0}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </article>

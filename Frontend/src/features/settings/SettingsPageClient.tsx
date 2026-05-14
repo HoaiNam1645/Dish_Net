@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { UserProfile } from '@/features/profile/data';
 import OpenStoreFlow from '@/features/settings/OpenStoreFlow';
 import { useToast } from '@/shared/toast';
+import { useAuth } from '@/shared/AuthContext';
 import { authApi } from '@/shared/authApi';
 import { userCommerceApi } from '@/shared/userCommerceApi';
 import { userContentApi } from '@/shared/userContentApi';
@@ -48,6 +49,7 @@ function parseBirthdateToIso(value: string): string | undefined {
    TAB 1 – Thông tin cá nhân
    ═══════════════════════════════════════════ */
 function PersonalInfoTab({ profile }: { profile: UserProfile }) {
+    const { kiemTraPhien } = useAuth();
     const [name, setName] = useState(profile.handle);
     const [gender, setGender] = useState(profile.gender);
     const [birthday, setBirthday] = useState(profile.birthday);
@@ -96,6 +98,7 @@ function PersonalInfoTab({ profile }: { profile: UserProfile }) {
                 cho_hien_thi_huy_hieu: showBadge,
                 cho_hien_thi_diem_uy_tin: showTrustScore,
             });
+            await kiemTraPhien();
             setSaveSuccess('Đã lưu thông tin cá nhân.');
         } catch (error) {
             setSaveError(

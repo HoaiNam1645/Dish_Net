@@ -101,6 +101,7 @@ export interface StoreOverviewResponse {
     tong_trang: number;
   };
   tong_thu_nhap_trong_ngay: number;
+  tong_thu_nhap_theo_bo_loc?: number;
 }
 
 export const storeOverviewApi = {

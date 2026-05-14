@@ -912,10 +912,22 @@ function PostCard({
 }
 
 function VideoCard({ item }: { item: UserProfile['videos'][number] }) {
+    const url = String(item.image ?? '');
+    const isVideoFile = /\.(mp4|mov|avi|mkv|webm)(\?|#|$)/i.test(url);
     return (
         <article className="group relative overflow-hidden rounded-[12px]">
-            <img src={item.image} alt="" className="h-[210px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            {isVideoFile ? (
+                <video
+                    src={url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="h-[210px] w-full bg-black object-cover transition duration-300 group-hover:scale-[1.03]"
+                />
+            ) : (
+                <img src={url} alt="" className="h-[210px] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             {item.pinned ? (
                 <span className="absolute left-3 top-3 rounded-[8px] bg-[#ff3356] px-3 py-1 text-[12px] font-bold text-white">Đã ghim</span>
             ) : null}
@@ -986,18 +998,85 @@ function OverviewMetric({
     );
 }
 
+function TurnOffMonetizationModal({
+    isSubmitting,
+    onClose,
+    onConfirm,
+}: {
+    isSubmitting: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+            <div
+                className="relative w-full max-w-[420px] rounded-[20px] bg-white p-7 text-center shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={isSubmitting}
+                    aria-label="Đóng"
+                    className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-[#6b7280] transition hover:bg-[#f3f4f6] disabled:opacity-50"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#fff4e6]">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                </div>
+
+                <h2 className="text-[20px] font-bold text-[#111827]">Tắt kiếm tiền?</h2>
+                <p className="mt-3 text-[14px] leading-6 text-[#6b7280]">
+                    Khi tắt kiếm tiền, bài viết này sẽ không còn hiển thị link món và bạn sẽ không nhận được doanh thu từ bài viết.
+                </p>
+
+                <div className="mt-6 flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                        className="flex-1 h-[44px] rounded-[10px] border border-[#d1d5db] text-[14px] font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-60"
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={isSubmitting}
+                        className="flex-1 h-[44px] rounded-[10px] bg-[#dc2626] text-[14px] font-bold text-white transition hover:bg-[#b91c1c] disabled:opacity-60"
+                    >
+                        {isSubmitting ? 'Đang xử lý...' : 'Tắt kiếm tiền'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function EarningsCard({
     item,
     isMenuOpen,
     onToggleMenu,
     onCloseMenu,
     onOpenPost,
+    onEdit,
+    onTurnOffMonetization,
 }: {
     item: EarningsItem;
     isMenuOpen: boolean;
     onToggleMenu: () => void;
     onCloseMenu: () => void;
     onOpenPost: (postId: string) => void;
+    onEdit: (postId: string) => void;
+    onTurnOffMonetization: (postId: string) => void;
 }) {
     return (
         <article className="rounded-[14px] border border-[#dcd6cb] bg-white px-4 py-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
@@ -1021,12 +1100,26 @@ function EarningsCard({
                                     <MoreIcon />
                                 </button>
                                 {isMenuOpen ? (
-                                    <div className="absolute right-0 top-[calc(100%+6px)] z-10 w-[150px] rounded-[10px] border border-[#ebebeb] bg-white py-1 shadow-[0_16px_32px_rgba(0,0,0,0.12)]">
-                                        <button type="button" onClick={onCloseMenu} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
+                                    <div className="absolute right-0 top-[calc(100%+6px)] z-10 w-[170px] rounded-[10px] border border-[#ebebeb] bg-white py-1 shadow-[0_16px_32px_rgba(0,0,0,0.12)]">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onCloseMenu();
+                                                onEdit(item.id);
+                                            }}
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]"
+                                        >
                                             <span>✎</span>
                                             <span>Chỉnh sửa</span>
                                         </button>
-                                        <button type="button" onClick={onCloseMenu} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#222] transition hover:bg-[#f7f7f7]">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onCloseMenu();
+                                                onTurnOffMonetization(item.id);
+                                            }}
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#c62828] transition hover:bg-[#fff5f5]"
+                                        >
                                             <span>⌁</span>
                                             <span>Tắt kiếm tiền</span>
                                         </button>
@@ -1209,6 +1302,8 @@ function EarningsPanel({
     onSearchChange,
     onToggleMenu,
     onCloseMenu,
+    onEdit,
+    onTurnOffMonetization,
 }: {
     earnings: EarningsProfile;
     filter: EarningsFilter;
@@ -1219,6 +1314,8 @@ function EarningsPanel({
     onSearchChange: (value: string) => void;
     onToggleMenu: (value: string) => void;
     onCloseMenu: () => void;
+    onEdit: (postId: string) => void;
+    onTurnOffMonetization: (postId: string) => void;
 }) {
     const items = earnings.items.filter((item) => {
         const matchedFilter = filter === 'all' ? true : item.status === filter;
@@ -1282,6 +1379,8 @@ function EarningsPanel({
                         onToggleMenu={() => onToggleMenu(item.id)}
                         onCloseMenu={onCloseMenu}
                         onOpenPost={onOpenPost}
+                        onEdit={onEdit}
+                        onTurnOffMonetization={onTurnOffMonetization}
                     />
                 ))}
             </div>
@@ -1466,6 +1565,7 @@ export default function ProfilePageClient({
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
     const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
     const [posts, setPosts] = useState(profile.posts);
+    const [videos, setVideos] = useState(profile.videos);
     const [postsCount, setPostsCount] = useState<number>(() => {
         const initial = Number(profile.postsCount);
         return Number.isFinite(initial) ? initial : profile.posts.length;
@@ -1476,6 +1576,8 @@ export default function ProfilePageClient({
     const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
     const [activeRevenuePostId, setActiveRevenuePostId] = useState<number | null>(null);
+    const [turnOffMonetizationPostId, setTurnOffMonetizationPostId] = useState<string | null>(null);
+    const [isTurnOffMonetizationSubmitting, setIsTurnOffMonetizationSubmitting] = useState(false);
     const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
     const [isFollowingModalOpen, setIsFollowingModalOpen] = useState(false);
     const [isSharePopupOpen, setIsSharePopupOpen] = useState(false);
@@ -1490,7 +1592,7 @@ export default function ProfilePageClient({
 
     const visiblePosts = sortMode === 'latest' ? posts : [...posts].reverse();
     const visibleReposts = sortMode === 'latest' ? reposts : [...reposts].reverse();
-    const visibleVideos = profile.videos;
+    const visibleVideos = videos;
 
     const tabs = [
         { key: 'posts' as const, label: 'Bài viết', icon: <GridIcon /> },
@@ -1622,18 +1724,34 @@ export default function ProfilePageClient({
             bat_kiem_tien: monetize,
             link_mon_an: dishLink ? dishLink : undefined,
         });
+        const isVideo = created.loai_bai_viet === 'video';
+        const mediaUrlList = created.tep_dinh_kem?.map((item) => item.url) ?? [];
+
+        if (isVideo) {
+            const newVideo: UserProfile['videos'][number] = {
+                id: String(created.id),
+                image: mediaUrlList[0] ?? '',
+                views: String(created.tong_luot_thich ?? 0),
+            };
+            setVideos((current) => [newVideo, ...current]);
+            setPostsCount((current) => current + 1);
+            setActiveTab('videos');
+            setActionMessage('Đã đăng video');
+            return;
+        }
+
         const newPost: ProfilePost = {
             id: String(created.id),
             date: created.ngay_dang
                 ? new Date(created.ngay_dang).toLocaleDateString('vi-VN')
                 : new Date().toLocaleDateString('vi-VN'),
             content: created.noi_dung ?? '',
-            images: created.tep_dinh_kem?.map((item) => item.url) ?? [],
+            images: mediaUrlList,
             likes: String(created.tong_luot_thich ?? 0),
             comments: String(created.tong_luot_binh_luan ?? 0),
             shares: String(created.tong_luot_chia_se ?? 0),
             sends: '0',
-            type: created.loai_bai_viet === 'video' ? 'video' : 'bai_viet',
+            type: 'bai_viet',
             visibility: created.muc_do_hien_thi === 'ban_be' ? 'ban_be' : 'cong_khai',
             monetized: Boolean(created.bat_kiem_tien),
             dishLink: created.link_mon_an ?? null,
@@ -1647,6 +1765,57 @@ export default function ProfilePageClient({
         const id = Number(postId);
         if (!Number.isFinite(id)) return;
         setActiveRevenuePostId(id);
+    };
+
+    const handleEditEarningPost = (postId: string) => {
+        const post = posts.find((item) => String(item.id) === String(postId));
+        if (!post) {
+            setActionMessage('Không tìm thấy bài viết để chỉnh sửa');
+            return;
+        }
+        setEditingPost(post);
+        setIsCreatePostModalOpen(true);
+    };
+
+    const handleConfirmTurnOffMonetization = async () => {
+        const postId = turnOffMonetizationPostId;
+        if (!postId) return;
+        const id = Number(postId);
+        if (!Number.isFinite(id)) {
+            setTurnOffMonetizationPostId(null);
+            return;
+        }
+        setIsTurnOffMonetizationSubmitting(true);
+        try {
+            const updated = await userContentApi.capNhatBaiViet(id, {
+                bat_kiem_tien: false,
+            });
+            setPosts((current) =>
+                current.map((item) =>
+                    Number(item.id) === id
+                        ? {
+                            ...item,
+                            monetized: Boolean(updated.bat_kiem_tien),
+                            dishLink: updated.link_mon_an ?? null,
+                        }
+                        : item,
+                ),
+            );
+            setEarnings((current) =>
+                current
+                    ? {
+                        ...current,
+                        items: current.items.filter((item) => String(item.id) !== String(postId)),
+                    }
+                    : current,
+            );
+            setActionMessage('Đã tắt kiếm tiền cho bài viết');
+            setTurnOffMonetizationPostId(null);
+        } catch (error) {
+            setActionMessage(error instanceof Error ? error.message : 'Không thể tắt kiếm tiền');
+        } finally {
+            setIsTurnOffMonetizationSubmitting(false);
+        }
     };
 
     return (
@@ -2155,6 +2324,8 @@ export default function ProfilePageClient({
                         onSearchChange={setEarningsSearch}
                         onToggleMenu={(value) => setOpenEarningMenuId((current) => current === value ? null : value)}
                         onCloseMenu={() => setOpenEarningMenuId(null)}
+                        onEdit={handleEditEarningPost}
+                        onTurnOffMonetization={(postId) => setTurnOffMonetizationPostId(postId)}
                     />
                 ) : null}
 
@@ -2239,6 +2410,16 @@ export default function ProfilePageClient({
                 postId={activeRevenuePostId}
                 onClose={() => setActiveRevenuePostId(null)}
             />
+
+            {turnOffMonetizationPostId ? (
+                <TurnOffMonetizationModal
+                    isSubmitting={isTurnOffMonetizationSubmitting}
+                    onClose={() => {
+                        if (!isTurnOffMonetizationSubmitting) setTurnOffMonetizationPostId(null);
+                    }}
+                    onConfirm={() => void handleConfirmTurnOffMonetization()}
+                />
+            ) : null}
 
             {isFollowersModalOpen ? (
                 <FollowersModal onClose={() => setIsFollowersModalOpen(false)} />

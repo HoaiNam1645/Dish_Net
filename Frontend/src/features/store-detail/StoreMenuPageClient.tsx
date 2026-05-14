@@ -126,6 +126,7 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
   const [selectedDish, setSelectedDish] = useState<MenuItem | null>(null);
   const [dishQuantity, setDishQuantity] = useState(1);
   const [selectedPackaging, setSelectedPackaging] = useState(PACKAGING_OPTIONS[0].id);
+  const [selectedToppingIds, setSelectedToppingIds] = useState<Set<string>>(new Set());
   const [dishNote, setDishNote] = useState('');
   const [cartSummary, setCartSummary] = useState<StoreCartSummaryItem[]>([]);
   const [cartActionMessage, setCartActionMessage] = useState<string | null>(null);
@@ -228,7 +229,20 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
 
   const selectedDishBasePrice = selectedDish ? parseCurrency(selectedDish.price) : 0;
   const selectedPackagingPrice = PACKAGING_OPTIONS.find((option) => option.id === selectedPackaging)?.extraPrice ?? 0;
-  const selectedDishTotal = (selectedDishBasePrice + selectedPackagingPrice) * dishQuantity;
+  const selectedToppingsPrice = selectedDish
+    ? selectedDish.toppings
+        .filter((t) => selectedToppingIds.has(t.id))
+        .reduce((sum, t) => sum + Number(t.gia ?? 0), 0)
+    : 0;
+  const selectedDishTotal = (selectedDishBasePrice + selectedPackagingPrice + selectedToppingsPrice) * dishQuantity;
+
+  const toggleTopping = (id: string) => {
+    setSelectedToppingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const resolveBackendMonAnId = async (item: MenuItem) => {
     const numericId = Number(item.id);
@@ -326,6 +340,7 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
     setSelectedDish(item);
     setDishQuantity(1);
     setSelectedPackaging(PACKAGING_OPTIONS[0].id);
+    setSelectedToppingIds(new Set());
     setDishNote('');
   };
 
@@ -610,6 +625,39 @@ export default function StoreMenuPageClient({ store }: { store: StoreDetailData 
                     selected={selectedPackaging}
                     onChange={setSelectedPackaging}
                   />
+
+                  {selectedDish.toppings.length > 0 && (
+                    <section className="overflow-hidden rounded-[10px] border border-[#ececec]">
+                      <h4 className="bg-[#fcf9e4] px-4 py-3 text-[15px] font-medium text-[#616462]">Topping (tùy chọn)</h4>
+                      <div className="divide-y divide-[#ececec] bg-white">
+                        {selectedDish.toppings.map((topping) => {
+                          const isActive = selectedToppingIds.has(topping.id);
+                          return (
+                            <button
+                              key={topping.id}
+                              type="button"
+                              onClick={() => toggleTopping(topping.id)}
+                              className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa]"
+                            >
+                              <div>
+                                <p className="text-[16px] text-[#1f2937]">{topping.ten_topping}</p>
+                                <p className="text-sm text-[#6b7280]">{topping.gia === 0 ? 'Miễn phí' : `+ ${formatCurrency(topping.gia)}`}</p>
+                              </div>
+                              <span
+                                className={`flex h-6 w-6 items-center justify-center rounded-[7px] border text-xs font-bold ${
+                                  isActive
+                                    ? 'border-[#f59e0b] bg-[#f59e0b] text-white'
+                                    : 'border-[#c8ccd3] bg-white text-transparent'
+                                }`}
+                              >
+                                ✓
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
 
                   <section className="rounded-[10px] border border-[#ececec] p-3">
                     <label className="mb-2 flex items-center gap-2 text-[13px] font-medium text-[#616462]" htmlFor="dish-note-page">

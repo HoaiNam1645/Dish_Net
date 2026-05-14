@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { MonAnEntity } from '../Admin/entities/mon-an.entity';
+import { ToppingEntity } from '../Admin/entities/topping.entity';
 import { DanhMucMonEntity } from '../Admin/entities/danh-muc-mon.entity';
 import { DonHangEntity } from '../Admin/entities/don-hang.entity';
 import { CuaHangEntity } from '../Admin/entities/cua-hang.entity';
@@ -46,6 +47,8 @@ export class UserContentService {
   constructor(
     @InjectRepository(MonAnEntity)
     private readonly monAnRepo: Repository<MonAnEntity>,
+    @InjectRepository(ToppingEntity)
+    private readonly toppingRepo: Repository<ToppingEntity>,
     @InjectRepository(DanhMucMonEntity)
     private readonly danhMucMonRepo: Repository<DanhMucMonEntity>,
     @InjectRepository(DonHangEntity)
@@ -419,6 +422,21 @@ export class UserContentService {
 
     const [items, tongSo] = await qb.getManyAndCount();
 
+    const itemIds = items.map((item) => Number(item.id));
+    const toppingsRaw = itemIds.length
+      ? await this.toppingRepo
+          .createQueryBuilder('tp')
+          .where('tp.id_mon_an IN (:...ids)', { ids: itemIds })
+          .andWhere('tp.trang_thai = :trangThai', { trangThai: 'hieu_luc' })
+          .getMany()
+      : [];
+    const toppingMap = new Map<number, ToppingEntity[]>();
+    for (const tp of toppingsRaw) {
+      const mid = Number(tp.id_mon_an);
+      if (!toppingMap.has(mid)) toppingMap.set(mid, []);
+      toppingMap.get(mid)!.push(tp);
+    }
+
     return {
       du_lieu: items.map((item) => ({
         id: Number(item.id),
@@ -430,6 +448,12 @@ export class UserContentService {
         tong_danh_gia: Number(item.tong_danh_gia),
         so_luong_da_ban: Number(item.so_luong_da_ban),
         id_cua_hang: Number(item.id_cua_hang),
+        toppings: (toppingMap.get(Number(item.id)) ?? []).map((tp) => ({
+          id: Number(tp.id),
+          ten_topping: tp.ten_topping,
+          gia: Number(tp.gia),
+          trang_thai: tp.trang_thai,
+        })),
       })),
       tong_so: tongSo,
     };
@@ -1165,28 +1189,91 @@ export class UserContentService {
     const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
     const originalMap = await this.buildBaiVietGocMap(items as Array<{ id_bai_viet_goc?: number | null }>);
 
+    const likedPostIds = new Set<number>();
+    if (idNguoiXem && postIds.length > 0) {
+      const likedRows = await this.tuongTacRepo.find({
+        where: {
+          id_nguoi_dung: idNguoiXem,
+          loai_tuong_tac: 'thich',
+          id_bai_viet: In(postIds),
+        },
+        select: ['id_bai_viet'],
+      });
+      likedRows.forEach((row) => {
+        if (row.id_bai_viet != null) likedPostIds.add(Number(row.id_bai_viet));
+      });
+    }
+
+    const monAnIds = items
+      .map((item) => (item.id_mon_an != null ? Number(item.id_mon_an) : null))
+      .filter((id): id is number => Number.isFinite(id ?? NaN) && (id ?? 0) > 0);
+    const monAnMap = new Map<
+      number,
+      { hinh_anh: string | null; id_cua_hang: number | null }
+    >();
+    if (monAnIds.length > 0) {
+      const monAnRows = await this.monAnRepo.findBy(
+        Array.from(new Set(monAnIds)).map((id) => ({ id })),
+      );
+      monAnRows.forEach((m) =>
+        monAnMap.set(Number(m.id), {
+          hinh_anh: m.hinh_anh_dai_dien ?? null,
+          id_cua_hang: m.id_cua_hang != null ? Number(m.id_cua_hang) : null,
+        }),
+      );
+    }
+    const cuaHangIds = Array.from(
+      new Set(
+        Array.from(monAnMap.values())
+          .map((m) => m.id_cua_hang)
+          .filter((id): id is number => id != null),
+      ),
+    );
+    const cuaHangAvatarMap = new Map<number, string | null>();
+    if (cuaHangIds.length > 0) {
+      const cuaHangRows = await this.cuaHangRepo.findBy(
+        cuaHangIds.map((id) => ({ id })),
+      );
+      cuaHangRows.forEach((ch) =>
+        cuaHangAvatarMap.set(Number(ch.id), ch.anh_dai_dien ?? null),
+      );
+    }
+
     return {
       tab,
-      du_lieu: items.map((item) => ({
-        id: Number(item.id),
-        loai_bai_viet: item.loai_bai_viet,
-        noi_dung: item.noi_dung,
-        muc_do_hien_thi: item.muc_do_hien_thi,
-        bat_kiem_tien: Boolean(item.bat_kiem_tien),
-        link_mon_an: item.link_mon_an,
-        id_mon_an: item.id_mon_an != null ? Number(item.id_mon_an) : null,
-        tong_luot_thich: Number(item.tong_luot_thich),
-        tong_luot_binh_luan: Number(item.tong_luot_binh_luan),
-        tong_luot_chia_se: Number(item.tong_luot_chia_se),
-        ngay_dang: item.ngay_dang,
-        tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
-        id_bai_viet_goc:
-          item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
-        bai_viet_goc:
-          item.id_bai_viet_goc != null
-            ? (originalMap.get(Number(item.id_bai_viet_goc)) ?? null)
-            : null,
-      })),
+      du_lieu: items.map((item) => {
+        const idMonAn = item.id_mon_an != null ? Number(item.id_mon_an) : null;
+        const monAnInfo = idMonAn ? monAnMap.get(idMonAn) : null;
+        const idCuaHang = monAnInfo?.id_cua_hang ?? null;
+        const anhDaiDienCuaHang =
+          idCuaHang != null ? (cuaHangAvatarMap.get(idCuaHang) ?? null) : null;
+        return {
+          id: Number(item.id),
+          loai_bai_viet: item.loai_bai_viet,
+          noi_dung: item.noi_dung,
+          muc_do_hien_thi: item.muc_do_hien_thi,
+          bat_kiem_tien: Boolean(item.bat_kiem_tien),
+          link_mon_an: item.link_mon_an,
+          id_mon_an: idMonAn,
+          hinh_anh_mon_an: monAnInfo?.hinh_anh ?? null,
+          id_cua_hang_lien_ket: idCuaHang,
+          anh_dai_dien_cua_hang_lien_ket: anhDaiDienCuaHang,
+          tong_luot_thich: Number(item.tong_luot_thich),
+          tong_luot_binh_luan: Number(item.tong_luot_binh_luan),
+          tong_luot_chia_se: Number(item.tong_luot_chia_se),
+          ngay_dang: item.ngay_dang,
+          tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+          id_bai_viet_goc:
+            item.id_bai_viet_goc != null ? Number(item.id_bai_viet_goc) : null,
+          bai_viet_goc:
+            item.id_bai_viet_goc != null
+              ? (originalMap.get(Number(item.id_bai_viet_goc)) ?? null)
+              : null,
+          trang_thai_tuong_tac: {
+            da_thich: likedPostIds.has(Number(item.id)),
+          },
+        };
+      }),
       tong_so: tongSo,
       trang: currentPage,
       so_luong: pageSize,

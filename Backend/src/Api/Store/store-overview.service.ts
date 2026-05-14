@@ -67,19 +67,24 @@ export class StoreOverviewService {
 
     const [danhSachDonHang, tongSoDonHang] = await danhSachQb.getManyAndCount();
 
-    const [thongKeTrangThai, topMonBanChayRaw, tongThuNhapRaw, thongKeHomNayRaw] =
+    const thongKeTrangThaiQb = this.donHangRepo
+      .createQueryBuilder('dh')
+      .select('dh.trang_thai_don_hang', 'trangThai')
+      .addSelect('COUNT(*)', 'soLuong')
+      .where('dh.id_cua_hang = :idCuaHang', { idCuaHang: cuaHang.id });
+    this.apDungBoLocThoiGian(thongKeTrangThaiQb, query, true);
+    thongKeTrangThaiQb.groupBy('dh.trang_thai_don_hang');
+
+    const tongThuNhapTheoBoLocQb = this.donHangRepo
+      .createQueryBuilder('dh')
+      .select('COALESCE(SUM(dh.thu_nhap_cua_hang), 0)', 'tongThuNhap')
+      .where('dh.id_cua_hang = :idCuaHang', { idCuaHang: cuaHang.id })
+      .andWhere('dh.trang_thai_don_hang = :trangThai', { trangThai: 'da_giao' });
+    this.apDungBoLocThoiGian(tongThuNhapTheoBoLocQb, query, true);
+
+    const [thongKeTrangThai, topMonBanChayRaw, tongThuNhapRaw, thongKeHomNayRaw, tongThuNhapTheoBoLocRaw] =
       await Promise.all([
-        this.donHangRepo
-          .createQueryBuilder('dh')
-          .select('dh.trang_thai_don_hang', 'trangThai')
-          .addSelect('COUNT(*)', 'soLuong')
-          .where('dh.id_cua_hang = :idCuaHang', { idCuaHang: cuaHang.id })
-          .andWhere('dh.thoi_gian_dat BETWEEN :from AND :to', {
-            from: homNayBatDau,
-            to: homNayKetThuc,
-          })
-          .groupBy('dh.trang_thai_don_hang')
-          .getRawMany<TrangThaiCountRaw>(),
+        thongKeTrangThaiQb.getRawMany<TrangThaiCountRaw>(),
         this.donHangChiTietRepo
           .createQueryBuilder('ct')
           .innerJoin(DonHangEntity, 'dh', 'dh.id = ct.id_don_hang')
@@ -138,6 +143,7 @@ export class StoreOverviewService {
             to: homNayKetThuc,
           })
           .getRawOne<{ tongDonHang: string; donHuy: string; doanhThu: string }>(),
+        tongThuNhapTheoBoLocQb.getRawOne<{ tongThuNhap: string }>(),
       ]);
 
     const demTrangThai = this.tinhDemTrangThai(thongKeTrangThai);
@@ -148,6 +154,7 @@ export class StoreOverviewService {
       demTrangThai.tra_hang;
 
     const tongThuNhapTrongNgay = Number(tongThuNhapRaw?.tongThuNhap ?? 0);
+    const tongThuNhapTheoBoLoc = Number(tongThuNhapTheoBoLocRaw?.tongThuNhap ?? 0);
 
     return {
       thong_tin_cua_hang: {
@@ -199,6 +206,7 @@ export class StoreOverviewService {
         tong_trang: Math.ceil(tongSoDonHang / soLuong),
       },
       tong_thu_nhap_trong_ngay: tongThuNhapTrongNgay,
+      tong_thu_nhap_theo_bo_loc: tongThuNhapTheoBoLoc,
     };
   }
 
