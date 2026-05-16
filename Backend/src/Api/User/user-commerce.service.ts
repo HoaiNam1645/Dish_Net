@@ -68,6 +68,8 @@ type PhienThanhToanSnapshot = {
   nguoi_nhan: string;
   so_dien_thoai_nhan: string;
   dia_chi_giao: string;
+  vi_do_giao?: number | null;
+  kinh_do_giao?: number | null;
   ghi_chu_tai_xe: string | null;
   phuong_thuc_thanh_toan: 'vnpay';
   tong_tien: {
@@ -1115,6 +1117,36 @@ export class UserCommerceService {
     return this.layGioHang(userId);
   }
 
+  /** Haversine formula — trả về khoảng cách (km) giữa 2 tọa độ */
+  private tinhKhoangCach(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /**
+   * Tính phí vận chuyển theo khoảng cách, tương tự GrabFood VN:
+   *  - 0–2 km : 15,000đ (base)
+   *  - >2 km  : +5,000đ mỗi km tiếp theo, làm tròn lên 1,000đ gần nhất
+   *  - Tối đa : 50,000đ
+   *  - Fallback: dùng macDinh nếu không có tọa độ
+   */
+  private tinhPhiVanChuyenTheoKhoangCach(khoangCach: number, macDinh: number): number {
+    if (khoangCach <= 0) return macDinh;
+    const BASE = 15000;
+    const RATE = 5000;
+    const THRESHOLD = 2;
+    const MAX = 50000;
+    const raw = khoangCach <= THRESHOLD ? BASE : BASE + Math.ceil(khoangCach - THRESHOLD) * RATE;
+    return Math.min(Math.ceil(raw / 1000) * 1000, MAX);
+  }
+
   private tinhKhuyenMai(
     khuyenMai: KhuyenMaiEntity,
     tongTien: number,
@@ -1246,7 +1278,7 @@ export class UserCommerceService {
     return { du_lieu: duLieu };
   }
 
-  async xemTruocThanhToan(userId: number, maKhuyenMai?: string) {
+  async xemTruocThanhToan(userId: number, maKhuyenMai?: string, viDo?: number | null, kinhDo?: number | null) {
     const user = await this.nguoiDungRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Người dùng không tồn tại');
@@ -1267,6 +1299,7 @@ export class UserCommerceService {
         id_cua_hang: number;
         ten_cua_hang: string;
         phi_van_chuyen: number;
+        khoang_cach_km: number | null;
         items: Array<{
           id_gio_hang: number;
           id_mon_an: number;
@@ -1292,10 +1325,23 @@ export class UserCommerceService {
     for (const row of selectedRows) {
       const storeId = Number(row.id_cua_hang);
       const store = storeMap.get(storeId);
+      const macDinh = Number(store?.phi_van_chuyen_mac_dinh ?? 31000);
+      const hasCoords =
+        viDo != null && kinhDo != null &&
+        store?.vi_do != null && store?.kinh_do != null;
+      const phiCuaHang = hasCoords
+        ? this.tinhPhiVanChuyenTheoKhoangCach(
+            this.tinhKhoangCach(viDo!, kinhDo!, Number(store!.vi_do), Number(store!.kinh_do)),
+            macDinh,
+          )
+        : macDinh;
       const current = grouped.get(storeId) ?? {
         id_cua_hang: storeId,
         ten_cua_hang: row.ten_cua_hang ?? store?.ten_cua_hang ?? 'Cửa hàng',
-        phi_van_chuyen: Number(store?.phi_van_chuyen_mac_dinh ?? 31000),
+        phi_van_chuyen: phiCuaHang,
+        khoang_cach_km: hasCoords
+          ? Math.round(this.tinhKhoangCach(viDo!, kinhDo!, Number(store!.vi_do), Number(store!.kinh_do)) * 10) / 10
+          : null,
         items: [],
       };
       const donGia = Number(row.gia_hien_tai ?? row.gia_tai_thoi_diem_them ?? 0);
@@ -1384,7 +1430,7 @@ export class UserCommerceService {
       throw new BadRequestException('Thiếu thông tin giao hàng bắt buộc');
     }
 
-    const preview = await this.xemTruocThanhToan(userId, dto.ma_khuyen_mai);
+    const preview = await this.xemTruocThanhToan(userId, dto.ma_khuyen_mai, dto.vi_do_giao, dto.kinh_do_giao);
     if (preview.groups.length === 0) {
       throw new BadRequestException('Không có dữ liệu đơn hàng để tạo');
     }
@@ -1430,6 +1476,8 @@ export class UserCommerceService {
       nguoi_nhan: dto.nguoi_nhan.trim(),
       so_dien_thoai_nhan: dto.so_dien_thoai_nhan.trim(),
       dia_chi_giao: dto.dia_chi_giao.trim(),
+      vi_do_giao: dto.vi_do_giao ?? null,
+      kinh_do_giao: dto.kinh_do_giao ?? null,
       ghi_chu_tai_xe: dto.ghi_chu_tai_xe?.trim() || null,
       phuong_thuc_thanh_toan: 'vnpay',
       tong_tien: preview.tong_tien,
@@ -1609,6 +1657,8 @@ export class UserCommerceService {
         nguoi_nhan: snapshot.nguoi_nhan,
         so_dien_thoai_nhan: snapshot.so_dien_thoai_nhan,
         dia_chi_giao: snapshot.dia_chi_giao,
+        vi_do_giao: snapshot.vi_do_giao ?? null,
+        kinh_do_giao: snapshot.kinh_do_giao ?? null,
         ghi_chu_tai_xe: snapshot.ghi_chu_tai_xe,
         nguon_don_hang: attribution.idNhaSangTao ? 'bai_viet' : 'truc_tiep',
         id_bai_viet_nguon: attribution.idBaiViet,
