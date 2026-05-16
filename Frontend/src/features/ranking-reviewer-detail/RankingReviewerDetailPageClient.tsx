@@ -428,6 +428,11 @@ export default function RankingReviewerDetailPageClient({ reviewer }: { reviewer
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-full bg-[#fde8bf] px-5 py-3 text-[18px] font-bold text-[#211d11]">⭐ TOP REVIEWER</span>
+                  {reviewer.trustScore !== '0' ? (
+                    <span className="rounded-full bg-[#eaf4ea] px-4 py-2.5 text-[15px] font-semibold text-[#275d18]">
+                      Độ tin cậy: {reviewer.trustScore} ★
+                    </span>
+                  ) : null}
                 </div>
               </div>
 

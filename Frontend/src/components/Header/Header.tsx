@@ -187,10 +187,22 @@ export default function Header() {
 
     const submitSearch = (query: string) => {
         const trimmedQuery = query.trim();
-        if (!trimmedQuery) return;
+        if (!trimmedQuery) {
+            // Xóa trắng → quay về trang chủ
+            setIsSearchOpen(false);
+            setSearchValue('');
+            if (pathname.startsWith('/search')) router.push('/');
+            return;
+        }
         setRecentSearches((current) => [trimmedQuery, ...current.filter((entry) => entry.toLowerCase() !== trimmedQuery.toLowerCase())].slice(0, 6));
         setIsSearchOpen(false);
         router.push(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+    };
+
+    const clearSearch = () => {
+        setSearchValue('');
+        setIsSearchOpen(false);
+        if (pathname.startsWith('/search')) router.push('/');
     };
 
     const handleLogout = async () => {
@@ -238,6 +250,16 @@ export default function Header() {
                             onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); submitSearch(searchValue); } }}
                             autoComplete="off"
                             className="flex-1 border-none bg-transparent text-base placeholder:text-text-gray" id="search-input" />
+                        {(isSearchOpen ? searchValue : currentQuery || searchValue) ? (
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                aria-label="Xóa tìm kiếm"
+                                className="ml-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#c8cfc8] text-white transition hover:bg-[#9aa09a] text-[13px] font-bold leading-none"
+                            >
+                                ×
+                            </button>
+                        ) : null}
                     </div>
 
                     {isSearchOpen ? (

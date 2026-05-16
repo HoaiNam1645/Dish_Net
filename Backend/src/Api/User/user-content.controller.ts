@@ -86,6 +86,19 @@ export class UserContentController {
   }
 
   /**
+   * Bài viết review của các kênh về cửa hàng này
+   * GET /user/cua-hang/:idCuaHang/bai-viet
+   */
+  @Public()
+  @Get('cua-hang/:idCuaHang/bai-viet')
+  async layBaiVietCuaHang(
+    @Param('idCuaHang') idCuaHang: number,
+    @Query() query: PhanTrangQueryDto,
+  ) {
+    return this.userContentService.layBaiVietCuaHang(idCuaHang, query.trang, query.so_luong);
+  }
+
+  /**
    * Chi tiết cửa hàng theo id
    * GET /user/cua-hang/:idCuaHang
    */

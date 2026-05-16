@@ -9,6 +9,7 @@ import { useAuth } from '@/shared/AuthContext';
 import { userContentApi } from '@/shared/userContentApi';
 import { userCommerceApi } from '@/shared/userCommerceApi';
 
+import LoginRequiredModal from '@/components/Auth/LoginRequiredModal';
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
 import { mapFeedPosts } from './data';
@@ -1023,6 +1024,15 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [isReportDoneModalOpen, setIsReportDoneModalOpen] = useState(false);
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
     const [reportTargetPost, setReportTargetPost] = useState<FeedPost | null>(null);
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [loginModalTitle, setLoginModalTitle] = useState('Đăng nhập để tiếp tục nhé');
+
+    const requireAuth = useCallback((title?: string): boolean => {
+        if (isAuthenticated) return true;
+        setLoginModalTitle(title ?? 'Đăng nhập để tiếp tục nhé');
+        setIsLoginModalOpen(true);
+        return false;
+    }, [isAuthenticated]);
 
     const bumpPostCounter = useCallback(
         (
@@ -1482,12 +1492,13 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                         canShare={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
                                         onComment={() => {
                                             setActiveCommentStore(post.storeName || post.author || 'Bài viết');
-                                            setActiveCommentCoverImage(post.storeId ? (post.storeAvatar ?? null) : (post.authorAvatar ?? null));
+                                            setActiveCommentCoverImage(post.storeAvatar ?? post.authorAvatar ?? null);
                                             setActiveCommentPostId(Number(post.id) || null);
                                             setCommentComposerOpen(false);
                                             setIsCommentModalOpen(true);
                                         }}
                                         onOrder={() => {
+                                            if (!requireAuth('Đăng nhập để đặt món nhé')) return;
                                             const postId = Number(post.id);
                                             if (!Number.isFinite(postId) || postId <= 0) {
                                                 setActionMessage('Không xác định được bài viết để đặt món');
@@ -1524,6 +1535,7 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                             router.push(`/profile/${targetId}`);
                                         }}
                                     onFollow={() => {
+                                        if (!requireAuth('Đăng nhập để theo dõi reviewer này nhé')) return;
                                         const targetId = Number(post.authorId || 0);
                                         if (!Number.isFinite(targetId) || targetId <= 0) {
                                             setActionMessage('Chưa có dữ liệu người dùng để theo dõi');
@@ -1906,6 +1918,13 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                 onCommentPosted={(postId) => {
                     bumpPostCounter(postId, 'commentCount', undefined, 1);
                 }}
+            />
+
+            <LoginRequiredModal
+                isOpen={isLoginModalOpen}
+                onClose={() => setIsLoginModalOpen(false)}
+                title={loginModalTitle}
+                returnUrl={typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/'}
             />
 
             <SharePostModal

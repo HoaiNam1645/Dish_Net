@@ -289,6 +289,9 @@ export const userContentApi = {
 
   layChiTietCuaHang: (idCuaHang: number) => request(`/user/cua-hang/${idCuaHang}`),
 
+  layBaiVietCuaHang: (idCuaHang: number, query?: { trang?: number; so_luong?: number }) =>
+    request(`/user/cua-hang/${idCuaHang}/bai-viet${toQueryString(query)}`),
+
   layMonTheoDanhMuc: (
     idDanhMuc: number,
     query?: { khu_vuc?: string; trang?: number; so_luong?: number },

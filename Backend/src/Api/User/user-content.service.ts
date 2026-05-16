@@ -1103,6 +1103,7 @@ export class UserContentService {
         so_bai_viet: soBaiViet,
         so_nguoi_theo_doi: soNguoiTheoDoi,
         so_nguoi_dang_theo_doi: soDangTheoDoi,
+        diem_uy_tin: Number(user.diem_uy_tin ?? 0),
         la_tai_khoan_rieng_tu: Boolean(user.la_tai_khoan_rieng_tu),
         noi_dung_bi_han_che: biHanCheDoRiengTu,
         dang_theo_doi: dangTheoDoi,
@@ -1493,32 +1494,68 @@ export class UserContentService {
     }
 
     const storeIds = stores.map((s) => Number(s.id));
-    const donHangAgg = await this.donHangRepo
-      .createQueryBuilder('dh')
-      .select('dh.id_cua_hang', 'id_cua_hang')
-      .addSelect('COUNT(dh.id)', 'tong_don')
-      .addSelect(
-        "SUM(CASE WHEN dh.trang_thai_don_hang = 'da_huy' THEN 1 ELSE 0 END)",
-        'tong_huy',
-      )
-      .where('dh.id_cua_hang IN (:...storeIds)', { storeIds })
-      .groupBy('dh.id_cua_hang')
-      .getRawMany<{ id_cua_hang: string; tong_don: string; tong_huy: string }>();
+    const [donHangAgg, monAnAgg, baiVietAgg] = await Promise.all([
+      this.donHangRepo
+        .createQueryBuilder('dh')
+        .select('dh.id_cua_hang', 'id_cua_hang')
+        .addSelect('COUNT(dh.id)', 'tong_don')
+        .addSelect(
+          "SUM(CASE WHEN dh.trang_thai_don_hang = 'da_huy' THEN 1 ELSE 0 END)",
+          'tong_huy',
+        )
+        .where('dh.id_cua_hang IN (:...storeIds)', { storeIds })
+        .groupBy('dh.id_cua_hang')
+        .getRawMany<{ id_cua_hang: string; tong_don: string; tong_huy: string }>(),
+      this.monAnRepo
+        .createQueryBuilder('ma')
+        .select('ma.id_cua_hang', 'id_cua_hang')
+        .addSelect('SUM(ma.so_luong_da_ban)', 'tong_ban')
+        .where('ma.id_cua_hang IN (:...storeIds)', { storeIds })
+        .groupBy('ma.id_cua_hang')
+        .getRawMany<{ id_cua_hang: string; tong_ban: string }>(),
+      this.baiVietRepo
+        .createQueryBuilder('bv')
+        .select('bv.id_cua_hang', 'id_cua_hang')
+        .addSelect('AVG(bv.so_sao)', 'avg_sao')
+        .addSelect('COUNT(bv.id)', 'tong_bai')
+        .where('bv.id_cua_hang IN (:...storeIds)', { storeIds })
+        .andWhere('bv.so_sao IS NOT NULL AND bv.so_sao > 0')
+        .andWhere("bv.trang_thai_duyet = 'hien_thi'")
+        .groupBy('bv.id_cua_hang')
+        .getRawMany<{ id_cua_hang: string; avg_sao: string; tong_bai: string }>(),
+    ]);
+
     const aggMap = new Map(
       donHangAgg.map((a) => [
         Number(a.id_cua_hang),
         { tongDon: Number(a.tong_don), tongHuy: Number(a.tong_huy) },
       ]),
     );
+    const monAnMap = new Map(
+      monAnAgg.map((a) => [Number(a.id_cua_hang), Number(a.tong_ban || 0)]),
+    );
+    const baiVietMap = new Map(
+      baiVietAgg.map((a) => [
+        Number(a.id_cua_hang),
+        { avgSao: Number(a.avg_sao || 0), tongBai: Number(a.tong_bai || 0) },
+      ]),
+    );
 
     const mapped = stores.map((item) => {
       const agg = aggMap.get(Number(item.id)) ?? { tongDon: 0, tongHuy: 0 };
       const tyLeHuy = agg.tongDon > 0 ? (agg.tongHuy * 100) / agg.tongDon : 0;
+      const soLuongBan = monAnMap.get(Number(item.id)) ?? 0;
+      const bvInfo = baiVietMap.get(Number(item.id));
+      const dbScore = Number(item.diem_danh_gia);
+      // Kết hợp diem_danh_gia từ DB với avg so_sao của bai_viet
+      const combinedScore = bvInfo && bvInfo.tongBai > 0
+        ? Number(((dbScore + bvInfo.avgSao) / 2).toFixed(2))
+        : dbScore;
       return {
         id: Number(item.id),
         ten_cua_hang: item.ten_cua_hang,
-        diem_danh_gia: Number(item.diem_danh_gia),
-        so_don_hang: agg.tongDon || Number(item.tong_don_hang || 0),
+        diem_danh_gia: combinedScore,
+        so_don_hang: soLuongBan || agg.tongDon || Number(item.tong_don_hang || 0),
         ty_le_huy_don: Number(tyLeHuy.toFixed(2)),
         trang_thai: item.trang_thai_hoat_dong,
       };
@@ -1706,22 +1743,30 @@ export class UserContentService {
       storeIds.length > 0
         ? await this.cuaHangRepo.findBy(storeIds.map((id) => ({ id })))
         : [];
-    const storeMap = new Map(stores.map((s) => [Number(s.id), s.ten_cua_hang]));
+    const storeMap = new Map(stores.map((s) => [Number(s.id), { ten: s.ten_cua_hang, diem: Number(s.diem_danh_gia || 0) }]));
 
     const filtered = query.so_don_hang_tu != null
       ? items.filter((item) => Number(item.so_luong_da_ban) >= Number(query.so_don_hang_tu))
       : items;
 
     const total = filtered.length;
-    const paged = filtered.slice(skip, skip + pageSize).map((item, index) => ({
-      xep_hang: skip + index + 1,
-      id: Number(item.id),
-      ten_mon_an: item.ten_mon,
-      ten_cua_hang: storeMap.get(Number(item.id_cua_hang)) ?? 'Cửa hàng',
-      diem_danh_gia: Number(item.diem_danh_gia),
-      so_luong_da_ban: Number(item.so_luong_da_ban),
-      hinh_anh: item.hinh_anh_dai_dien,
-    }));
+    const paged = filtered.slice(skip, skip + pageSize).map((item, index) => {
+      const storeInfo = storeMap.get(Number(item.id_cua_hang));
+      const foodScore = Number(item.diem_danh_gia);
+      const storeScore = storeInfo?.diem ?? 0;
+      // Dùng điểm cửa hàng làm fallback khi món chưa có đánh giá
+      const finalScore = foodScore > 0 ? foodScore : storeScore;
+      return {
+        xep_hang: skip + index + 1,
+        id: Number(item.id),
+        id_cua_hang: Number(item.id_cua_hang),
+        ten_mon_an: item.ten_mon,
+        ten_cua_hang: storeInfo?.ten ?? 'Cửa hàng',
+        diem_danh_gia: finalScore,
+        so_luong_da_ban: Number(item.so_luong_da_ban),
+        hinh_anh: item.hinh_anh_dai_dien,
+      };
+    });
 
     return {
       du_lieu: paged,
@@ -2207,6 +2252,59 @@ export class UserContentService {
       gio_dong_cua: cuaHang.gio_dong_cua,
       vi_do: cuaHang.vi_do != null ? Number(cuaHang.vi_do) : null,
       kinh_do: cuaHang.kinh_do != null ? Number(cuaHang.kinh_do) : null,
+    };
+  }
+
+  async layBaiVietCuaHang(idCuaHang: number, trang?: number, soLuong?: number) {
+    const id = Number(idCuaHang);
+    if (!Number.isFinite(id) || id <= 0) {
+      throw new BadRequestException('ID cửa hàng không hợp lệ');
+    }
+
+    const { pageSize, skip } = this.parsePaging(trang, soLuong ?? 8);
+
+    const [items, total] = await this.baiVietRepo
+      .createQueryBuilder('bv')
+      .where('bv.id_cua_hang = :id', { id })
+      .andWhere('bv.trang_thai_duyet = :trangThai', { trangThai: 'hien_thi' })
+      .andWhere('bv.muc_do_hien_thi = :mucDo', { mucDo: 'cong_khai' })
+      .orderBy('bv.ngay_dang', 'DESC')
+      .skip(skip)
+      .take(pageSize)
+      .getManyAndCount();
+
+    const postIds = items.map((item) => Number(item.id));
+    const mediaByPost = await this.mapMediaByObject('bai_viet', postIds);
+
+    const userIds = [...new Set(items.map((item) => Number(item.id_nguoi_dang)))];
+    const users =
+      userIds.length > 0
+        ? await this.nguoiDungRepo.findBy(userIds.map((uid) => ({ id: uid })))
+        : [];
+    const tacGiaMap = new Map(users.map((u) => [Number(u.id), u]));
+
+    return {
+      du_lieu: items.map((item) => {
+        const tacGia = tacGiaMap.get(Number(item.id_nguoi_dang));
+        return {
+          id: Number(item.id),
+          noi_dung: item.noi_dung,
+          so_sao: item.so_sao != null ? Number(item.so_sao) : null,
+          link_mon_an: item.link_mon_an,
+          ngay_dang: item.ngay_dang,
+          tep_dinh_kem: mediaByPost.get(Number(item.id)) ?? [],
+          tong_luot_xem: Number(item.tong_luot_xem),
+          tong_luot_thich: Number(item.tong_luot_thich),
+          tong_luot_binh_luan: Number(item.tong_luot_binh_luan),
+          thong_tin_nguoi_dang: {
+            id: tacGia ? Number(tacGia.id) : Number(item.id_nguoi_dang),
+            ten_hien_thi: tacGia?.ten_hien_thi ?? 'Người dùng',
+            anh_dai_dien: tacGia?.anh_dai_dien ?? null,
+            la_nha_sang_tao: Boolean(tacGia?.la_nha_sang_tao),
+          },
+        };
+      }),
+      tong_so: total,
     };
   }
 
