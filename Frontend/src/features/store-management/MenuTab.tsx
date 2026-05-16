@@ -138,14 +138,14 @@ function EditItemModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-[540px] rounded-[16px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 pt-5">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative flex max-h-full w-full max-w-[540px] flex-col rounded-[16px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between px-6 pt-5">
           <div />
           <h3 className="text-[17px] font-bold text-black">Sửa thông tin món</h3>
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-[18px] text-[#555] transition hover:bg-[#e0e0e0]">×</button>
         </div>
-        <div className="px-6 pb-6 pt-4">
+        <div className="overflow-y-auto px-6 pb-6 pt-4">
           <button
             type="button"
             onClick={handlePickFile}
@@ -229,10 +229,10 @@ function EditItemModal({
             </div>
           </div>
           {error && <p className="mt-2 text-center text-[13px] text-[#d32f2f]">{error}</p>}
-          <div className="mt-5 flex items-center justify-center gap-3">
-            <button type="button" onClick={onClose} className="rounded-[10px] border border-[#ddd] bg-white px-8 py-2.5 text-[14px] font-semibold text-black transition hover:bg-gray-50" disabled={saving}>Hủy</button>
-            <button type="button" onClick={handleSave} className="rounded-[10px] bg-[#2e7d32] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#256b28]" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
-          </div>
+        </div>
+        <div className="shrink-0 border-t border-[#f0f0f0] px-6 py-4 flex items-center justify-center gap-3">
+          <button type="button" onClick={onClose} className="rounded-[10px] border border-[#ddd] bg-white px-8 py-2.5 text-[14px] font-semibold text-black transition hover:bg-gray-50" disabled={saving}>Hủy</button>
+          <button type="button" onClick={handleSave} className="rounded-[10px] bg-[#2e7d32] px-8 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#256b28]" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
         </div>
       </div>
     </div>
