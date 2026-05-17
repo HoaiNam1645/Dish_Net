@@ -13,13 +13,11 @@ type Props = {
 };
 
 const GOI_Y_KHACH = [
-    'Hôm nay ăn gì ngon?',
     'Tìm quán bún bò gần Quận 1',
     'Voucher đang có là gì?',
 ];
 
 const GOI_Y_NGUOI_DUNG = [
-    'Hôm nay ăn gì ngon?',
     'Đơn hàng gần nhất của tôi đang ở đâu?',
     'Có voucher nào đang dùng được không?',
 ];
@@ -178,7 +176,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
             className={
                 isPage
                     ? 'flex h-full w-full flex-col bg-white'
-                    : 'flex h-[560px] w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10'
+                    : 'flex h-[480px] max-h-[calc(100svh-100px)] w-[360px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10'
             }
         >
             <header className="relative flex items-center justify-between gap-2 border-b border-gray-200 bg-gradient-to-r from-[#2f6f25] to-[#56c194] px-4 py-3 text-white">
@@ -355,7 +353,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
                     e.preventDefault();
                     void gui(draft);
                 }}
-                className="flex items-end gap-2 border-t border-gray-200 bg-white p-3"
+                className="flex shrink-0 items-end gap-2 border-t border-gray-200 bg-white p-3"
             >
                 <textarea
                     value={draft}

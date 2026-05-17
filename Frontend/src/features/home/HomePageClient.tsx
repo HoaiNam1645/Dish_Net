@@ -290,6 +290,7 @@ function FeedPostCard({
     post,
     canFollow = true,
     canShare = true,
+    canReport = true,
     onComment,
     onOrder,
     onFollow,
@@ -302,6 +303,7 @@ function FeedPostCard({
     post: FeedPost;
     canFollow?: boolean;
     canShare?: boolean;
+    canReport?: boolean;
     onComment: () => void;
     onOrder: () => void;
     onFollow: () => void;
@@ -483,9 +485,11 @@ function FeedPostCard({
                     >
                         Chia sẻ · {post.shareCount}
                     </button>
+                    {canReport && (
                     <button onClick={(event) => { event.stopPropagation(); onReport(); }} className="inline-flex items-center gap-2 transition hover:text-[#c62828]">
                         Báo cáo
                     </button>
+                    )}
                     </div>
 
                     {post.dishLink || post.dishId ? (
@@ -1359,10 +1363,10 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                             <div className="relative grid min-h-[420px] gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.6fr)] lg:items-center">
                                 <div className="max-w-[360px] text-white">
                                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/75">
-                                        {data.hero.eyebrow}
+                                        {spotlightCards.length > 0 ? data.hero.eyebrow : 'Khám phá ẩm thực'}
                                     </p>
                                     <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl">
-                                        {data.hero.title}
+                                        {spotlightCards.length > 0 ? 'Deal Hôm Nay' : 'Đề Xuất Cho Bạn'}
                                     </h1>
                                     <p className="mt-3 text-sm leading-6 text-white/85">
                                         {data.hero.description}
@@ -1520,6 +1524,7 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                                         post={post}
                                         canFollow={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
                                         canShare={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
+                                        canReport={!nguoiDung || Number(post.authorId || 0) !== Number(nguoiDung.id)}
                                         onComment={() => {
                                             setActiveCommentStore(post.storeName || post.author || 'Bài viết');
                                             setActiveCommentCoverImage(post.storeAvatar ?? post.authorAvatar ?? null);
@@ -1664,34 +1669,43 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                             <div className="rounded-[16px] bg-white px-4 py-3 text-base font-semibold text-[#285e19] shadow-[0_6px_18px_rgba(0,0,0,0.06)]">
                                 Deal hôm nay
                             </div>
-                            {spotlightCards.slice(0, visibleDealCount).map((card) => (
-                                <SidebarStoreCard
-                                    key={card.id}
-                                    card={card}
-                                    onOpenGallery={() => {
-                                        setActiveGalleryCard(card);
-                                        setIsGalleryModalOpen(true);
-                                    }}
-                                    onOpenComment={() => {
-                                        setActiveCommentStore(card.title);
-                                        setActiveCommentPostId(
-                                            Number(feedPosts[0]?.id || 0) || null,
-                                        );
-                                        setCommentComposerOpen(true);
-                                        setIsCommentModalOpen(true);
-                                    }}
-                                    onOpenDetail={() => setActiveDealCard(card)}
-                                />
-                            ))}
-                            {hasMoreDeals ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setVisibleDealCount((current) => current + 3)}
-                                    className="w-full rounded-[12px] border border-[#2f8f22] bg-white px-4 py-2 text-sm font-semibold text-[#2f8f22]"
-                                >
-                                    Xem thêm deal
-                                </button>
-                            ) : null}
+                            {spotlightCards.length === 0 ? (
+                                <div className="rounded-[14px] bg-white px-4 py-5 text-center shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+                                    <p className="text-[13px] font-medium text-[#285e19]">Chưa có deal lúc này</p>
+                                    <p className="mt-1 text-[12px] text-[#9ca3af]">Deal mở lúc 7h–9h · 11h–13h · 18h–20h</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {spotlightCards.slice(0, visibleDealCount).map((card) => (
+                                        <SidebarStoreCard
+                                            key={card.id}
+                                            card={card}
+                                            onOpenGallery={() => {
+                                                setActiveGalleryCard(card);
+                                                setIsGalleryModalOpen(true);
+                                            }}
+                                            onOpenComment={() => {
+                                                setActiveCommentStore(card.title);
+                                                setActiveCommentPostId(
+                                                    Number(feedPosts[0]?.id || 0) || null,
+                                                );
+                                                setCommentComposerOpen(true);
+                                                setIsCommentModalOpen(true);
+                                            }}
+                                            onOpenDetail={() => setActiveDealCard(card)}
+                                        />
+                                    ))}
+                                    {hasMoreDeals ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setVisibleDealCount((current) => current + 3)}
+                                            className="w-full rounded-[12px] border border-[#2f8f22] bg-white px-4 py-2 text-sm font-semibold text-[#2f8f22]"
+                                        >
+                                            Xem thêm deal
+                                        </button>
+                                    ) : null}
+                                </>
+                            )}
                         </div>
                     </section>
                 </section>
