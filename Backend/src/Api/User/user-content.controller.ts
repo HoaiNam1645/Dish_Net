@@ -207,8 +207,10 @@ export class UserContentController {
   async layDanhSachNguoiTheoDoi(
     @Req() req: AuthenticatedRequest,
     @Query('tu_khoa') tuKhoa?: string,
+    @Query('id_nguoi_dung') idNguoiDung?: string,
   ) {
-    return this.userContentService.layDanhSachNguoiTheoDoi(req.user!.sub, tuKhoa);
+    const targetId = idNguoiDung ? Number(idNguoiDung) : req.user!.sub;
+    return this.userContentService.layDanhSachNguoiTheoDoi(targetId, tuKhoa);
   }
 
   /**

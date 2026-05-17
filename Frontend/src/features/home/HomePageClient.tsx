@@ -12,7 +12,7 @@ import { userCommerceApi } from '@/shared/userCommerceApi';
 import LoginRequiredModal from '@/components/Auth/LoginRequiredModal';
 import { homeUiAssets } from './assets';
 import CommentModal from './CommentModal';
-import { mapFeedPosts } from './data';
+import { mapDeals, mapFeedPosts } from './data';
 import type { FeedPost, HomePageData, RankingItem, RankingMode, SpotlightCard } from './types';
 
 const FEED_PAGE_SIZE = 10;
@@ -1008,7 +1008,7 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
     const [activeMenuCategory, setActiveMenuCategory] = useState(data.menu.categories[0]?.id ?? '');
     const [menuQuery, setMenuQuery] = useState('');
     const [actionMessage, setActionMessage] = useState<string | null>(null);
-    const [spotlightCards] = useState<SpotlightCard[]>(data.spotlightCards);
+    const [spotlightCards, setSpotlightCards] = useState<SpotlightCard[]>(data.spotlightCards);
     const [menuData] = useState(data.menu);
     const dealSectionRef = useRef<HTMLElement | null>(null);
     const { dangNhap: isAuthenticated, nguoiDung } = useAuth();
@@ -1183,7 +1183,30 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
 
     useEffect(() => {
         let active = true;
-        const syncFeed = async () => {
+
+        const mergeFeed = (latest: FeedPost[]) => {
+            setFeedPosts((current) => {
+                if (current.length === 0) return latest;
+                const latestMap = new Map(latest.map((p) => [p.id, p]));
+                // Update counts on existing posts, keep order intact
+                const merged = current.map((post) => {
+                    const fresh = latestMap.get(post.id);
+                    if (!fresh) return post;
+                    return {
+                        ...post,
+                        likeCount: fresh.likeCount,
+                        commentCount: fresh.commentCount,
+                        shareCount: fresh.shareCount,
+                    };
+                });
+                // Prepend genuinely new posts (not in current list)
+                const currentIds = new Set(current.map((p) => p.id));
+                const newPosts = latest.filter((p) => !currentIds.has(p.id));
+                return newPosts.length > 0 ? [...newPosts, ...merged] : merged;
+            });
+        };
+
+        const syncFeed = async (fullReplace = false) => {
             try {
                 const payload = (await userContentApi.layBangTin({
                     trang: 1,
@@ -1191,22 +1214,29 @@ export default function HomePageClient({ data }: { data: HomePageData }) {
                 })) as Record<string, unknown>;
                 if (!active) return;
                 const latest: FeedPost[] = mapFeedPosts(payload);
-                setFeedPosts(latest);
-                setFeedCurrentPage(1);
+                const latestDeals = mapDeals(payload);
+                if (fullReplace) {
+                    setFeedPosts(latest);
+                    setFeedCurrentPage(1);
+                } else {
+                    mergeFeed(latest);
+                }
+                setSpotlightCards(latestDeals);
             } catch {
                 // keep current UI state if sync fails
             }
         };
 
-        void syncFeed();
-        const onFocus = () => {
-            void syncFeed();
-        };
+        void syncFeed(true);
+        const onFocus = () => void syncFeed(true);
         window.addEventListener('focus', onFocus);
+
+        const intervalId = window.setInterval(() => void syncFeed(false), 30_000);
 
         return () => {
             active = false;
             window.removeEventListener('focus', onFocus);
+            window.clearInterval(intervalId);
         };
     }, [isAuthenticated]);
 

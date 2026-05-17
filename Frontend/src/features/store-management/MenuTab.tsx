@@ -293,11 +293,13 @@ function DeleteItemModal({ item, onClose, onDelete }: { item: MonAnItem; onClose
    ═══════════════════════════════════════════ */
 function AddItemModal({
   danhMucList,
+  existingNames,
   onClose,
   onAdd,
   onNewDanhMuc,
 }: {
   danhMucList: DanhMucItem[];
+  existingNames: string[];
   onClose: () => void;
   onAdd: (item: MonAnItem) => void;
   onNewDanhMuc?: (item: DanhMucItem) => void;
@@ -342,8 +344,13 @@ function AddItemModal({
     }
   };
 
+  const isDuplicateName = name.trim()
+    ? existingNames.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase())
+    : false;
+
   const handleAdd = async () => {
     if (!name.trim()) { setError('Tên món không được để trống'); return; }
+    if (isDuplicateName) { setError(`Món "${name.trim()}" đã tồn tại trong cửa hàng của bạn`); return; }
     const priceNum = parseMoneyInput(price);
     if (priceNum === null || priceNum < 0) { setError('Giá không hợp lệ'); return; }
     setSaving(true);
@@ -442,7 +449,16 @@ function AddItemModal({
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <label className="text-[13px] font-medium text-black">Tên Món <span className="text-[#d32f2f]">*</span></label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên món mới" className="mt-1 w-full rounded-[8px] border border-[#e0e0e0] px-3 py-2 text-[14px] text-black outline-none placeholder:text-[#bbb] focus:border-[#2e7d32]" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Tên món mới"
+                className={`mt-1 w-full rounded-[8px] border px-3 py-2 text-[14px] text-black outline-none placeholder:text-[#bbb] focus:border-[#2e7d32] ${isDuplicateName ? 'border-[#d32f2f]' : 'border-[#e0e0e0]'}`}
+              />
+              {isDuplicateName && (
+                <p className="mt-1 text-[12px] text-[#d32f2f]">Món này đã tồn tại trong cửa hàng của bạn</p>
+              )}
             </div>
             <div className="relative">
               <label className="text-[13px] font-medium text-black">Trạng thái</label>
@@ -924,6 +940,7 @@ export default function MenuTab() {
       {showAdd && (
         <AddItemModal
           danhMucList={danhMucList}
+          existingNames={items.map((i) => i.ten_mon)}
           onClose={() => setShowAdd(false)}
           onAdd={handleAddItem}
           onNewDanhMuc={(item) => setDanhMucList((prev) => [...prev, item])}

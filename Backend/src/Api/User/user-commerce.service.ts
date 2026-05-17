@@ -484,7 +484,7 @@ export class UserCommerceService {
 
     const qb = this.thongBaoRepo
       .createQueryBuilder('tb')
-      .leftJoinAndSelect('tb.nguoi_nhan', 'nguoi_nhan')
+      .leftJoinAndSelect('tb.nguoi_gui', 'nguoi_gui')
       .where('tb.id_nguoi_nhan = :userId', { userId })
       .orderBy('tb.ngay_tao', 'DESC')
       .addOrderBy('tb.id', 'DESC')
@@ -508,11 +508,11 @@ export class UserCommerceService {
         da_doc: Boolean(item.da_doc),
         thoi_gian_doc: item.thoi_gian_doc,
         ngay_tao: item.ngay_tao,
-        nguoi_nhan: item.nguoi_nhan
+        nguoi_gui: item.nguoi_gui
           ? {
-              id: Number(item.nguoi_nhan.id),
-              ten_hien_thi: item.nguoi_nhan.ten_hien_thi,
-              anh_dai_dien: item.nguoi_nhan.anh_dai_dien,
+              id: Number(item.nguoi_gui.id),
+              ten_hien_thi: item.nguoi_gui.ten_hien_thi,
+              anh_dai_dien: item.nguoi_gui.anh_dai_dien,
             }
           : null,
       })),
@@ -1802,7 +1802,7 @@ export class UserCommerceService {
       }
       if (status === 'da_giao') {
         counts.purchased += 1;
-        if (!reviewedOrderIds.has(Number(order.id))) {
+        if (reviewedOrderIds.has(Number(order.id))) {
           counts.review += 1;
         }
       }
@@ -1884,7 +1884,7 @@ export class UserCommerceService {
           })
         ).map((item) => Number(item.id_don_hang)),
       );
-      orders = ordersRaw.filter((item) => !reviewedOrderIds.has(Number(item.id)));
+      orders = ordersRaw.filter((item) => reviewedOrderIds.has(Number(item.id)));
     }
 
     const total = orders.length;
@@ -1940,7 +1940,7 @@ export class UserCommerceService {
           thoi_gian_giao: item.thoi_gian_giao,
           co_the_huy: item.trang_thai_don_hang === 'cho_xac_nhan',
           co_the_xac_nhan_da_nhan: item.trang_thai_don_hang === 'dang_giao',
-          co_the_hoan_tien: item.trang_thai_don_hang === 'da_giao',
+          co_the_hoan_tien: item.trang_thai_don_hang === 'da_giao' && !daDanhGia,
           co_the_danh_gia: item.trang_thai_don_hang === 'da_giao' && !daDanhGia,
           da_danh_gia: daDanhGia,
           trang_thai_hoan_tien:
@@ -2119,6 +2119,13 @@ export class UserCommerceService {
 
     if (order.trang_thai_don_hang !== 'da_giao') {
       throw new BadRequestException('Chỉ đơn hàng đã giao mới có thể yêu cầu hoàn tiền');
+    }
+
+    const daDanhGia = await this.danhGiaRepo.findOne({
+      where: { id_don_hang: Number(order.id), id_nguoi_danh_gia: userId },
+    });
+    if (daDanhGia) {
+      throw new BadRequestException('Đơn hàng đã được đánh giá, không thể yêu cầu hoàn tiền');
     }
 
     const payment = await this.thanhToanRepo.findOne({

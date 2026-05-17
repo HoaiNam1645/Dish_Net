@@ -869,7 +869,9 @@ export default function CheckoutPageClient() {
                       Phí vận chuyển
                       {deliveryCoords && (
                         <span className="rounded-full bg-[#e8f5e9] px-1.5 py-0.5 text-[10px] font-semibold text-[#2e7d32]">
-                          theo khoảng cách
+                          {preview.groups.length === 1 && preview.groups[0].khoang_cach_km != null
+                            ? `~${preview.groups[0].khoang_cach_km} km`
+                            : 'theo khoảng cách'}
                         </span>
                       )}
                     </span>

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
@@ -767,7 +767,7 @@ export default function UserOrdersPageClient() {
             orderedAt: formatDateTime(item?.thoi_gian_dat),
             paidAt: formatDateTime(payment?.thoi_gian_thanh_toan),
             deliveredAt: formatDateTime(item?.thoi_gian_giao),
-            canRefund: statusDb === 'da_giao',
+            canRefund: statusDb === 'da_giao' && !item?.danh_gia_cua_toi,
             canConfirmReceived: Boolean(item?.co_the_xac_nhan_da_nhan) || statusDb === 'dang_giao',
             canReview: statusDb === 'da_giao' && !item?.danh_gia_cua_toi,
             received: Boolean(item?.danh_gia_cua_toi),
@@ -838,6 +838,30 @@ export default function UserOrdersPageClient() {
     useEffect(() => {
         void loadOrders();
     }, [loadOrders]);
+
+    const refreshPlacedTab = useCallback(async () => {
+        try {
+            const payload: any = await userCommerceApi.layDanhSachDonHang({ tab: 'placed' });
+            const rows = Array.isArray(payload?.du_lieu) ? payload.du_lieu : [];
+            setOrdersByTab((prev) => ({ ...prev, placed: rows.map(mapListOrder) }));
+        } catch {
+            // silent — không hiện lỗi khi polling ngầm
+        }
+    }, [mapListOrder]);
+
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        const hasPendingOrders = ordersByTab.placed.some((o) => o.statusLabel === 'Chờ xác nhận');
+        if (hasPendingOrders) {
+            pollingRef.current = setInterval(() => void refreshPlacedTab(), 10_000);
+        }
+        return () => {
+            if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+            }
+        };
+    }, [ordersByTab.placed, refreshPlacedTab]);
 
     const activeOrders = useMemo(() => ordersByTab[activeTab], [activeTab, ordersByTab]);
     const selectedOrder = detailOrder ?? activeOrders.find((order) => order.id === selectedOrderId) ?? null;

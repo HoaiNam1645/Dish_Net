@@ -28,6 +28,7 @@ import { TaiKhoanRutTienEntity } from './entities/tai-khoan-rut-tien.entity';
 import { YeuCauRutTienEntity } from './entities/yeu-cau-rut-tien.entity';
 import { LuotNhanLinkBaiVietEntity } from './entities/luot-nhan-link-bai-viet.entity';
 import { LuotXemBaiVietEntity } from './entities/luot-xem-bai-viet.entity';
+import { ThongBaoEntity } from '../Admin/entities/thong-bao.entity';
 import {
   BangXepHangChiTietQueryDto,
   BangXepHangMiniQueryDto,
@@ -87,6 +88,8 @@ export class UserContentService {
     private readonly luotNhanLinkBaiVietRepo: Repository<LuotNhanLinkBaiVietEntity>,
     @InjectRepository(LuotXemBaiVietEntity)
     private readonly luotXemBaiVietRepo: Repository<LuotXemBaiVietEntity>,
+    @InjectRepository(ThongBaoEntity)
+    private readonly thongBaoRepo: Repository<ThongBaoEntity>,
   ) {}
 
   private parsePaging(trang?: number, soLuong?: number) {
@@ -1875,6 +1878,21 @@ export class UserContentService {
       ngay_tao: new Date(),
     });
     void this.tinhLaiDiemUyTin(idNguoiDung);
+
+    const nguoiTheoDoi = await this.nguoiDungRepo.findOne({ where: { id: idNguoiXem } });
+    void this.thongBaoRepo.save({
+      id_nguoi_nhan: idNguoiDung,
+      id_nguoi_gui: idNguoiXem,
+      loai_thong_bao: 'theo_doi',
+      loai_doi_tuong: 'nguoi_dung',
+      id_doi_tuong: idNguoiXem,
+      tieu_de: `${nguoiTheoDoi?.ten_hien_thi ?? 'Ai đó'} đã theo dõi bạn`,
+      noi_dung: `${nguoiTheoDoi?.ten_hien_thi ?? 'Ai đó'} vừa bắt đầu theo dõi bạn.`,
+      da_doc: false,
+      thoi_gian_doc: null,
+      ngay_tao: new Date(),
+    }).catch(() => {});
+
     return { dang_theo_doi: true, hanh_dong: 'theo_doi' };
   }
 
@@ -2451,15 +2469,26 @@ export class UserContentService {
     }
 
     const now = new Date();
-    const khuyenMai = await this.khuyenMaiRepo
-      .createQueryBuilder('km')
-      .innerJoin(CuaHangEntity, 'ch', 'ch.id = km.id_cua_hang')
-      .where('km.trang_thai = :trangThai', { trangThai: 'dang_dien_ra' })
-      .andWhere('km.thoi_gian_bat_dau <= :now', { now })
-      .andWhere('km.thoi_gian_ket_thuc >= :now', { now })
-      .orderBy('km.thoi_gian_ket_thuc', 'ASC')
-      .limit(10)
-      .getMany();
+    // Chỉ hiển thị deal trong 3 khung giờ: 7-9h, 11-13h, 18-20h
+    const hour = now.getHours();
+    const isInDealSlot =
+      (hour >= 7 && hour < 9) ||
+      (hour >= 11 && hour < 13) ||
+      (hour >= 18 && hour < 20);
+
+    const khuyenMai = isInDealSlot
+      ? await this.khuyenMaiRepo
+          .createQueryBuilder('km')
+          .innerJoin(CuaHangEntity, 'ch', 'ch.id = km.id_cua_hang')
+          .where('km.trang_thai IN (:...statuses)', {
+            statuses: ['dang_dien_ra', 'sap_dien_ra'],
+          })
+          .andWhere('km.thoi_gian_bat_dau <= :now', { now })
+          .andWhere('km.thoi_gian_ket_thuc >= :now', { now })
+          .orderBy('km.thoi_gian_ket_thuc', 'ASC')
+          .limit(10)
+          .getMany()
+      : [];
 
     const khuyenMaiStoreIds = [
       ...new Set(khuyenMai.map((item) => Number(item.id_cua_hang))),
@@ -2792,6 +2821,22 @@ export class UserContentService {
       where: { id: idNguoiDung },
     });
 
+    const tacGia = Number(baiViet.id_nguoi_dang);
+    if (tacGia && tacGia !== idNguoiDung) {
+      void this.thongBaoRepo.save({
+        id_nguoi_nhan: tacGia,
+        id_nguoi_gui: idNguoiDung,
+        loai_thong_bao: 'binh_luan_bai_viet',
+        loai_doi_tuong: 'bai_viet',
+        id_doi_tuong: idBaiViet,
+        tieu_de: `${nguoiBinhLuan?.ten_hien_thi ?? 'Ai đó'} đã bình luận bài viết của bạn`,
+        noi_dung: noiDung.trim().slice(0, 100),
+        da_doc: false,
+        thoi_gian_doc: null,
+        ngay_tao: new Date(),
+      }).catch(() => {});
+    }
+
     return {
       id: Number(created.id),
       id_bai_viet: Number(created.id_bai_viet),
@@ -3037,6 +3082,23 @@ export class UserContentService {
 
     if (params.loaiTuongTac === 'thich' && refreshed?.id_nguoi_dang) {
       void this.tinhLaiDiemUyTin(Number(refreshed.id_nguoi_dang));
+
+      const tacGia = Number(refreshed.id_nguoi_dang);
+      if (tacGia !== params.idNguoiDung) {
+        const nguoiThich = await this.nguoiDungRepo.findOne({ where: { id: params.idNguoiDung } });
+        void this.thongBaoRepo.save({
+          id_nguoi_nhan: tacGia,
+          id_nguoi_gui: params.idNguoiDung,
+          loai_thong_bao: 'tuong_tac_bai_viet',
+          loai_doi_tuong: 'bai_viet',
+          id_doi_tuong: params.idBaiViet,
+          tieu_de: `${nguoiThich?.ten_hien_thi ?? 'Ai đó'} đã thích bài viết của bạn`,
+          noi_dung: `${nguoiThich?.ten_hien_thi ?? 'Ai đó'} đã thích một bài viết của bạn.`,
+          da_doc: false,
+          thoi_gian_doc: null,
+          ngay_tao: new Date(),
+        }).catch(() => {});
+      }
     }
 
     return {

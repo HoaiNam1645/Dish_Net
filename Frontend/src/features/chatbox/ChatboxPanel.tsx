@@ -53,6 +53,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
     const [loi, setLoi] = useState<string | null>(null);
     const [phienList, setPhienList] = useState<ChatbotPhien[]>([]);
     const [showPhienMenu, setShowPhienMenu] = useState(false);
+    const [deletingPhienId, setDeletingPhienId] = useState<number | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const showMenu = showSessionMenu ?? variant === 'bubble';
 
@@ -143,7 +144,36 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
 
     const isPage = variant === 'page';
 
+    const xoaPhienConfirm = async () => {
+        if (deletingPhienId === null) return;
+        try {
+            await chatboxApi.xoaPhien(deletingPhienId);
+            if (idPhien === deletingPhienId) {
+                setIdPhien(undefined);
+                setTinNhan([]);
+            }
+            await refreshPhienList();
+        } catch (err) {
+            setLoi(err instanceof Error ? err.message : 'Không xóa được');
+        } finally {
+            setDeletingPhienId(null);
+        }
+    };
+
     return (
+        <>
+        {deletingPhienId !== null && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={() => setDeletingPhienId(null)}>
+                <div className="w-full max-w-[360px] rounded-[16px] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-[15px] font-semibold text-black">Xóa phiên này?</p>
+                    <p className="mt-1 text-[13px] text-[#666]">Toàn bộ lịch sử trò chuyện sẽ bị xóa vĩnh viễn.</p>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <button type="button" onClick={() => setDeletingPhienId(null)} className="rounded-[10px] border border-[#ddd] bg-white px-5 py-2 text-[13px] font-semibold text-black hover:bg-gray-50">Hủy</button>
+                        <button type="button" onClick={() => void xoaPhienConfirm()} className="rounded-[10px] bg-[#d32f2f] px-5 py-2 text-[13px] font-semibold text-white hover:bg-[#b71c1c]">Xóa</button>
+                    </div>
+                </div>
+            </div>
+        )}
         <div
             className={
                 isPage
@@ -249,17 +279,7 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
                                                 tabIndex={0}
                                                 onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    if (!confirm('Xóa phiên này?')) return;
-                                                    try {
-                                                        await chatboxApi.xoaPhien(p.id);
-                                                        if (idPhien === p.id) {
-                                                            setIdPhien(undefined);
-                                                            setTinNhan([]);
-                                                        }
-                                                        await refreshPhienList();
-                                                    } catch (err) {
-                                                        setLoi(err instanceof Error ? err.message : 'Không xóa được');
-                                                    }
+                                                    setDeletingPhienId(p.id);
                                                 }}
                                                 className="text-gray-400 hover:text-red-500"
                                                 aria-label="Xóa"
@@ -359,5 +379,6 @@ export default function ChatboxPanel({ variant = 'bubble', initialPhienId, showS
                 </button>
             </form>
         </div>
+        </>
     );
 }
